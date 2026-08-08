@@ -23,10 +23,28 @@ function makeIrregularShape(baseRadius, segments, seed) {
   return shape;
 }
 
-export function createMap(scene) {
+// Terrain indices — encode as red channel value (0–255) for index mode
+export const TERRAIN = {
+  OCEAN:     0,
+  BEACH:     1,
+  GRASSLAND: 2,
+  FOREST:    3,
+  MOUNTAIN:  4,
+  RIVER:     5,  // includes lakes and tributaries
+  CANAL:     6,
+};
+
+// Convert terrain index to a flat color for the index render pass
+function indexColor(idx) {
+  return new THREE.Color(idx / 255, 0, 0);
+}
+
+export function createMap(scene, { indexMode = false } = {}) {
   // Blue ocean background
   const bgGeometry = new THREE.PlaneGeometry(1000, 1000);
-  const bgMaterial = new THREE.MeshBasicMaterial({ color: 0x1a6dd4 });
+  const bgMaterial = new THREE.MeshBasicMaterial({
+    color: indexMode ? indexColor(TERRAIN.OCEAN) : 0x1a6dd4,
+  });
   const bg = new THREE.Mesh(bgGeometry, bgMaterial);
   bg.position.set(500, 500, 0);
   scene.add(bg);
@@ -38,45 +56,81 @@ export function createMap(scene) {
   // Island fill with forest shader
   const islandShape = makeIrregularShape(baseRadius, segments, seed);
   const islandGeometry = new THREE.ShapeGeometry(islandShape);
-  const islandMaterial = new THREE.ShaderMaterial({
-    uniforms: {
-      uBaseRadius: { value: baseRadius },
-    },
-    vertexShader: `
-      varying vec2 vPos;
-      void main() {
-        vPos = position.xy;
-        gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
-      }
-    `,
-    fragmentShader: `
-      uniform float uBaseRadius;
-      varying vec2 vPos;
+  let islandMaterial;
+  if (indexMode) {
+    // In index mode, use a shader that outputs grassland or forest index
+    islandMaterial = new THREE.ShaderMaterial({
+      uniforms: {
+        uBaseRadius: { value: baseRadius },
+        uGrassland: { value: indexColor(TERRAIN.GRASSLAND) },
+        uForest: { value: indexColor(TERRAIN.FOREST) },
+      },
+      vertexShader: `
+        varying vec2 vPos;
+        void main() {
+          vPos = position.xy;
+          gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+        }
+      `,
+      fragmentShader: `
+        uniform float uBaseRadius;
+        uniform vec3 uGrassland;
+        uniform vec3 uForest;
+        varying vec2 vPos;
 
-      // Integer-based hash to avoid float correlation artifacts
-      highp float hash(vec2 co) {
-        highp float a = sin(dot(co, vec2(12.9898, 78.233))) * 43758.5453;
-        a = fract(a);
-        a = fract(a * 7.1312 + cos(dot(co, vec2(269.5, 183.3))) * 32187.1523);
-        return a;
-      }
+        highp float hash(vec2 co) {
+          highp float a = sin(dot(co, vec2(12.9898, 78.233))) * 43758.5453;
+          a = fract(a);
+          a = fract(a * 7.1312 + cos(dot(co, vec2(269.5, 183.3))) * 32187.1523);
+          return a;
+        }
 
-      void main() {
-        float dist = length(vPos);
-        float forestProb = 1.0 - (dist / uBaseRadius);
-        forestProb = clamp(forestProb * 0.8 + 0.1, 0.1, 0.9);
+        void main() {
+          float dist = length(vPos);
+          float forestProb = 1.0 - (dist / uBaseRadius);
+          forestProb = clamp(forestProb * 0.8 + 0.1, 0.1, 0.9);
+          float r = hash(gl_FragCoord.xy + vec2(0.347, 0.729));
+          vec3 color = r < forestProb ? uForest : uGrassland;
+          gl_FragColor = vec4(color, 1.0);
+        }
+      `,
+    });
+  } else {
+    islandMaterial = new THREE.ShaderMaterial({
+      uniforms: {
+        uBaseRadius: { value: baseRadius },
+      },
+      vertexShader: `
+        varying vec2 vPos;
+        void main() {
+          vPos = position.xy;
+          gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+        }
+      `,
+      fragmentShader: `
+        uniform float uBaseRadius;
+        varying vec2 vPos;
 
-        // Offset coordinates to break any remaining patterns
-        float r = hash(gl_FragCoord.xy + vec2(0.347, 0.729));
+        highp float hash(vec2 co) {
+          highp float a = sin(dot(co, vec2(12.9898, 78.233))) * 43758.5453;
+          a = fract(a);
+          a = fract(a * 7.1312 + cos(dot(co, vec2(269.5, 183.3))) * 32187.1523);
+          return a;
+        }
 
-        vec3 lightGreen = vec3(0.29, 0.62, 0.29);  // 0x4a9e4a
-        vec3 darkGreen = vec3(0.15, 0.40, 0.15);   // darker forest
-
-        vec3 color = r < forestProb ? darkGreen : lightGreen;
-        gl_FragColor = vec4(color, 1.0);
-      }
-    `,
-  });
+        void main() {
+          float dist = length(vPos);
+          float forestProb = 1.0 - (dist / uBaseRadius);
+          forestProb = clamp(forestProb * 0.8 + 0.1, 0.1, 0.9);
+          float r = hash(gl_FragCoord.xy + vec2(0.347, 0.729));
+          vec3 lightGreen = vec3(0.29, 0.62, 0.29);
+          vec3 darkGreen = vec3(0.15, 0.40, 0.15);
+          vec3 color = r < forestProb ? darkGreen : lightGreen;
+          gl_FragColor = vec4(color, 1.0);
+        }
+      `,
+    });
+  }
   const island = new THREE.Mesh(islandGeometry, islandMaterial);
   island.position.set(500, 500, 0.1);
   scene.add(island);
@@ -86,7 +140,9 @@ export function createMap(scene) {
   const mountainSeed = 7.5;
   const mountainShape = makeIrregularShape(mountainRadius, segments, mountainSeed);
   const mountainGeometry = new THREE.ShapeGeometry(mountainShape);
-  const mountainMaterial = new THREE.MeshBasicMaterial({ color: 0x888888 });
+  const mountainMaterial = new THREE.MeshBasicMaterial({
+    color: indexMode ? indexColor(TERRAIN.MOUNTAIN) : 0x888888,
+  });
   const mountain = new THREE.Mesh(mountainGeometry, mountainMaterial);
   mountain.position.set(500, 500, 0.2);
   scene.add(mountain);
@@ -103,7 +159,9 @@ export function createMap(scene) {
     { angle: 5.8,  maxWidth: 12, curveSeed: 4.0 },
   ];
 
-  const riverMaterial = new THREE.MeshBasicMaterial({ color: oceanColor });
+  const riverMaterial = new THREE.MeshBasicMaterial({
+    color: indexMode ? indexColor(TERRAIN.RIVER) : oceanColor,
+  });
 
   function buildRiverPoints(startR, endR, angle, maxWidth, curveSeed, steps, widthGrows) {
     const points = [];
@@ -221,7 +279,9 @@ export function createMap(scene) {
 
   // Canals - straight waterways connecting bigger rivers (darker blue)
   const canalColor = 0x135ba1;
-  const canalMaterial = new THREE.MeshBasicMaterial({ color: canalColor });
+  const canalMaterial = new THREE.MeshBasicMaterial({
+    color: indexMode ? indexColor(TERRAIN.CANAL) : canalColor,
+  });
   const canals = [
     { riverA: 0, tA: 0.55, riverB: 1, tB: 0.5,  width: 2 },  // river 0 <-> river 1
     { riverA: 2, tA: 0.6,  riverB: 3, tB: 0.55, width: 2 },  // river 2 <-> river 3
@@ -257,7 +317,9 @@ export function createMap(scene) {
   // Sandy beach border (drawn as a slightly larger shape behind the island)
   const beachShape = makeIrregularShape(baseRadius + 2, segments, seed);
   const beachGeometry = new THREE.ShapeGeometry(beachShape);
-  const beachMaterial = new THREE.MeshBasicMaterial({ color: 0xdec882 });
+  const beachMaterial = new THREE.MeshBasicMaterial({
+    color: indexMode ? indexColor(TERRAIN.BEACH) : 0xdec882,
+  });
   const beach = new THREE.Mesh(beachGeometry, beachMaterial);
   beach.position.set(500, 500, 0.05);
   scene.add(beach);
