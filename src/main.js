@@ -14,10 +14,6 @@ renderer.setSize(MAP_SIZE, MAP_SIZE);
 renderer.setPixelRatio(window.devicePixelRatio);
 container.appendChild(renderer.domElement);
 
-createMap(scene);
-
-renderer.render(scene, camera);
-
 function clearScene(s) {
   while (s.children.length > 0) {
     const obj = s.children[0];
@@ -27,9 +23,16 @@ function clearScene(s) {
   }
 }
 
-// Export map as binary
+function render() {
+  clearScene(scene);
+  createMap(scene);
+  renderer.render(scene, camera);
+}
+
+render();
+
+// Export map as binary .dmap
 function exportMap() {
-  // Render index pass to an offscreen target at 1:1 pixel ratio
   const indexScene = new THREE.Scene();
   const indexRenderer = new THREE.WebGLRenderer({ antialias: false });
   indexRenderer.setSize(MAP_SIZE, MAP_SIZE);
@@ -44,36 +47,27 @@ function exportMap() {
   const pixels = new Uint8Array(MAP_SIZE * MAP_SIZE * 4);
   indexRenderer.readRenderTargetPixels(rt, 0, 0, MAP_SIZE, MAP_SIZE, pixels);
 
-  // Extract terrain index from red channel of each pixel
-  // WebGL reads bottom-to-top, so we flip vertically
+  // Extract terrain index from red channel, flip vertically
   const terrainData = new Uint8Array(MAP_SIZE * MAP_SIZE);
   for (let y = 0; y < MAP_SIZE; y++) {
     for (let x = 0; x < MAP_SIZE; x++) {
-      const srcRow = MAP_SIZE - 1 - y; // flip
+      const srcRow = MAP_SIZE - 1 - y;
       const srcIdx = (srcRow * MAP_SIZE + x) * 4;
-      const redValue = pixels[srcIdx]; // red channel holds terrain index
-      terrainData[y * MAP_SIZE + x] = redValue;
+      terrainData[y * MAP_SIZE + x] = pixels[srcIdx];
     }
   }
 
   // Build binary: magic "DMAP" + uint32 width + uint32 height + terrain bytes
-  const headerSize = 4 + 4 + 4;
+  const headerSize = 12;
   const buffer = new ArrayBuffer(headerSize + terrainData.length);
   const view = new DataView(buffer);
-
-  // Magic bytes "DMAP"
   view.setUint8(0, 0x44); // D
   view.setUint8(1, 0x4D); // M
   view.setUint8(2, 0x41); // A
   view.setUint8(3, 0x50); // P
-
-  // Dimensions (little-endian)
   view.setUint32(4, MAP_SIZE, true);
   view.setUint32(8, MAP_SIZE, true);
-
-  // Terrain data
-  const bodyView = new Uint8Array(buffer, headerSize);
-  bodyView.set(terrainData);
+  new Uint8Array(buffer, headerSize).set(terrainData);
 
   // Download
   const blob = new Blob([buffer], { type: 'application/octet-stream' });
@@ -84,7 +78,6 @@ function exportMap() {
   a.click();
   URL.revokeObjectURL(url);
 
-  // Cleanup
   rt.dispose();
   clearScene(indexScene);
   indexRenderer.dispose();
@@ -92,11 +85,9 @@ function exportMap() {
 
 document.getElementById('export-btn').addEventListener('click', exportMap);
 
-// HMR: re-render when map module changes
+// HMR: re-render when any map-related module changes
 if (import.meta.hot) {
-  import.meta.hot.accept('./map.js', (newModule) => {
-    clearScene(scene);
-    newModule.createMap(scene);
-    renderer.render(scene, camera);
+  import.meta.hot.accept(['./map.js', './config.js', './geometry.js'], () => {
+    render();
   });
 }
