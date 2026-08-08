@@ -31,14 +31,52 @@ export function createMap(scene) {
   bg.position.set(500, 500, 0);
   scene.add(bg);
 
-  const baseRadius = 350;
+  const baseRadius = 430;
   const segments = 256;
   const seed = 1.0;
 
-  // Island fill
+  // Island fill with forest shader
   const islandShape = makeIrregularShape(baseRadius, segments, seed);
   const islandGeometry = new THREE.ShapeGeometry(islandShape);
-  const islandMaterial = new THREE.MeshBasicMaterial({ color: 0x4a9e4a });
+  const islandMaterial = new THREE.ShaderMaterial({
+    uniforms: {
+      uBaseRadius: { value: baseRadius },
+    },
+    vertexShader: `
+      varying vec2 vPos;
+      void main() {
+        vPos = position.xy;
+        gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+      }
+    `,
+    fragmentShader: `
+      uniform float uBaseRadius;
+      varying vec2 vPos;
+
+      // Integer-based hash to avoid float correlation artifacts
+      highp float hash(vec2 co) {
+        highp float a = sin(dot(co, vec2(12.9898, 78.233))) * 43758.5453;
+        a = fract(a);
+        a = fract(a * 7.1312 + cos(dot(co, vec2(269.5, 183.3))) * 32187.1523);
+        return a;
+      }
+
+      void main() {
+        float dist = length(vPos);
+        float forestProb = 1.0 - (dist / uBaseRadius);
+        forestProb = clamp(forestProb * 0.8 + 0.1, 0.1, 0.9);
+
+        // Offset coordinates to break any remaining patterns
+        float r = hash(gl_FragCoord.xy + vec2(0.347, 0.729));
+
+        vec3 lightGreen = vec3(0.29, 0.62, 0.29);  // 0x4a9e4a
+        vec3 darkGreen = vec3(0.15, 0.40, 0.15);   // darker forest
+
+        vec3 color = r < forestProb ? darkGreen : lightGreen;
+        gl_FragColor = vec4(color, 1.0);
+      }
+    `,
+  });
   const island = new THREE.Mesh(islandGeometry, islandMaterial);
   island.position.set(500, 500, 0.1);
   scene.add(island);
