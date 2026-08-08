@@ -33,6 +33,7 @@ All geometry is built in the `createMap(scene)` function using these layers (z-o
 5. **Lake** (z=0.15) — irregular blob on one river
 6. **Canals** (z=0.16) — straight 2px dark blue lines connecting adjacent rivers
 7. **Mountains** (z=0.2) — grey irregular circle in center, radius ~120px
+8. **Cities** (z=0.25) — 20 red 5x5 pixel squares placed beside rivers, spaced apart
 
 ### Key patterns
 - `noisyRadius(baseRadius, angle, seed)` — generates smooth irregular outlines by summing sine waves at different frequencies

@@ -32,6 +32,7 @@ export const TERRAIN = {
   MOUNTAIN:  4,
   RIVER:     5,  // includes lakes and tributaries
   CANAL:     6,
+  CITY:      7,
 };
 
 // Convert terrain index to a flat color for the index render pass
@@ -217,7 +218,8 @@ export function createMap(scene, { indexMode = false } = {}) {
   }
 
   // Build all river points first so canals can reference them
-  const allRiverPoints = [];
+  const allRiverPoints = [];   // all waterways (rivers + tributaries) for city placement
+  const mainRiverPoints = [];  // only the 7 main rivers, for canal connections
 
   for (const river of rivers) {
     const steps = 100;
@@ -226,6 +228,7 @@ export function createMap(scene, { indexMode = false } = {}) {
 
     const points = buildRiverPoints(startR, endR, river.angle, river.maxWidth, river.curveSeed, steps, true);
     allRiverPoints.push(points);
+    mainRiverPoints.push(points);
     renderRiverMesh(points, 0.15);
 
     // Add a lake on the second river (index 1, angle 1.3)
@@ -234,6 +237,19 @@ export function createMap(scene, { indexMode = false } = {}) {
       const lakeCenter = points[lakeIdx];
       const lakeRadius = 30;
       const lakeSeed = 19.4;
+      const lakeShape = makeIrregularShape(lakeRadius, 128, lakeSeed);
+      const lakeGeo = new THREE.ShapeGeometry(lakeShape);
+      const lakeMesh = new THREE.Mesh(lakeGeo, riverMaterial);
+      lakeMesh.position.set(500 + lakeCenter.x, 500 + lakeCenter.y, 0.15);
+      scene.add(lakeMesh);
+    }
+
+    // Add a second lake on river 4 (angle 3.9)
+    if (river.angle === 3.9) {
+      const lakeIdx = Math.floor(0.4 * points.length);
+      const lakeCenter = points[lakeIdx];
+      const lakeRadius = 25;
+      const lakeSeed = 42.7;
       const lakeShape = makeIrregularShape(lakeRadius, 128, lakeSeed);
       const lakeGeo = new THREE.ShapeGeometry(lakeShape);
       const lakeMesh = new THREE.Mesh(lakeGeo, riverMaterial);
@@ -273,6 +289,7 @@ export function createMap(scene, { indexMode = false } = {}) {
           tribPoints.push({ x, y, width });
         }
         renderRiverMesh(tribPoints, 0.15);
+        allRiverPoints.push(tribPoints);
       }
     }
   }
@@ -283,14 +300,14 @@ export function createMap(scene, { indexMode = false } = {}) {
     color: indexMode ? indexColor(TERRAIN.CANAL) : canalColor,
   });
   const canals = [
-    { riverA: 0, tA: 0.55, riverB: 1, tB: 0.5,  width: 2 },  // river 0 <-> river 1
-    { riverA: 2, tA: 0.6,  riverB: 3, tB: 0.55, width: 2 },  // river 2 <-> river 3
-    { riverA: 4, tA: 0.5,  riverB: 5, tB: 0.5,  width: 2 },  // river 4 <-> river 5
+    { riverA: 0, tA: 0.55, riverB: 6, tB: 0.5,  width: 2 },  // river 0 (angle 0.4) <-> river 6 (angle 5.8) — top right
+    { riverA: 2, tA: 0.6,  riverB: 3, tB: 0.5,  width: 2 },  // river 2 (angle 2.1) <-> river 3 (angle 3.0) — left side
+    { riverA: 4, tA: 0.45, riverB: 5, tB: 0.55, width: 2 },  // river 4 (angle 3.9) <-> river 5 (angle 5.0) — bottom
   ];
 
   for (const canal of canals) {
-    const pA = allRiverPoints[canal.riverA][Math.floor(canal.tA * allRiverPoints[canal.riverA].length)];
-    const pB = allRiverPoints[canal.riverB][Math.floor(canal.tB * allRiverPoints[canal.riverB].length)];
+    const pA = mainRiverPoints[canal.riverA][Math.floor(canal.tA * mainRiverPoints[canal.riverA].length)];
+    const pB = mainRiverPoints[canal.riverB][Math.floor(canal.tB * mainRiverPoints[canal.riverB].length)];
     const halfW = canal.width / 2;
 
     const dx = pB.x - pA.x;
@@ -312,6 +329,108 @@ export function createMap(scene, { indexMode = false } = {}) {
     const canalMesh = new THREE.Mesh(canalGeo, canalMaterial);
     canalMesh.position.set(500, 500, 0.16);
     scene.add(canalMesh);
+  }
+
+  // Cities - 5x5 red squares placed beside rivers
+  const cityMaterial = new THREE.MeshBasicMaterial({
+    color: indexMode ? indexColor(TERRAIN.CITY) : 0xcc2222,
+  });
+
+  // Build candidate points per river (and canals)
+  const candidatesPerRiver = allRiverPoints.map(points => {
+    const candidates = [];
+    for (let i = Math.floor(points.length * 0.1); i < Math.floor(points.length * 0.95); i++) {
+      const p = points[i];
+      const next = points[Math.min(i + 1, points.length - 1)];
+      const prev = points[Math.max(i - 1, 0)];
+      const dx = next.x - prev.x;
+      const dy = next.y - prev.y;
+      const len = Math.sqrt(dx * dx + dy * dy);
+      if (len === 0) continue;
+      const nx = -dy / len;
+      const ny = dx / len;
+      // Deterministic pseudo-random side selection
+      const side = ((i * 7 + Math.floor(p.x * 13)) % 2 === 0) ? 1 : -1;
+      candidates.push({
+        x: p.x + nx * side * (p.width / 2 + 3),
+        y: p.y + ny * side * (p.width / 2 + 3),
+      });
+    }
+    return candidates;
+  });
+
+  // Add canal candidate points (sample along each canal line)
+  for (const canal of canals) {
+    const pA = mainRiverPoints[canal.riverA][Math.floor(canal.tA * mainRiverPoints[canal.riverA].length)];
+    const pB = mainRiverPoints[canal.riverB][Math.floor(canal.tB * mainRiverPoints[canal.riverB].length)];
+    const dx = pB.x - pA.x;
+    const dy = pB.y - pA.y;
+    const len = Math.sqrt(dx * dx + dy * dy);
+    const nx = -dy / len;
+    const ny = dx / len;
+    const canalCandidates = [];
+    for (let i = 0; i <= 3; i++) {
+      const t = i / 3;
+      canalCandidates.push({
+        x: pA.x + dx * t + nx * (canal.width / 2 + 3),
+        y: pA.y + dy * t + ny * (canal.width / 2 + 3),
+      });
+    }
+    candidatesPerRiver.push(canalCandidates);
+  }
+
+  // Distribute cities round-robin across all waterways so each gets some
+  const cityCount = 100;
+  const cities = [];
+  const minCityDist = 12;
+
+  // Interleave candidates so round-robin picks spread along each waterway.
+  // Instead of sequential order, reorder: pick from middle, then 1/4, 3/4, etc.
+  function interleave(arr) {
+    if (arr.length <= 1) return arr;
+    const result = [];
+    const queue = [[0, arr.length - 1]];
+    while (queue.length > 0) {
+      const [lo, hi] = queue.shift();
+      if (lo > hi) continue;
+      const mid = Math.floor((lo + hi) / 2);
+      result.push(arr[mid]);
+      if (lo < mid) queue.push([lo, mid - 1]);
+      if (mid < hi) queue.push([mid + 1, hi]);
+    }
+    return result;
+  }
+
+  const interleavedPerRiver = candidatesPerRiver.map(c => interleave(c));
+
+  // Round-robin across waterways
+  const cursors = interleavedPerRiver.map(() => 0);
+  let placed = true;
+  while (cities.length < cityCount && placed) {
+    placed = false;
+    for (let ri = 0; ri < interleavedPerRiver.length && cities.length < cityCount; ri++) {
+      const candidates = interleavedPerRiver[ri];
+      while (cursors[ri] < candidates.length) {
+        const cp = candidates[cursors[ri]];
+        cursors[ri]++;
+        const tooClose = cities.some(c => {
+          const ddx = c.x - cp.x;
+          const ddy = c.y - cp.y;
+          return ddx * ddx + ddy * ddy < minCityDist * minCityDist;
+        });
+        if (tooClose) continue;
+        cities.push(cp);
+        placed = true;
+        break;
+      }
+    }
+  }
+
+  for (const city of cities) {
+    const cityGeo = new THREE.PlaneGeometry(5, 5);
+    const cityMesh = new THREE.Mesh(cityGeo, cityMaterial);
+    cityMesh.position.set(500 + city.x, 500 + city.y, 0.25);
+    scene.add(cityMesh);
   }
 
   // Sandy beach border (drawn as a slightly larger shape behind the island)

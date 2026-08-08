@@ -26,6 +26,7 @@ Pixels are stored row-major, top-to-bottom, left-to-right. Each byte is a terrai
 | 4     | Mountain   | `#888888` grey  | Rocky mountain region in the island center     |
 | 5     | River      | `#1a6dd4` blue  | Rivers, tributaries, and lakes                 |
 | 6     | Canal      | `#135ba1` dark blue | Straight man-made waterways connecting rivers |
+| 7     | City       | `#cc2222` red       | 5x5 pixel settlements, always beside rivers   |
 
 ## Reading Example (JavaScript)
 
@@ -70,3 +71,4 @@ def get_terrain(x, y):
 - Forest vs grassland distribution is probabilistic: pixels closer to the mountain center are more likely to be forest. The exact distribution may vary between exports.
 - Rivers and lakes share the same index (5) since they represent the same type of natural water body.
 - Canals (6) are distinguished from rivers because they are man-made and always perfectly straight.
+- Cities (7) are 5x5 pixel squares placed adjacent to rivers, spaced at least 40 pixels apart. There are 20 cities on the map.
