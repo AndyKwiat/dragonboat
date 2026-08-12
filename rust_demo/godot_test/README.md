@@ -39,8 +39,16 @@ Godot --path . -- --screenshot
 
 The Godot frame time (~8.5 ms) is dominated by the GDScript `_move_movers`
 loop (15k iterations + 15k `set_instance_transform` calls per frame), not the
-GPU. Porting that one loop to C# or bulk `multimesh_set_buffer` would be the
-next lever.
+GPU.
+
+**Tried and rejected:** replacing the per-instance calls with a
+`MultiMesh.buffer` bulk upload (12 floats per mover written into a
+`PackedFloat32Array`, one buffer assignment per variant). Measured **slower**
+— ~98 FPS vs ~117 — because 12 interpreter-dispatched array stores per mover
+cost more than one native `set_instance_transform` call. The bulk-buffer
+pattern only pays off when the buffer is built natively (C# or GDExtension);
+in pure GDScript, minimizing VM operations per mover is what matters. Porting
+the loop to C# remains the real next lever.
 
 ## Gotchas found while porting (for future agents)
 

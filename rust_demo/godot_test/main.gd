@@ -459,6 +459,8 @@ func _spawn_movers() -> void:
 		mover_rng[spawned] = _rng_out
 		mover_retarget[spawned] = 1.0 + rand01() * 4.0
 		spawned += 1
+	# Populate initial transforms so the first frame is correct.
+	_move_movers(0.0)
 
 var _screenshot_taken := false
 
@@ -512,6 +514,10 @@ func _move_movers(dt: float) -> void:
 		mover_y[i] += (height_at(next_x, next_z) - mover_y[i]) * minf(dt * 12.0, 1.0)
 
 		# Mover i renders as instance i/5 of multimesh i%5 (15000/5 = 3000 each).
+		# NOTE: a MultiMesh.buffer bulk-upload variant was tried and measured
+		# SLOWER (~98 vs ~117 FPS): 12 interpreted array stores per mover cost
+		# more than one native set_instance_transform call. Bulk buffers only
+		# pay off when the buffer is built natively (C# / GDExtension).
 		mover_multimeshes[i % PALETTE.size()].set_instance_transform(
 			i / PALETTE.size(),
 			Transform3D(Basis(Vector3.UP, -mover_heading[i]), Vector3(next_x, mover_y[i], next_z))
