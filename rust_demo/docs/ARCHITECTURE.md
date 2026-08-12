@@ -88,12 +88,16 @@ makes individual voxels legible at 5 px/voxel.
 
 ## 8. Moving entities (`movers.rs`)
 
-15,000 (configurable) "people": parent entity holding a `Mover` component
-(heading, speed, retarget timer, inline u64 rng state) + two children (body
-prism, head cube) sharing 2 meshes and 6 materials total. The Update system:
-advance heading timer → step position → bounce at world margin → reverse at
-water → snap smoothly to `height_at` → face travel direction. No per-frame
-allocations.
+15,000 (configurable) "people": one flat entity per mover holding a `Mover`
+component (heading, speed, retarget timer, inline u64 rng state) and a merged
+body+head mesh — 5 vertex-colored mesh variants (one per palette color, skin
+color baked in) sharing a single white material, so Bevy's automatic GPU
+instancing draws all movers as 5 instanced batches. `NoFrustumCulling` skips
+per-entity culling (they're tiny and everywhere). The Update system: advance
+heading timer → step position → bounce at world margin → reverse at water →
+snap smoothly to `height_at` → face travel direction. No per-frame
+allocations. This flat/instanced layout replaced a parent+2-children design
+and took 15k movers from ~65 to ~95 FPS in browser WebGPU.
 
 ## 9. Camera / framing (`camera.rs`)
 

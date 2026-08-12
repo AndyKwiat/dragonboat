@@ -1,6 +1,9 @@
 //! Wandering "people": tiny two-block figures that roam the terrain,
 //! follow ground height, avoid water, and stay inside the world.
 
+use bevy::asset::RenderAssetUsages;
+use bevy::camera::visibility::NoFrustumCulling;
+use bevy::mesh::{Indices, PrimitiveTopology};
 use bevy::prelude::*;
 
 use crate::config::*;
@@ -31,36 +34,154 @@ fn rand01(rng: &mut u64) -> f32 {
     (splitmix64(rng) >> 40) as f32 / (1u64 << 24) as f32
 }
 
+// Linear-RGB equivalent of sRGB (0.87, 0.72, 0.58).
+const SKIN_COLOR: [f32; 3] = [0.7305, 0.4735, 0.2960];
+
+/// Append an axis-aligned box (24 verts, per-face normals, one color) to the
+/// mesh buffers.
+#[allow(clippy::too_many_arguments)]
+fn push_box(
+    positions: &mut Vec<[f32; 3]>,
+    normals: &mut Vec<[f32; 3]>,
+    colors: &mut Vec<[f32; 4]>,
+    indices: &mut Vec<u32>,
+    center: Vec3,
+    half: Vec3,
+    color: [f32; 3],
+) {
+    let (c, h) = (center, half);
+    // (normal, four corners CCW seen from outside)
+    let faces: [([f32; 3], [Vec3; 4]); 6] = [
+        (
+            [0.0, 1.0, 0.0],
+            [
+                Vec3::new(-h.x, h.y, -h.z),
+                Vec3::new(-h.x, h.y, h.z),
+                Vec3::new(h.x, h.y, h.z),
+                Vec3::new(h.x, h.y, -h.z),
+            ],
+        ),
+        (
+            [0.0, -1.0, 0.0],
+            [
+                Vec3::new(-h.x, -h.y, h.z),
+                Vec3::new(-h.x, -h.y, -h.z),
+                Vec3::new(h.x, -h.y, -h.z),
+                Vec3::new(h.x, -h.y, h.z),
+            ],
+        ),
+        (
+            [1.0, 0.0, 0.0],
+            [
+                Vec3::new(h.x, h.y, h.z),
+                Vec3::new(h.x, -h.y, h.z),
+                Vec3::new(h.x, -h.y, -h.z),
+                Vec3::new(h.x, h.y, -h.z),
+            ],
+        ),
+        (
+            [-1.0, 0.0, 0.0],
+            [
+                Vec3::new(-h.x, h.y, -h.z),
+                Vec3::new(-h.x, -h.y, -h.z),
+                Vec3::new(-h.x, -h.y, h.z),
+                Vec3::new(-h.x, h.y, h.z),
+            ],
+        ),
+        (
+            [0.0, 0.0, 1.0],
+            [
+                Vec3::new(-h.x, h.y, h.z),
+                Vec3::new(-h.x, -h.y, h.z),
+                Vec3::new(h.x, -h.y, h.z),
+                Vec3::new(h.x, h.y, h.z),
+            ],
+        ),
+        (
+            [0.0, 0.0, -1.0],
+            [
+                Vec3::new(h.x, h.y, -h.z),
+                Vec3::new(h.x, -h.y, -h.z),
+                Vec3::new(-h.x, -h.y, -h.z),
+                Vec3::new(-h.x, h.y, -h.z),
+            ],
+        ),
+    ];
+    for (normal, corners) in faces {
+        let base = positions.len() as u32;
+        for corner in corners {
+            positions.push((c + corner).to_array());
+        }
+        for _ in 0..4 {
+            normals.push(normal);
+            colors.push([color[0], color[1], color[2], 1.0]);
+        }
+        indices.extend_from_slice(&[base, base + 1, base + 2, base, base + 2, base + 3]);
+    }
+}
+
+/// Body prism + head cube merged into one vertex-colored mesh, origin at the
+/// feet (same overall shape as the old two-entity person).
+fn person_mesh(body_color: [f32; 3]) -> Mesh {
+    let mut positions = Vec::new();
+    let mut normals = Vec::new();
+    let mut colors = Vec::new();
+    let mut indices = Vec::new();
+    push_box(
+        &mut positions,
+        &mut normals,
+        &mut colors,
+        &mut indices,
+        Vec3::new(0.0, BODY_HEIGHT * 0.5, 0.0),
+        Vec3::new(0.25, BODY_HEIGHT * 0.5, 0.175),
+        body_color,
+    );
+    push_box(
+        &mut positions,
+        &mut normals,
+        &mut colors,
+        &mut indices,
+        Vec3::new(0.0, BODY_HEIGHT + 0.2, 0.0),
+        Vec3::new(0.2, 0.2, 0.2),
+        SKIN_COLOR,
+    );
+    Mesh::new(
+        PrimitiveTopology::TriangleList,
+        RenderAssetUsages::RENDER_WORLD,
+    )
+    .with_inserted_attribute(Mesh::ATTRIBUTE_POSITION, positions)
+    .with_inserted_attribute(Mesh::ATTRIBUTE_NORMAL, normals)
+    .with_inserted_attribute(Mesh::ATTRIBUTE_COLOR, colors)
+    .with_inserted_indices(Indices::U32(indices))
+}
+
 fn spawn_movers(
     mut commands: Commands,
     world: Res<WorldGrid>,
     mut meshes: ResMut<Assets<Mesh>>,
     mut materials: ResMut<Assets<StandardMaterial>>,
 ) {
-    // Shared meshes: rectangular body + cube head.
-    let body_mesh = meshes.add(Cuboid::new(0.5, BODY_HEIGHT, 0.35));
-    let head_mesh = meshes.add(Cuboid::new(0.4, 0.4, 0.4));
-
-    // Small reusable palette of "clothing" colors.
+    // One merged body+head mesh per palette color (vertex-colored), all
+    // sharing a single white material. Same mesh + same material means Bevy's
+    // renderer draws each variant as ONE instanced batch — 5 draw calls for
+    // every mover on screen instead of per-entity work times 45,000.
     let palette = [
-        Color::srgb(0.85, 0.25, 0.20),
-        Color::srgb(0.20, 0.45, 0.85),
-        Color::srgb(0.90, 0.75, 0.20),
-        Color::srgb(0.85, 0.85, 0.88),
-        Color::srgb(0.30, 0.25, 0.35),
+        [0.85, 0.25, 0.20],
+        [0.20, 0.45, 0.85],
+        [0.90, 0.75, 0.20],
+        [0.85, 0.85, 0.88],
+        [0.30, 0.25, 0.35],
     ];
-    let body_mats: Vec<_> = palette
+    // Vertex colors are linear RGB; convert the sRGB palette values.
+    let variant_meshes: Vec<_> = palette
         .into_iter()
-        .map(|c| {
-            materials.add(StandardMaterial {
-                base_color: c,
-                perceptual_roughness: 0.9,
-                ..default()
-            })
+        .map(|[r, g, b]| {
+            let c = Color::srgb(r, g, b).to_linear();
+            meshes.add(person_mesh([c.red, c.green, c.blue]))
         })
         .collect();
-    let head_mat = materials.add(StandardMaterial {
-        base_color: Color::srgb(0.87, 0.72, 0.58),
+    let shared_mat = materials.add(StandardMaterial {
+        base_color: Color::WHITE,
         perceptual_roughness: 0.9,
         ..default()
     });
@@ -78,29 +199,20 @@ fn spawn_movers(
         let speed = MOVER_MIN_SPEED + rand01(&mut rng) * (MOVER_MAX_SPEED - MOVER_MIN_SPEED);
         let entity_rng = splitmix64(&mut rng);
 
-        commands
-            .spawn((
-                Mover {
-                    heading,
-                    speed,
-                    retarget_in: 1.0 + rand01(&mut rng) * 4.0,
-                    rng: entity_rng,
-                },
-                Transform::from_xyz(x, y, z).with_rotation(Quat::from_rotation_y(-heading)),
-                Visibility::default(),
-            ))
-            .with_children(|p| {
-                p.spawn((
-                    Mesh3d(body_mesh.clone()),
-                    MeshMaterial3d(body_mats[spawned % body_mats.len()].clone()),
-                    Transform::from_xyz(0.0, BODY_HEIGHT * 0.5, 0.0),
-                ));
-                p.spawn((
-                    Mesh3d(head_mesh.clone()),
-                    MeshMaterial3d(head_mat.clone()),
-                    Transform::from_xyz(0.0, BODY_HEIGHT + 0.2, 0.0),
-                ));
-            });
+        commands.spawn((
+            Mover {
+                heading,
+                speed,
+                retarget_in: 1.0 + rand01(&mut rng) * 4.0,
+                rng: entity_rng,
+            },
+            Mesh3d(variant_meshes[spawned % variant_meshes.len()].clone()),
+            MeshMaterial3d(shared_mat.clone()),
+            Transform::from_xyz(x, y, z).with_rotation(Quat::from_rotation_y(-heading)),
+            // Movers are tiny and everywhere; skipping per-entity culling is
+            // cheaper than testing 15k bounding boxes each frame.
+            NoFrustumCulling,
+        ));
         spawned += 1;
     }
 }

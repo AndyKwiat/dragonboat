@@ -34,10 +34,13 @@ Before modifying anything:
 - **Chunking:** `src/terrain.rs` builds one mesh per 16 × 16 chunk: top quad
   per cell + side quads only where a neighbor is lower. No bottom faces, no
   internal faces. Per-vertex colors, one shared white material.
-- **Movers:** `src/movers.rs`. One parent entity per mover (heading/speed/rng
-  state in the `Mover` component) with two child cubes (body + head) sharing
-  meshes and a 5-color material palette. Movement is deterministic wandering:
-  bounce at edges, reverse at water, follow `WorldGrid::height_at`.
+- **Movers:** `src/movers.rs`. One flat entity per mover (heading/speed/rng
+  state in the `Mover` component) with a merged body+head vertex-colored mesh
+  (5 variants, one shared material → 5 auto-instanced batches) and
+  `NoFrustumCulling`. Do not reintroduce child entities or per-mover
+  materials — the flat instanced layout is a measured ~45% FPS win. Movement
+  is deterministic wandering: bounce at edges, reverse at water, follow
+  `WorldGrid::height_at`.
 - **Randomness:** fully deterministic — SplitMix64 hashing seeded from
   `WORLD_SEED`. No `rand` crate, no `getrandom` (this keeps wasm builds
   simple). Keep it that way.

@@ -24,8 +24,12 @@ No build step: edit `main.js`, refresh the browser.
 
 | | Rust/Bevy (WebGPU) | three.js (WebGL2) |
 |---|---|---|
-| FPS, uncapped | ~63–68 | ~660–710 |
-| FPS, normal vsync display | ~65 (below cap) | 120 (display cap) |
+| FPS, uncapped, original (45k entities) | ~63–68 | — |
+| FPS, uncapped, instanced movers | ~84–98 | ~660–710 |
+| FPS, normal vsync display | ~95 (below cap) | 120 (display cap) |
 | Edit → running new code | ~6–10 s | ~0.5 s (refresh) |
+
+(The three.js copy was later doubled to 30,000 movers, where it measures
+~320–430 FPS uncapped.)
 
 See the conversation/commit history for methodology.
