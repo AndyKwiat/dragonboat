@@ -25,14 +25,14 @@ pub const WATER_LEVEL: u32 = 1;
 pub const TERRAIN_CHUNK_SIZE: usize = 16;
 
 /// Number of wandering entities. Try 100 / 500 / 1000 / 2000 / 5000.
-pub const MOVER_COUNT: usize = 500;
+pub const MOVER_COUNT: usize = 15000;
 pub const MOVER_MIN_SPEED: f32 = 2.0;
 pub const MOVER_MAX_SPEED: f32 = 6.0;
 
 /// Static decoration counts (trees, rocks, houses).
 pub const TREE_COUNT: usize = 220;
 pub const ROCK_COUNT: usize = 60;
-pub const HOUSE_COUNT: usize = 18;
+pub const HOUSE_COUNT: usize = 180;
 
 /// Fixed isometric-style camera orientation.
 pub const CAMERA_AZIMUTH_DEGREES: f32 = 45.0;

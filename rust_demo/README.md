@@ -2,7 +2,7 @@
 
 A small Rust/Bevy voxel simulation compiled to WebAssembly and rendered with
 WebGPU in the browser. A fixed isometric-style orthographic camera frames a
-256 × 256 procedural voxel world (~200 voxels visible) populated by 500 tiny
+256 × 256 procedural voxel world (~200 voxels visible) populated by 15,000 tiny
 wandering "people", trees, rocks, and houses.
 
 ![Voxel demo screenshot](docs/screenshot.png)
@@ -93,7 +93,7 @@ Default workload:
 ```text
 256 × 256 terrain (256 chunk meshes, hidden faces culled)
 ~200 × 200 voxel visible footprint
-500 moving entities (shared meshes/materials)
+15,000 moving entities (shared meshes/materials)
 ~300 static decorations
 ```
 

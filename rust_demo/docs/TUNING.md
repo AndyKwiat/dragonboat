@@ -17,7 +17,7 @@ orthographic viewport height is `target * sin(elevation)`.
 
 ## More movers
 
-Change `MOVER_COUNT` (default 500). Suggested test values:
+Change `MOVER_COUNT` (default 15000; ~56-69 FPS measured in browser WebGPU on an M-series Mac). Suggested test values:
 
 ```text
 100

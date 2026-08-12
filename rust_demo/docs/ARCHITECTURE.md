@@ -88,7 +88,7 @@ makes individual voxels legible at 5 px/voxel.
 
 ## 8. Moving entities (`movers.rs`)
 
-500 (configurable) "people": parent entity holding a `Mover` component
+15,000 (configurable) "people": parent entity holding a `Mover` component
 (heading, speed, retarget timer, inline u64 rng state) + two children (body
 prism, head cube) sharing 2 meshes and 6 materials total. The Update system:
 advance heading timer → step position → bounce at world margin → reverse at

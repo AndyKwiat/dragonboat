@@ -11,7 +11,7 @@ impl Plugin for OverlayPlugin {
     fn build(&self, app: &mut App) {
         app.add_plugins(FrameTimeDiagnosticsPlugin::default())
             .add_systems(Startup, spawn_overlay)
-            .add_systems(Update, update_overlay);
+            .add_systems(Update, (update_overlay, log_fps));
     }
 }
 
@@ -47,6 +47,21 @@ fn overlay_string(fps: Option<f64>, frame_ms: Option<f64>) -> String {
          World: {WORLD_WIDTH} x {WORLD_DEPTH}\n\
          Visible scale: ~{TARGET_VISIBLE_VOXELS:.0} voxels"
     )
+}
+
+/// Log FPS to the console every few seconds so headless/browser runs can be
+/// measured from the terminal (wasm-server-runner forwards console output).
+fn log_fps(time: Res<Time>, diagnostics: Res<DiagnosticsStore>, mut next_log: Local<f32>) {
+    if time.elapsed_secs() < *next_log {
+        return;
+    }
+    *next_log = time.elapsed_secs() + 5.0;
+    if let Some(fps) = diagnostics
+        .get(&FrameTimeDiagnosticsPlugin::FPS)
+        .and_then(|d| d.smoothed())
+    {
+        info!("fps: {fps:.0} (movers: {MOVER_COUNT})");
+    }
 }
 
 fn update_overlay(
