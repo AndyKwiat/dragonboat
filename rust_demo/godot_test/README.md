@@ -14,7 +14,8 @@ setups. Terrain is 256 vertex-colored `ArrayMesh` chunks.
 ## Run
 
 ```bash
-/Applications/Godot.app/Contents/MacOS/Godot --path .
+# The .NET build is the only Godot installed; it runs GDScript projects too.
+/Applications/Godot_mono.app/Contents/MacOS/Godot --path .
 ```
 
 No build step — edit `main.gd` and re-run (~1.7 s to a live scene).
