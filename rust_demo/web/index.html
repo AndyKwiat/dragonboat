@@ -65,6 +65,7 @@
                     throw error;
                 }
             });
+            console.info(`wasm module ready in ${performance.now().toFixed(0)} ms since navigation`);
         }
 
         // Auto-reload when a new build is served (dev convenience).
