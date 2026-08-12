@@ -90,8 +90,9 @@ run per-target with the correct feature set instead.
 
 - Requires WebGPU (`navigator.gpu`); the page shows a fallback message otherwise.
 - No filesystem/threads assumptions — keep it that way.
-- Dev wasm builds are large (tens of MB); that is expected. Use the release
-  profile for size.
+- Dev wasm builds are ~51 MB (debuginfo and symbols are stripped in
+  `[profile.dev]` to keep the edit-reload loop ~10 s; re-enable `debug` there
+  if you need backtraces). Use the release profile for real size work.
 
 ## Rules
 

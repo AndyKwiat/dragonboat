@@ -14,11 +14,16 @@ default = []
 webgpu = ["bevy/webgpu"]
 
 # Fast-enough dev builds: optimize dependencies (Bevy) even in dev mode.
+# debug = false strips debuginfo, which is most of the wasm binary — it cuts
+# the dev .wasm dramatically, and wasm-bindgen + browser load time with it.
+# Flip to true (or "line-tables-only") temporarily if you need backtraces.
 [profile.dev]
 opt-level = 1
+debug = false
+strip = "symbols"
 
 [profile.dev.package."*"]
-opt-level = 3
+opt-level = "s"
 
 # Reasonable wasm release output.
 [profile.release]

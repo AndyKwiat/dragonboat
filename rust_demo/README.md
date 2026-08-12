@@ -51,6 +51,15 @@ cargo build --release --target wasm32-unknown-unknown --features webgpu
 The release profile uses `opt-level = "s"`, LTO, and one codegen unit for a
 smaller .wasm.
 
+## Iteration speed
+
+The dev profile is tuned for the edit-refresh loop (no debuginfo/symbols,
+deps at `opt-level = "s"`): a one-line change takes roughly **1–2 s to
+compile** and **~10 s total** until the browser is rendering the new build
+(wasm-bindgen + server restart + loading a ~51 MB dev wasm). If you need
+debugger-friendly builds, set `debug = true` and remove `strip` in
+`[profile.dev]` (Cargo.toml) — the dev wasm grows to ~130 MB.
+
 ## Tuning
 
 Everything interesting lives in [`src/config.rs`](src/config.rs):
