@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="icon" href="data:,">
+    <title>Rust + WASM + WebGPU Voxel Demo</title>
+
+    <style>
+        body,
+        html {
+            margin: 0;
+            padding: 0;
+            width: 100vw;
+            height: 100%;
+            background: #14161c;
+            color: #cfd3dc;
+            font: 14px/1.5 system-ui, sans-serif;
+            overflow: hidden;
+        }
+
+        #bevy-canvas {
+            display: block;
+            width: 100vw;
+            height: 100vh;
+            touch-action: none;
+        }
+
+        #bevy-canvas:focus {
+            outline: none;
+        }
+
+        #status {
+            position: fixed;
+            inset: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            text-align: center;
+            pointer-events: none;
+        }
+    </style>
+</head>
+
+<body>
+    <canvas id="bevy-canvas"></canvas>
+    <div id="status">Loading Rust &rarr; WASM &rarr; WebGPU demo&hellip;</div>
+
+    <script>
+        if (!navigator.gpu) {
+            document.getElementById("status").innerHTML =
+                "This demo requires a browser with WebGPU enabled.<br>" +
+                "Try a current version of Chrome, Edge, Firefox, or Safari with WebGPU support.";
+        }
+    </script>
+
+    {{ NO_MODULE }}
+    <script type="module">
+        // {{ MODULE }}
+
+        async function run() {
+            await wasm_bindgen({ module_or_path: "/api/wasm.wasm" }).catch(error => {
+                if (!error.message.startsWith("Using exceptions for control flow, don't mind me. This isn't actually an error!")) {
+                    throw error;
+                }
+            });
+        }
+
+        // Auto-reload when a new build is served (dev convenience).
+        const reloadInterval = 1000;
+        async function startReloadInterval() {
+            const fetchVersion = () => fetch("/api/version").then(response => response.text());
+            const version = await fetchVersion();
+            function reloadIfChanged() {
+                fetchVersion()
+                    .then(newVersion => { if (version != newVersion) window.location.reload(); })
+                    .catch(_ => { });
+            }
+            setInterval(reloadIfChanged, reloadInterval);
+        }
+
+        // Forward browser console output to the wasm-server-runner terminal.
+        let queuedMessages = [];
+        let websocket = new WebSocket(((window.location.protocol === "https:") ? "wss://" : "ws://") + window.location.host + "/ws");
+        function sendLogMessage([level, args]) {
+            websocket.send(level + "," + args.map(String).join(" "));
+        }
+        websocket.onerror = console.error;
+        websocket.onopen = () => {
+            for (const args of queuedMessages) sendLogMessage(args);
+            queuedMessages = [];
+        };
+        for (const logMethod of ["trace", "debug", "info", "warn", "error", "log"]) {
+            const stdlog = console[logMethod].bind(console);
+            console[logMethod] = function (...args) {
+                stdlog(...args);
+                const item = [logMethod, args];
+                if (websocket.readyState === 1) sendLogMessage(item);
+                else queuedMessages.push(item);
+            };
+        }
+
+        if (navigator.gpu) {
+            // Remove the loading text once the canvas is live.
+            const status = document.getElementById("status");
+            const timer = setInterval(() => {
+                const c = document.getElementById("bevy-canvas");
+                if (c && c.width > 0) { status.remove(); clearInterval(timer); }
+            }, 250);
+
+            run();
+            startReloadInterval();
+        }
+    </script>
+</body>
+
+</html>
