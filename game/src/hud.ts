@@ -2,7 +2,7 @@ import type { CameraState, ViewportInfo } from './camera/CameraController';
 import { viewRect } from './camera/CameraController';
 
 // Top-right readout: view corners in world coords and current zoom.
-export function createHud(worldW: number, worldH: number): { element: HTMLDivElement; update(state: CameraState, view: ViewportInfo, minZoom: number): void } {
+export function createHud(worldW: number, worldH: number): { element: HTMLDivElement; update(state: CameraState, view: ViewportInfo, minZoom: number, mode: string): void } {
   const element = document.createElement('div');
   element.style.cssText = [
     'position: fixed', 'top: 8px', 'right: 8px',
@@ -14,7 +14,7 @@ export function createHud(worldW: number, worldH: number): { element: HTMLDivEle
   let lastText = '';
   return {
     element,
-    update(state, view, minZoom) {
+    update(state, view, minZoom, mode) {
       const r = viewRect(state, view);
       // When letterboxed the view extends past the world; report the visible
       // world portion so coords stay within bounds.
@@ -22,7 +22,8 @@ export function createHud(worldW: number, worldH: number): { element: HTMLDivEle
       const text =
         `TL (${Math.round(clamp(r.left, worldW))}, ${Math.round(clamp(r.top, worldH))})\n` +
         `BR (${Math.round(clamp(r.right, worldW))}, ${Math.round(clamp(r.bottom, worldH))})\n` +
-        `zoom ${state.zoom.toFixed(3)} px/u (${(state.zoom / minZoom).toFixed(1)}x)`;
+        `zoom ${state.zoom.toFixed(3)} px/u (${(state.zoom / minZoom).toFixed(1)}x)\n` +
+        `cam ${mode} [C]`;
       if (text !== lastText) {
         element.textContent = text;
         lastText = text;

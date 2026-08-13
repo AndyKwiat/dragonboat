@@ -4,6 +4,8 @@
 
 export interface InputState {
   keys: Set<string>;
+  /** Keys that went down since the last consumeFrameDeltas() — for one-shot actions. */
+  pressed: Set<string>;
   dragging: boolean;
   dragDeltaPx: { x: number; y: number };
   wheelDelta: number;
@@ -14,6 +16,7 @@ export interface InputState {
 export function createInput(canvas: HTMLCanvasElement): InputState {
   const state: InputState = {
     keys: new Set(),
+    pressed: new Set(),
     dragging: false,
     dragDeltaPx: { x: 0, y: 0 },
     wheelDelta: 0,
@@ -22,11 +25,13 @@ export function createInput(canvas: HTMLCanvasElement): InputState {
       state.dragDeltaPx.x = 0;
       state.dragDeltaPx.y = 0;
       state.wheelDelta = 0;
+      state.pressed.clear();
     },
   };
 
   window.addEventListener('keydown', (e) => {
     if (e.metaKey || e.ctrlKey) return;
+    if (!e.repeat) state.pressed.add(e.code);
     state.keys.add(e.code);
   });
   window.addEventListener('keyup', (e) => state.keys.delete(e.code));

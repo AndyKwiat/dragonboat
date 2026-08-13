@@ -13,6 +13,21 @@ export const CONFIG = {
     maxAlpha: 0.35,
     color: 0x444444,
   },
+  boat: {
+    startX: 12445,
+    startY: 18727,
+    startHeading: -Math.PI / 2, // pointing "up" the screen (world -y)
+    length: 10,                 // world units along the heading
+    width: 4,
+    color: 0x7a4a1e,
+    maxSpeed: 160,               // world units/sec
+    maxReverseSpeed: 20,
+    accel: 40,                  // world units/sec^2
+    friction: 25,               // deceleration with no throttle, units/sec^2
+    turnRate: Math.PI * 0.75,   // rad/sec at or above turnFullSpeed
+    turnFullSpeed: 20,          // speed at which steering is at full authority
+    followZoom: 5,              // screen px per world unit when follow cam starts
+  },
   minimap: {
     sizePx: 240,
     margin: 12,
