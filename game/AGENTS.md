@@ -70,7 +70,8 @@ src/camera/FreeCameraController.ts  WASD/drag pan, cursor-anchored zoom.
 src/camera/FollowCameraController.ts  Center locked to a FollowTarget (the
                   boat); wheel zooms, center isn't user-movable.
 src/camera/DynamicZoomCameraController.ts  Follows the boat and picks the
-                  zoom itself from the distance to the nearest city (eased);
+                  zoom itself from the distance to the nearest city (eased),
+                  leading it along its heading by speed-scaled look-ahead;
                   also exposes speedScale() for the boat's top speed.
 src/cities.ts     Loads cities.json (bundled, not fetched) and re-exports it
                   as typed City[] {name, location, size}.
@@ -115,7 +116,9 @@ in near cities (`dynamicZoom.nearZoom` inside `nearDistance` of a city centre,
 `farZoom` past `farDistance`, eased with a `smoothing` time constant) and
 scales `boat.maxSpeedScale` from 1 at `farZoom` down to `slowFactor` at
 `nearZoom`, so zoomed-in travel isn't a blur. Any other mode resets the scale
-to 1.
+to 1. Its look-ahead offsets the centre along the boat's heading by up to
+`lookAheadPx` **screen** px (so it reads the same at any zoom), scaled by the
+fraction of top speed in use and eased with its own slower time constant.
 
 Controllers only mutate their own state; `main.ts` clamps (`clampCamera`) and applies to the actual camera after every update, so modes never need bounds logic. Clamping rule: per axis, if the view is wider than the world, lock centered (letterbox); else clamp center to `[half, worldSize - half]`.
 

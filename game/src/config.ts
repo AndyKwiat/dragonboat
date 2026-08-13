@@ -23,7 +23,7 @@ export const CONFIG = {
     maxSpeed: 160,               // world units/sec
     maxReverseSpeed: 20,
     accel: 40,                  // world units/sec^2
-    friction: 25,               // deceleration with no throttle, units/sec^2
+    friction: 45,               // deceleration with no throttle, units/sec^2
     turnRate: Math.PI * 0.75,   // rad/sec at or above turnFullSpeed
     turnFullSpeed: 20,          // speed at which steering is at full authority
     followZoom: 5,              // screen px per world unit when follow cam starts
@@ -36,6 +36,11 @@ export const CONFIG = {
     farZoom: 2,
     smoothing: 0.7,     // easing time constant in seconds (bigger = laggier)
     slowFactor: 0.3,    // boat max-speed multiplier at nearZoom (1 at farZoom)
+    // Look-ahead: the camera leads the boat in its direction of travel, by up
+    // to lookAheadPx screen px at full speed (in px so it looks the same at
+    // any zoom). Eased on its own, slower time constant so turns don't whip.
+    lookAheadPx: 230,
+    lookAheadSmoothing: 1.1,
   },
   cities: {
     // Label font size (screen px) and color per city size.
