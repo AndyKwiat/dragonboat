@@ -28,6 +28,21 @@ export const CONFIG = {
     turnFullSpeed: 20,          // speed at which steering is at full authority
     followZoom: 5,              // screen px per world unit when follow cam starts
   },
+  cities: {
+    // Label font size (screen px) and color per city size.
+    // minZoom is screen px per world unit, below which the label is hidden so
+    // the zoomed-out map doesn't drown in names. Whole-world-fits is ~0.07
+    // px/u on a normal window; large cities are labelled at every zoom.
+    label: {
+      small: { fontPx: 11, weight: '400', color: '#e6e6e6', minZoom: 0.35 },
+      medium: { fontPx: 14, weight: '600', color: '#f5f5f5', minZoom: 0.15 },
+      large: { fontPx: 20, weight: '800', color: '#ffd166', minZoom: 0 },
+    },
+    hoverColor: '#7fe3ff',
+    labelOffsetPx: 6,   // gap between the city centre and the label baseline
+    hitRadiusPx: 26,    // forgiving click radius around the city centre
+    hitPadPx: 10,       // ...plus this much slack around the label text itself
+  },
   minimap: {
     sizePx: 240,
     margin: 12,

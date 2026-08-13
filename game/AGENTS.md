@@ -9,9 +9,12 @@ npm install
 npm run dev        # vite dev server at http://localhost:5173
 npm run build      # tsc --noEmit + vite build
 npx tsc --noEmit   # typecheck only
+npm run cities     # regenerate cities.json from public/map.dmap
+npm run test:cities  # check cities.json against the map
 ```
 
-No test suite yet. Verify changes by running the app and looking at it.
+No general test suite. `npm run test:cities` is the only automated check;
+otherwise verify changes by running the app and looking at it.
 
 ## The world
 
@@ -27,6 +30,19 @@ World coordinates are **y-down** with (0,0) at the map's **top-left**, x right �
 - dmap rows map straight into texture rows — no flips anywhere (terrain bake, minimap, cursor math are all direct).
 - The flipped projection reverses triangle winding, so the terrain material uses `side: THREE.DoubleSide`.
 - Screen-px → world conversions never negate y: `world = center + (cursorPx - screenCenterPx) / zoom` on both axes.
+
+## Cities
+
+`cities.json` (repo root of `game/`, committed) is generated from the map by
+`scripts/generate-cities.js`: cities are 5×5 blocks of terrain index 7, one
+city per block at the block's centroid in world units. Names come from a
+fixed pool, sizes are dealt 6 small : 3 medium : 1 large and then the large
+ones are swapped with non-large ones until their mutual 1/d² repulsion energy
+stops dropping, which spreads them across the map. A fixed PRNG seed makes
+runs reproducible. Regenerate after re-exporting the map — the file is not
+derived at runtime. `scripts/test-cities.js` re-derives the blocks from the
+.dmap and checks coverage, unique names, the 6:3:1 ratio, and that the large
+cities beat a random assignment's spread.
 
 ## Architecture
 
@@ -53,6 +69,17 @@ src/camera/CameraController.ts   The camera-mode seam (see below) + pure
 src/camera/FreeCameraController.ts  WASD/drag pan, cursor-anchored zoom.
 src/camera/FollowCameraController.ts  Center locked to a FollowTarget (the
                   boat); wheel zooms, center isn't user-movable.
+src/cities.ts     Loads cities.json (bundled, not fetched) and re-exports it
+                  as typed City[] {name, location, size}.
+src/cityLabels.ts DOM overlay: one absolutely-positioned label per on-screen
+                  city, font/color/min-zoom per size (small names appear only
+                  when zoomed in; large ones always). Hidden labels are also
+                  unclickable. The layer is pointer-events:none
+                  so map dragging still works — hover/click hit-testing is
+                  done in JS against city screen positions (circle around the
+                  centre OR the padded label box, nearest wins).
+src/cityPopup.ts  Closable panel for the clicked city. Add a row to its
+                  FIELDS list to show more about a city.
 src/hud.ts        Top-right overlay: view TL/BR corners (clamped to world
                   bounds), zoom, and active camera mode. Plain DOM, updates
                   via textContent diff.

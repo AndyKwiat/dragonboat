@@ -1,0 +1,804 @@
+{
+  "cities": [
+    {
+      "name": "Harumi",
+      "location": {
+        "x": 7170,
+        "y": 2590
+      },
+      "size": "large"
+    },
+    {
+      "name": "Emerald Reach",
+      "location": {
+        "x": 11630,
+        "y": 2710
+      },
+      "size": "large"
+    },
+    {
+      "name": "Ivory Pagoda",
+      "location": {
+        "x": 6950,
+        "y": 2910
+      },
+      "size": "medium"
+    },
+    {
+      "name": "Sword Hill",
+      "location": {
+        "x": 6770,
+        "y": 3150
+      },
+      "size": "medium"
+    },
+    {
+      "name": "Tomari",
+      "location": {
+        "x": 5530,
+        "y": 3210
+      },
+      "size": "small"
+    },
+    {
+      "name": "Isumi",
+      "location": {
+        "x": 6950,
+        "y": 3370
+      },
+      "size": "small"
+    },
+    {
+      "name": "Golden Pagoda",
+      "location": {
+        "x": 11270,
+        "y": 3370
+      },
+      "size": "small"
+    },
+    {
+      "name": "Haisha",
+      "location": {
+        "x": 6690,
+        "y": 3570
+      },
+      "size": "small"
+    },
+    {
+      "name": "Yamato",
+      "location": {
+        "x": 6890,
+        "y": 3790
+      },
+      "size": "small"
+    },
+    {
+      "name": "Nagase",
+      "location": {
+        "x": 5550,
+        "y": 3990
+      },
+      "size": "small"
+    },
+    {
+      "name": "Bamboo Grove",
+      "location": {
+        "x": 6750,
+        "y": 4050
+      },
+      "size": "small"
+    },
+    {
+      "name": "Moon Bridge",
+      "location": {
+        "x": 11570,
+        "y": 4230
+      },
+      "size": "small"
+    },
+    {
+      "name": "Danhu",
+      "location": {
+        "x": 6610,
+        "y": 4330
+      },
+      "size": "small"
+    },
+    {
+      "name": "Fish Market Bay",
+      "location": {
+        "x": 6710,
+        "y": 4810
+      },
+      "size": "medium"
+    },
+    {
+      "name": "Okumi",
+      "location": {
+        "x": 12050,
+        "y": 4910
+      },
+      "size": "small"
+    },
+    {
+      "name": "Mingzhu",
+      "location": {
+        "x": 7170,
+        "y": 5050
+      },
+      "size": "small"
+    },
+    {
+      "name": "Lotus Fields",
+      "location": {
+        "x": 7450,
+        "y": 5170
+      },
+      "size": "medium"
+    },
+    {
+      "name": "Domon",
+      "location": {
+        "x": 6890,
+        "y": 5350
+      },
+      "size": "medium"
+    },
+    {
+      "name": "Fusano",
+      "location": {
+        "x": 11290,
+        "y": 5510
+      },
+      "size": "small"
+    },
+    {
+      "name": "Naru",
+      "location": {
+        "x": 7070,
+        "y": 5530
+      },
+      "size": "small"
+    },
+    {
+      "name": "Sendo",
+      "location": {
+        "x": 6850,
+        "y": 5810
+      },
+      "size": "small"
+    },
+    {
+      "name": "Monsoon Bay",
+      "location": {
+        "x": 6390,
+        "y": 5830
+      },
+      "size": "small"
+    },
+    {
+      "name": "Jasmine Bay",
+      "location": {
+        "x": 7710,
+        "y": 5870
+      },
+      "size": "small"
+    },
+    {
+      "name": "Old Harbor",
+      "location": {
+        "x": 10870,
+        "y": 5970
+      },
+      "size": "medium"
+    },
+    {
+      "name": "Maruko",
+      "location": {
+        "x": 6030,
+        "y": 6090
+      },
+      "size": "large"
+    },
+    {
+      "name": "Hakuba",
+      "location": {
+        "x": 7730,
+        "y": 6730
+      },
+      "size": "small"
+    },
+    {
+      "name": "Tsubaki",
+      "location": {
+        "x": 8090,
+        "y": 6870
+      },
+      "size": "small"
+    },
+    {
+      "name": "Taipa",
+      "location": {
+        "x": 11550,
+        "y": 6870
+      },
+      "size": "small"
+    },
+    {
+      "name": "Kunlai",
+      "location": {
+        "x": 15210,
+        "y": 6930
+      },
+      "size": "small"
+    },
+    {
+      "name": "Hanwei",
+      "location": {
+        "x": 15930,
+        "y": 6990
+      },
+      "size": "small"
+    },
+    {
+      "name": "Ineda",
+      "location": {
+        "x": 15270,
+        "y": 7210
+      },
+      "size": "small"
+    },
+    {
+      "name": "Cherry Harbor",
+      "location": {
+        "x": 16090,
+        "y": 7270
+      },
+      "size": "medium"
+    },
+    {
+      "name": "Kanazu",
+      "location": {
+        "x": 15550,
+        "y": 7290
+      },
+      "size": "small"
+    },
+    {
+      "name": "Salt Harbor",
+      "location": {
+        "x": 17370,
+        "y": 7330
+      },
+      "size": "large"
+    },
+    {
+      "name": "Two Rivers",
+      "location": {
+        "x": 16450,
+        "y": 7390
+      },
+      "size": "medium"
+    },
+    {
+      "name": "Bohai",
+      "location": {
+        "x": 15350,
+        "y": 7510
+      },
+      "size": "medium"
+    },
+    {
+      "name": "Amber Cove",
+      "location": {
+        "x": 15690,
+        "y": 7510
+      },
+      "size": "medium"
+    },
+    {
+      "name": "Anshan",
+      "location": {
+        "x": 16010,
+        "y": 7550
+      },
+      "size": "small"
+    },
+    {
+      "name": "Paper Lantern",
+      "location": {
+        "x": 14910,
+        "y": 7730
+      },
+      "size": "small"
+    },
+    {
+      "name": "Meilin",
+      "location": {
+        "x": 15190,
+        "y": 7730
+      },
+      "size": "small"
+    },
+    {
+      "name": "Temple Rock",
+      "location": {
+        "x": 16790,
+        "y": 7730
+      },
+      "size": "small"
+    },
+    {
+      "name": "Pearl Cove",
+      "location": {
+        "x": 15650,
+        "y": 7790
+      },
+      "size": "small"
+    },
+    {
+      "name": "Painted Bridge",
+      "location": {
+        "x": 16530,
+        "y": 7810
+      },
+      "size": "small"
+    },
+    {
+      "name": "Kaido",
+      "location": {
+        "x": 5470,
+        "y": 7870
+      },
+      "size": "small"
+    },
+    {
+      "name": "Thunder Gate",
+      "location": {
+        "x": 14890,
+        "y": 7990
+      },
+      "size": "small"
+    },
+    {
+      "name": "Sakuma",
+      "location": {
+        "x": 16770,
+        "y": 8030
+      },
+      "size": "small"
+    },
+    {
+      "name": "Baiyun",
+      "location": {
+        "x": 17210,
+        "y": 8030
+      },
+      "size": "small"
+    },
+    {
+      "name": "Kaiping",
+      "location": {
+        "x": 16950,
+        "y": 8230
+      },
+      "size": "small"
+    },
+    {
+      "name": "Silver Bay",
+      "location": {
+        "x": 15030,
+        "y": 8250
+      },
+      "size": "small"
+    },
+    {
+      "name": "Red Lantern",
+      "location": {
+        "x": 13470,
+        "y": 8290
+      },
+      "size": "small"
+    },
+    {
+      "name": "Sunrise Gate",
+      "location": {
+        "x": 13130,
+        "y": 8470
+      },
+      "size": "large"
+    },
+    {
+      "name": "Rensei",
+      "location": {
+        "x": 14210,
+        "y": 8470
+      },
+      "size": "small"
+    },
+    {
+      "name": "Crane Bay",
+      "location": {
+        "x": 15070,
+        "y": 8530
+      },
+      "size": "medium"
+    },
+    {
+      "name": "Panyu",
+      "location": {
+        "x": 4210,
+        "y": 8670
+      },
+      "size": "small"
+    },
+    {
+      "name": "Tiger Gate",
+      "location": {
+        "x": 3730,
+        "y": 8790
+      },
+      "size": "medium"
+    },
+    {
+      "name": "Hualin",
+      "location": {
+        "x": 6090,
+        "y": 8830
+      },
+      "size": "small"
+    },
+    {
+      "name": "Dragon Bay",
+      "location": {
+        "x": 6670,
+        "y": 9170
+      },
+      "size": "medium"
+    },
+    {
+      "name": "Sky Lantern",
+      "location": {
+        "x": 15370,
+        "y": 9330
+      },
+      "size": "medium"
+    },
+    {
+      "name": "Daiwan",
+      "location": {
+        "x": 4790,
+        "y": 9450
+      },
+      "size": "small"
+    },
+    {
+      "name": "Bright Lotus",
+      "location": {
+        "x": 5390,
+        "y": 9530
+      },
+      "size": "medium"
+    },
+    {
+      "name": "Kamiya",
+      "location": {
+        "x": 2850,
+        "y": 9550
+      },
+      "size": "large"
+    },
+    {
+      "name": "Fuyama",
+      "location": {
+        "x": 15070,
+        "y": 11150
+      },
+      "size": "small"
+    },
+    {
+      "name": "Joban",
+      "location": {
+        "x": 14030,
+        "y": 11610
+      },
+      "size": "small"
+    },
+    {
+      "name": "Wanli",
+      "location": {
+        "x": 13130,
+        "y": 12050
+      },
+      "size": "small"
+    },
+    {
+      "name": "Jade City",
+      "location": {
+        "x": 7610,
+        "y": 12250
+      },
+      "size": "medium"
+    },
+    {
+      "name": "Fenglin",
+      "location": {
+        "x": 7130,
+        "y": 12390
+      },
+      "size": "medium"
+    },
+    {
+      "name": "Baisha",
+      "location": {
+        "x": 4830,
+        "y": 12510
+      },
+      "size": "medium"
+    },
+    {
+      "name": "Nanpo",
+      "location": {
+        "x": 14210,
+        "y": 12530
+      },
+      "size": "small"
+    },
+    {
+      "name": "Lucky Wind",
+      "location": {
+        "x": 4430,
+        "y": 12590
+      },
+      "size": "small"
+    },
+    {
+      "name": "Willow Port",
+      "location": {
+        "x": 16350,
+        "y": 12730
+      },
+      "size": "small"
+    },
+    {
+      "name": "Nozomi",
+      "location": {
+        "x": 14810,
+        "y": 12850
+      },
+      "size": "small"
+    },
+    {
+      "name": "Ubaru",
+      "location": {
+        "x": 16990,
+        "y": 12870
+      },
+      "size": "large"
+    },
+    {
+      "name": "Shirane",
+      "location": {
+        "x": 15630,
+        "y": 12910
+      },
+      "size": "medium"
+    },
+    {
+      "name": "Aoki",
+      "location": {
+        "x": 6890,
+        "y": 12930
+      },
+      "size": "medium"
+    },
+    {
+      "name": "Congan",
+      "location": {
+        "x": 4850,
+        "y": 12970
+      },
+      "size": "small"
+    },
+    {
+      "name": "Dragon Gate",
+      "location": {
+        "x": 4710,
+        "y": 13190
+      },
+      "size": "medium"
+    },
+    {
+      "name": "Mekaru",
+      "location": {
+        "x": 11110,
+        "y": 13310
+      },
+      "size": "large"
+    },
+    {
+      "name": "Ichimoto",
+      "location": {
+        "x": 4870,
+        "y": 13490
+      },
+      "size": "medium"
+    },
+    {
+      "name": "Silk Harbor",
+      "location": {
+        "x": 5130,
+        "y": 13710
+      },
+      "size": "small"
+    },
+    {
+      "name": "Kobune",
+      "location": {
+        "x": 4770,
+        "y": 13750
+      },
+      "size": "medium"
+    },
+    {
+      "name": "Yuhan",
+      "location": {
+        "x": 7310,
+        "y": 13950
+      },
+      "size": "small"
+    },
+    {
+      "name": "Yagami",
+      "location": {
+        "x": 11250,
+        "y": 14070
+      },
+      "size": "medium"
+    },
+    {
+      "name": "Enjo",
+      "location": {
+        "x": 7050,
+        "y": 14150
+      },
+      "size": "small"
+    },
+    {
+      "name": "Toya",
+      "location": {
+        "x": 6770,
+        "y": 14230
+      },
+      "size": "small"
+    },
+    {
+      "name": "Hoshin",
+      "location": {
+        "x": 7370,
+        "y": 14270
+      },
+      "size": "small"
+    },
+    {
+      "name": "Jade Terrace",
+      "location": {
+        "x": 6030,
+        "y": 14430
+      },
+      "size": "medium"
+    },
+    {
+      "name": "Green Tortoise",
+      "location": {
+        "x": 7630,
+        "y": 14490
+      },
+      "size": "medium"
+    },
+    {
+      "name": "Obara",
+      "location": {
+        "x": 4550,
+        "y": 14510
+      },
+      "size": "medium"
+    },
+    {
+      "name": "Nine Dragons",
+      "location": {
+        "x": 8610,
+        "y": 14670
+      },
+      "size": "medium"
+    },
+    {
+      "name": "Linhe",
+      "location": {
+        "x": 7810,
+        "y": 14710
+      },
+      "size": "small"
+    },
+    {
+      "name": "Tanaru",
+      "location": {
+        "x": 8230,
+        "y": 14710
+      },
+      "size": "small"
+    },
+    {
+      "name": "Ruilin",
+      "location": {
+        "x": 7570,
+        "y": 14730
+      },
+      "size": "small"
+    },
+    {
+      "name": "Yulin",
+      "location": {
+        "x": 11310,
+        "y": 14870
+      },
+      "size": "small"
+    },
+    {
+      "name": "Meishan",
+      "location": {
+        "x": 10450,
+        "y": 15090
+      },
+      "size": "medium"
+    },
+    {
+      "name": "Phoenix Landing",
+      "location": {
+        "x": 4210,
+        "y": 15190
+      },
+      "size": "large"
+    },
+    {
+      "name": "Tea Hill",
+      "location": {
+        "x": 11990,
+        "y": 15370
+      },
+      "size": "small"
+    },
+    {
+      "name": "Mitani",
+      "location": {
+        "x": 12310,
+        "y": 15510
+      },
+      "size": "medium"
+    },
+    {
+      "name": "Fanling",
+      "location": {
+        "x": 12670,
+        "y": 15970
+      },
+      "size": "small"
+    },
+    {
+      "name": "Kirishima",
+      "location": {
+        "x": 12010,
+        "y": 16850
+      },
+      "size": "small"
+    },
+    {
+      "name": "Chenglu",
+      "location": {
+        "x": 11390,
+        "y": 17950
+      },
+      "size": "large"
+    }
+  ]
+}

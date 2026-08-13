@@ -7,6 +7,8 @@ export interface InputState {
   /** Keys that went down since the last consumeFrameDeltas() — for one-shot actions. */
   pressed: Set<string>;
   dragging: boolean;
+  /** A click (press+release without dragging) happened this frame. */
+  clicked: boolean;
   dragDeltaPx: { x: number; y: number };
   wheelDelta: number;
   cursorPx: { x: number; y: number };
@@ -18,6 +20,7 @@ export function createInput(canvas: HTMLCanvasElement): InputState {
     keys: new Set(),
     pressed: new Set(),
     dragging: false,
+    clicked: false,
     dragDeltaPx: { x: 0, y: 0 },
     wheelDelta: 0,
     cursorPx: { x: 0, y: 0 },
@@ -26,6 +29,7 @@ export function createInput(canvas: HTMLCanvasElement): InputState {
       state.dragDeltaPx.y = 0;
       state.wheelDelta = 0;
       state.pressed.clear();
+      state.clicked = false;
     },
   };
 
@@ -38,11 +42,14 @@ export function createInput(canvas: HTMLCanvasElement): InputState {
   window.addEventListener('blur', () => state.keys.clear());
 
   let lastDrag: { x: number; y: number } | null = null;
+  let pressAt: { x: number; y: number; button: number } | null = null;
+  const CLICK_SLOP_PX = 4; // movement below this still counts as a click
   canvas.addEventListener('pointerdown', (e) => {
     if (e.button !== 0 && e.button !== 1) return;
     canvas.setPointerCapture(e.pointerId);
     state.dragging = true;
     lastDrag = { x: e.clientX, y: e.clientY };
+    pressAt = { x: e.clientX, y: e.clientY, button: e.button };
   });
   canvas.addEventListener('pointermove', (e) => {
     state.cursorPx.x = e.clientX;
@@ -55,6 +62,13 @@ export function createInput(canvas: HTMLCanvasElement): InputState {
   });
   const endDrag = (e: PointerEvent) => {
     if (canvas.hasPointerCapture(e.pointerId)) canvas.releasePointerCapture(e.pointerId);
+    if (pressAt && pressAt.button === 0 && e.type === 'pointerup' &&
+        Math.hypot(e.clientX - pressAt.x, e.clientY - pressAt.y) <= CLICK_SLOP_PX) {
+      state.clicked = true;
+      state.cursorPx.x = e.clientX;
+      state.cursorPx.y = e.clientY;
+    }
+    pressAt = null;
     state.dragging = false;
     lastDrag = null;
   };

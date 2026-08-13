@@ -4,6 +4,9 @@ import { applyToCamera, clampCamera, minZoomFor } from './camera/CameraControlle
 import { FollowCameraController } from './camera/FollowCameraController';
 import { FreeCameraController } from './camera/FreeCameraController';
 import { createBoat } from './boat';
+import { CITIES } from './cities';
+import { createCityLabels } from './cityLabels';
+import { createCityPopup } from './cityPopup';
 import { CONFIG } from './config';
 import { loadDmap } from './dmap';
 import { createHud } from './hud';
@@ -73,6 +76,10 @@ const hud = createHud(worldW, worldH);
 document.body.appendChild(hud.element);
 const minimap = createMinimap(map);
 document.body.appendChild(minimap.element);
+const cityLabels = createCityLabels(CITIES);
+document.body.appendChild(cityLabels.element);
+const cityPopup = createCityPopup();
+document.body.appendChild(cityPopup.element);
 
 let lastTime = performance.now();
 function frame(now: number) {
@@ -82,6 +89,9 @@ function frame(now: number) {
   // C toggles camera mode. WASD drives the boat in follow mode and pans the
   // camera in free mode, so only one of them consumes the keys per frame.
   if (input.pressed.has('KeyC')) switchMode(active === followCamera ? 'free' : 'follow');
+  // Latched here: the active controller clears the frame deltas in update().
+  const clicked = input.clicked;
+  const escaped = input.pressed.has('Escape');
   if (active === followCamera) boat.update(dt, input);
 
   active.update(dt, input, view);
@@ -91,6 +101,17 @@ function frame(now: number) {
   terrain.setGridOpacity(gridOpacityFor(state.zoom));
 
   renderer.render(scene, camera);
+
+  // City labels are DOM on top of the canvas; hit-testing is ours, so the
+  // hovered city has to be recomputed after the camera has settled.
+  const hoveredCity = cityLabels.update(state, view, input.cursorPx);
+  canvas.style.cursor = hoveredCity ? 'pointer' : 'default';
+  if (clicked) {
+    if (hoveredCity) cityPopup.show(hoveredCity);
+    else cityPopup.hide();
+  }
+  if (escaped) cityPopup.hide();
+
   minimap.update(state, view);
   hud.update(state, view, minZoomFor(view, worldW, worldH), active.name);
 
