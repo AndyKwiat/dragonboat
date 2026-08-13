@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import type { CameraController, ViewportInfo } from './camera/CameraController';
 import { applyToCamera, clampCamera, minZoomFor } from './camera/CameraController';
+import { DynamicZoomCameraController } from './camera/DynamicZoomCameraController';
 import { FollowCameraController } from './camera/FollowCameraController';
 import { FreeCameraController } from './camera/FreeCameraController';
 import { createBoat } from './boat';
@@ -39,7 +40,14 @@ scene.add(boat.mesh);
 // hands the current state across.
 const freeCamera = new FreeCameraController();
 const followCamera = new FollowCameraController(boat);
-const controllers: Record<string, CameraController> = { free: freeCamera, follow: followCamera };
+const dynamicCamera = new DynamicZoomCameraController(boat, CITIES);
+const controllers: Record<string, CameraController> = {
+  free: freeCamera,
+  follow: followCamera,
+  dynamic: dynamicCamera,
+};
+// C cycles through these in order.
+const MODE_CYCLE = ['free', 'follow', 'dynamic'];
 let active: CameraController = controllers.free!;
 
 export function switchMode(name: string): void {
@@ -58,6 +66,7 @@ function resize() {
   const minZoom = minZoomFor(view, worldW, worldH);
   freeCamera.setMinZoom(minZoom);
   followCamera.setMinZoom(minZoom);
+  dynamicCamera.setMinZoom(minZoom);
   const state = active.getState();
   state.zoom = Math.max(state.zoom, minZoom);
   clampCamera(state, view, worldW, worldH);
@@ -88,11 +97,19 @@ function frame(now: number) {
 
   // C toggles camera mode. WASD drives the boat in follow mode and pans the
   // camera in free mode, so only one of them consumes the keys per frame.
-  if (input.pressed.has('KeyC')) switchMode(active === followCamera ? 'free' : 'follow');
+  if (input.pressed.has('KeyC')) {
+    switchMode(MODE_CYCLE[(MODE_CYCLE.indexOf(active.name) + 1) % MODE_CYCLE.length]!);
+  }
   // Latched here: the active controller clears the frame deltas in update().
   const clicked = input.clicked;
   const escaped = input.pressed.has('Escape');
-  if (active === followCamera) boat.update(dt, input);
+
+  // The boat is drivable in every mode that follows it; the dynamic-zoom mode
+  // also throttles its top speed based on how far it has zoomed in.
+  if (active !== freeCamera) {
+    boat.maxSpeedScale = active === dynamicCamera ? dynamicCamera.speedScale() : 1;
+    boat.update(dt, input);
+  }
 
   active.update(dt, input, view);
   const state = active.getState();

@@ -28,6 +28,15 @@ export const CONFIG = {
     turnFullSpeed: 20,          // speed at which steering is at full authority
     followZoom: 5,              // screen px per world unit when follow cam starts
   },
+  // Dynamic-zoom camera: zoom is driven by how close the boat is to a city.
+  dynamicZoom: {
+    nearDistance: 60,   // world units from a city centre: at or under this, nearZoom
+    farDistance: 400,   // at or beyond this from every city, farZoom
+    nearZoom: 7,        // screen px per world unit
+    farZoom: 2,
+    smoothing: 0.7,     // easing time constant in seconds (bigger = laggier)
+    slowFactor: 0.3,    // boat max-speed multiplier at nearZoom (1 at farZoom)
+  },
   cities: {
     // Label font size (screen px) and color per city size.
     // minZoom is screen px per world unit, below which the label is hidden so

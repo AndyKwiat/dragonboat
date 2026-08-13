@@ -69,6 +69,9 @@ src/camera/CameraController.ts   The camera-mode seam (see below) + pure
 src/camera/FreeCameraController.ts  WASD/drag pan, cursor-anchored zoom.
 src/camera/FollowCameraController.ts  Center locked to a FollowTarget (the
                   boat); wheel zooms, center isn't user-movable.
+src/camera/DynamicZoomCameraController.ts  Follows the boat and picks the
+                  zoom itself from the distance to the nearest city (eased);
+                  also exposes speedScale() for the boat's top speed.
 src/cities.ts     Loads cities.json (bundled, not fetched) and re-exports it
                   as typed City[] {name, location, size}.
 src/cityLabels.ts DOM overlay: one absolutely-positioned label per on-screen
@@ -102,10 +105,17 @@ src/main.ts       Wiring: load map → renderer/scene → boat → controllers �
 2. Register it in the `controllers` record in `main.ts`.
 3. Call `switchMode(name)` — it hands the current `CameraState` to the new mode so transitions are seamless.
 
-`C` toggles between `free` and `follow` (handled in `main.ts` via
-`input.pressed`). WASD is shared: it pans in free mode and drives the boat in
-follow mode, and `main.ts` only calls `boat.update()` while follow is active,
-so the two never fight over the keys.
+`C` cycles `free` → `follow` → `dynamic` (handled in `main.ts` via
+`input.pressed` and `MODE_CYCLE`). WASD is shared: it pans in free mode and
+drives the boat in the boat-following modes, and `main.ts` only calls
+`boat.update()` outside free mode, so the two never fight over the keys.
+
+The `dynamic` mode also owns the boat's top speed while it's active: it zooms
+in near cities (`dynamicZoom.nearZoom` inside `nearDistance` of a city centre,
+`farZoom` past `farDistance`, eased with a `smoothing` time constant) and
+scales `boat.maxSpeedScale` from 1 at `farZoom` down to `slowFactor` at
+`nearZoom`, so zoomed-in travel isn't a blur. Any other mode resets the scale
+to 1.
 
 Controllers only mutate their own state; `main.ts` clamps (`clampCamera`) and applies to the actual camera after every update, so modes never need bounds logic. Clamping rule: per axis, if the view is wider than the world, lock centered (letterbox); else clamp center to `[half, worldSize - half]`.
 
