@@ -4,10 +4,12 @@ import { CONFIG } from './config';
 import type { DMap } from './dmap';
 import { worldSize } from './terrain';
 
-// Bottom-right minimap: the full map compressed to a small canvas, with a
-// rectangle marking the main camera's view.
+// Bottom-right minimap: a window onto part of the map (worldFraction of the
+// world's width/height) that follows the camera, with a rectangle marking the
+// main camera's view. The window is clamped to the world, so near an edge it
+// stops scrolling instead of showing blank space.
 export function createMinimap(map: DMap): { element: HTMLCanvasElement; update(state: CameraState, view: ViewportInfo): void } {
-  const { sizePx, margin, rectColor } = CONFIG.minimap;
+  const { sizePx, margin, rectColor, worldFraction } = CONFIG.minimap;
 
   // Render the static map once at native resolution (dmap rows are already
   // top-to-bottom, matching canvas orientation).
@@ -40,20 +42,39 @@ export function createMinimap(map: DMap): { element: HTMLCanvasElement; update(s
 
   const { w: worldW, h: worldH } = worldSize(map);
 
+  // Same fraction on both axes, so the minimap keeps the world's aspect (the
+  // canvas is square because the world is). Never larger than the world.
+  const windowW = Math.min(worldW * worldFraction, worldW);
+  const windowH = Math.min(worldH * worldFraction, worldH);
+
+  const clamp = (v: number, lo: number, hi: number) => Math.min(Math.max(v, lo), hi);
+
   return {
     element,
     update(state, view) {
-      ctx.drawImage(mapCanvas, 0, 0, sizePx, sizePx);
+      // Window in world coords, centred on the camera and clamped to bounds.
+      const left = clamp(state.centerX - windowW / 2, 0, worldW - windowW);
+      const top = clamp(state.centerY - windowH / 2, 0, worldH - windowH);
+
+      // World coords -> source pixels in the cached map image (1 px per cell).
+      const sx = (left / worldW) * map.width;
+      const sy = (top / worldH) * map.height;
+      const sw = (windowW / worldW) * map.width;
+      const sh = (windowH / worldH) * map.height;
+      ctx.drawImage(mapCanvas, sx, sy, sw, sh, 0, 0, sizePx, sizePx);
+
+      // View rect, clipped to the window: when zoomed out far enough the view
+      // is bigger than the window and the rect becomes the minimap's border.
       const r = viewRect(state, view);
-      const x = (r.left / worldW) * sizePx;
-      const y = (r.top / worldH) * sizePx;
-      const w = ((r.right - r.left) / worldW) * sizePx;
-      const h = ((r.bottom - r.top) / worldH) * sizePx;
+      const toX = (worldX: number) => clamp(((worldX - left) / windowW) * sizePx, 0, sizePx);
+      const toY = (worldY: number) => clamp(((worldY - top) / windowH) * sizePx, 0, sizePx);
+      const x0 = toX(r.left), x1 = toX(r.right);
+      const y0 = toY(r.top), y1 = toY(r.bottom);
       ctx.strokeStyle = rectColor;
       ctx.lineWidth = 1;
       ctx.strokeRect(
-        Math.max(0.5, x), Math.max(0.5, y),
-        Math.min(w, sizePx - 1), Math.min(h, sizePx - 1),
+        clamp(x0, 0.5, sizePx - 0.5), clamp(y0, 0.5, sizePx - 0.5),
+        Math.max(x1 - x0 - 1, 1), Math.max(y1 - y0 - 1, 1),
       );
     },
   };

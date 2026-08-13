@@ -84,8 +84,10 @@ src/hud.ts        Top-right overlay: view TL/BR corners (clamped to world
                   bounds), zoom, and active camera mode. Plain DOM, updates
                   via textContent diff.
 src/minimap.ts    Bottom-right <canvas> overlay: static map image cached in
-                  an offscreen canvas once, blit + white viewport strokeRect
-                  each frame. Not a three.js scene.
+                  an offscreen canvas once; each frame it blits the window
+                  around the camera (minimap.worldFraction of the world,
+                  clamped to bounds) + a white viewport strokeRect clipped to
+                  that window. Not a three.js scene.
 src/main.ts       Wiring: load map → renderer/scene → boat → controllers →
                   rAF loop (mode toggle → boat → camera update → clamp →
                   apply → grid opacity → render → minimap/hud). Resize

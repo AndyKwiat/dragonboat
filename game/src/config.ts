@@ -47,6 +47,9 @@ export const CONFIG = {
     sizePx: 240,
     margin: 12,
     rectColor: '#ffffff',
+    // Fraction of the world's width/height the minimap window shows, centred
+    // on the camera. 0.5 => a quarter of the map by area; 1 => the whole map.
+    worldFraction: 0.5,
   },
   // Indexed by terrain value: ocean, beach, grassland, forest, mountain, river, canal, city
   terrainColors: [0x1a6dd4, 0xdec882, 0x4a9e4a, 0x266626, 0x888888, 0x1a6dd4, 0x135ba1, 0xcc2222],
