@@ -1,19 +1,28 @@
 // The player's purse and cargo. Not persisted — a reload starts a fresh run
 // with CONFIG.player.startingMoney.
 //
-// Rules: money may go negative (you can always buy), but a product count can
-// never go below 0 — sells are capped at what's actually in the hold.
+// Rules: money may go negative (you can always afford it), but a product count
+// can never go below 0 — sells are capped at what's actually in the hold — and
+// the hold can never hold more than the crew can carry, so buys are capped at
+// the free space and crew can't be dismissed out from under the cargo.
 
 import { CONFIG } from './config';
-import { clampCrew } from './crew';
+import { cargoCapacity, clampCrew, crewChangeAllowed } from './crew';
 import type { ProductId } from './products';
 
 export interface Player {
   money: number;
   /** Hands aboard, always within CONFIG.crew's min/max. */
   crew: number;
-  /** Hires or dismisses crew, clamped to the limits; returns the new count. */
+  /** Hires or dismisses crew, clamped to the limits and refused if it would
+   *  leave less hold space than the cargo aboard; returns the new count. */
   changeCrew(delta: number): number;
+  /** True if `delta` would be accepted by changeCrew. */
+  canChangeCrew(delta: number): boolean;
+  /** Total hold space, from the crew size. */
+  cargoCapacity(): number;
+  /** Units that would still fit in the hold. */
+  cargoSpace(): number;
   /** Units held per product id. Absent id means 0; never negative. */
   inventory: Map<ProductId, number>;
   held(id: ProductId): number;
@@ -39,14 +48,25 @@ export function createPlayer(
   return {
     money: startingMoney,
     crew: clampCrew(CONFIG.crew.starting, CONFIG.crew),
+    canChangeCrew(delta) {
+      // Refused at the limits, and when the cargo wouldn't fit without them.
+      return crewChangeAllowed(this.crew, delta, this.totalUnits(), CONFIG.crew);
+    },
     changeCrew(delta) {
-      this.crew = clampCrew(this.crew + delta, CONFIG.crew);
+      if (this.canChangeCrew(delta)) this.crew = clampCrew(this.crew + delta, CONFIG.crew);
       return this.crew;
+    },
+    cargoCapacity() {
+      return cargoCapacity(this.crew, CONFIG.crew);
+    },
+    cargoSpace() {
+      return Math.max(0, this.cargoCapacity() - this.totalUnits());
     },
     inventory,
     held,
     buy(id, qty, unitPrice) {
-      const n = Math.max(0, Math.floor(qty));
+      // Capped by the hold, not the purse: money may go negative, space can't.
+      const n = Math.min(Math.max(0, Math.floor(qty)), this.cargoSpace());
       if (n === 0) return 0;
       this.money -= n * unitPrice;
       inventory.set(id, held(id) + n);

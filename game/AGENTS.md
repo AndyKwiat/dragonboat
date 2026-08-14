@@ -120,10 +120,19 @@ starting at `starting` (1). Hands are hired and dismissed for free in the
 there and hides it everywhere else — and those buttons are the one exception to
 the market's ten-minutes-per-click rule (`button(..., { costsTime: false })`).
 
-`src/crew.ts` is the pure maths: `clampCrew` and `crewSpeedMultiplier`, which
-runs straight from `speedAtMin` (1x) at a minimum crew to `speedAtMax` (2x) at
-a full one. `main.ts` feeds it into `boat.maxSpeedScale` every frame, which
-scales the boat's forward top speed only — reversing is unaffected.
+`src/crew.ts` is the pure maths:
+
+- `crewSpeedMultiplier` runs straight from `speedAtMin` (1x) at a minimum crew
+  to `speedAtMax` (2x) at a full one. `main.ts` feeds it into
+  `boat.maxSpeedScale` every frame, which scales the boat's forward top speed
+  only — reversing is unaffected.
+- `cargoCapacity` is `crew * cargoPerCrew` (100), so the hold runs 100 units at
+  one hand to 2000 at twenty. `player.buy()` caps at `cargoSpace()` — a partial
+  buy is fine, so Buy 10 with 3 spaces buys 3, and the Buy buttons only grey out
+  when the hold is completely full. Money still never blocks a trade.
+- `crewChangeAllowed` is the dismissal rule: a hand can't go ashore if the
+  cargo wouldn't fit without them. Enforced in `player.changeCrew` (not just
+  the UI), with the Remove button greyed out and a tooltip saying why.
 
 `src/upkeep.ts` holds both running costs, **each multiplied by the crew size**.
 They tick on **game** time (so they only bite while sailing or trading) and
@@ -138,16 +147,17 @@ one long stretch on the throttle settles the whole bill, not a single unit:
 - **Wages** — `CONFIG.wages.moneyPerDay` (1) per crew member per game day.
   Money is allowed to go negative; the readout goes red when it is.
 
-Rice, money and the crew count all sit under the date in the clock overlay
-(always visible, wherever you are), and a warning colour
+Rice, money, the crew count and `cargo used/capacity` all sit under the date in
+the clock overlay (always visible, wherever you are), and a warning colour
 outranks the night dimming. The player starts with
 `CONFIG.player.startingInventory` (20 rice) so the low warning means something.
 An open market panel is refreshed when either charge lands, or it would show a
 stale hold and purse.
 
-`src/player.ts` holds the run state: `money` (may go negative) and an
-inventory Map (a count never goes below 0 — `sell()` caps at what's held and
-returns how many actually moved). Nothing persists across a reload; the run
+`src/player.ts` holds the run state: `money` (may go negative), the crew count
+and an inventory Map (a count never goes below 0 — `sell()` caps at what's held
+and returns how many actually moved — and the total never exceeds
+`cargoCapacity()`). Nothing persists across a reload; the run
 starts at `CONFIG.player.startingMoney`. The clock overlay shows money, and
 `src/cityPopup.ts` renders the market: one row per product the city trades,
 with Buy 1/10 and Sell 1/10 (sell greys out when the hold is short). The
@@ -196,12 +206,13 @@ src/cityPopup.ts  Closable, screen-centred panel for the clicked city: facts
                   Sized from CONFIG.cityPopup.
 src/gameTime.ts   The month/day/hour clock. Pure and dependency-free (its
                   settings are passed in) so the test script can run it.
-src/crew.ts       Crew clamping + the crew -> top-speed multiplier. Pure and
-                  dependency-free, same as gameTime.ts.
+src/crew.ts       Crew clamping, the crew -> top-speed multiplier, hold
+                  capacity and the dismissal rule. Pure and dependency-free,
+                  same as gameTime.ts.
 src/upkeep.ts     Crew rations (rice) and wages (money), per head, driven by
                   the clock. Pure and dependency-free too.
-src/clock.ts      Top-left date/time overlay + rice, money and crew; dims at
-                  night.
+src/clock.ts      Top-left scoreboard: date/time + rice, money, crew and
+                  cargo/capacity; dims at night.
 src/products.ts   Loads products.json as typed Product[] + productById().
 src/market.ts     Pure price rules: sellPriceFor / buyPriceFor / marketFor.
 src/player.ts     Money + inventory, with the buy/sell invariants.

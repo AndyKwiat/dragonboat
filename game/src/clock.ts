@@ -31,16 +31,16 @@ export function createClock(time: GameTime, rations: Rations, player: Player): C
   const rice = document.createElement('div');
   const money = document.createElement('div');
   const crew = document.createElement('div');
+  const cargo = document.createElement('div');
   const smallFont = `font-size: ${c.fontPx - 4}px`;
-  rice.style.cssText = smallFont;
-  money.style.cssText = smallFont;
-  crew.style.cssText = smallFont;
-  element.append(stamp, rice, money, crew);
+  for (const line of [rice, money, crew, cargo]) line.style.cssText = smallFont;
+  element.append(stamp, rice, money, crew, cargo);
 
   let lastStamp = '';
   let lastRice = '';
   let lastMoney = '';
   let lastCrew = '';
+  let lastCargo = '';
   let lastNight: boolean | null = null;
   let lastLowRice: boolean | null = null;
   let lastInDebt: boolean | null = null;
@@ -74,11 +74,17 @@ export function createClock(time: GameTime, rations: Rations, player: Player): C
         crew.textContent = crewText;
         lastCrew = crewText;
       }
+      const cargoText = `cargo ${player.totalUnits()}/${player.cargoCapacity()}`;
+      if (cargoText !== lastCargo) {
+        cargo.textContent = cargoText;
+        lastCargo = cargoText;
+      }
 
       if (night !== lastNight || lowRice !== lastLowRice || inDebt !== lastInDebt) {
         const normal = night ? c.nightColor : c.dayColor;
         stamp.style.color = normal;
         crew.style.color = normal;
+        cargo.style.color = normal;
         // A warning outranks the night dimming.
         rice.style.color = lowRice ? r.lowColor : normal;
         money.style.color = inDebt ? r.lowColor : normal;

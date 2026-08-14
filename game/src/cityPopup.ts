@@ -135,12 +135,19 @@ export function createCityPopup(player: Player, time: GameTime): CityPopup {
 
   function refresh() {
     for (const r of refreshers) r();
-    const { min, max } = CONFIG.crew;
+    const { max, cargoPerCrew } = CONFIG.crew;
     crewCount.textContent =
-      `${player.crew} aboard  (max ${max})   speed x${crewSpeedMultiplier(player.crew, CONFIG.crew).toFixed(2)}`;
-    setEnabled(addCrew, player.crew < max);
-    setEnabled(removeCrew, player.crew > min);
-    purse.textContent = `money ${player.money}    cargo ${player.totalUnits()} units`;
+      `${player.crew} aboard (max ${max})   ` +
+      `speed x${crewSpeedMultiplier(player.crew, CONFIG.crew).toFixed(2)}   ` +
+      `cargo ${player.totalUnits()}/${player.cargoCapacity()} (${cargoPerCrew}/hand)`;
+    // Dismissing a hand is refused when their share of the hold is in use.
+    setEnabled(addCrew, player.canChangeCrew(1));
+    setEnabled(removeCrew, player.canChangeCrew(-1));
+    removeCrew.title = player.crew > CONFIG.crew.min && !player.canChangeCrew(-1)
+      ? 'Not enough hold space without them — sell some cargo first'
+      : '';
+    purse.textContent =
+      `money ${player.money}    cargo ${player.totalUnits()}/${player.cargoCapacity()} units`;
     purse.style.color = player.money < 0 ? '#ff8b7a' : '#ffd166';
   }
 
@@ -188,9 +195,12 @@ export function createCityPopup(player: Player, time: GameTime): CityPopup {
 
       const actions = document.createElement('div');
       actions.style.cssText = 'display: flex; gap: 6px';
+      const buyButtons: HTMLButtonElement[] = [];
       const sellButtons: HTMLButtonElement[] = [];
       for (const n of STEPS) {
-        actions.appendChild(button(`Buy ${n}`, () => player.buy(product.id, n, buyPrice)));
+        const b = button(`Buy ${n}`, () => player.buy(product.id, n, buyPrice));
+        buyButtons.push(b);
+        actions.appendChild(b);
       }
       for (const n of STEPS) {
         const b = button(`Sell ${n}`, () => player.sell(product.id, n, sellPrice));
@@ -205,9 +215,15 @@ export function createCityPopup(player: Player, time: GameTime): CityPopup {
         const have = player.held(product.id);
         held.textContent = `have ${have}`;
         held.style.color = have > 0 ? '#9fe8a0' : '#666';
-        // Selling is capped by the hold; buying is always allowed (money may go
-        // negative), so only the sell side ever greys out.
-        STEPS.forEach((n, i) => setEnabled(sellButtons[i]!, have >= n));
+        // Selling is capped by what's aboard, buying by the free space — the
+        // purse never blocks a trade, since money may go negative. A partial
+        // buy is fine (Buy 10 with 3 spaces buys 3), so the button only greys
+        // out when the hold is completely full.
+        const space = player.cargoSpace();
+        STEPS.forEach((n, i) => {
+          setEnabled(sellButtons[i]!, have >= n);
+          setEnabled(buyButtons[i]!, space > 0);
+        });
       });
     }
 

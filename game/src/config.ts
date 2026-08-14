@@ -82,6 +82,7 @@ export const CONFIG = {
     max: 20,
     speedAtMin: 1,       // boat.maxSpeed multiplier with a minimum crew
     speedAtMax: 2,       // ...and with a full one; linear in between
+    cargoPerCrew: 100,   // hold space each crew member brings
   },
   // Keeping a crew costs rice and coin as game time passes (src/upkeep.ts).
   // Both charges are per crew member.

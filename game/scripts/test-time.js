@@ -8,7 +8,7 @@
 // failed assertion.
 
 import { createGameTime, formatStamp, isNightHour, stampFor } from '../src/gameTime.ts';
-import { clampCrew, crewSpeedMultiplier } from '../src/crew.ts';
+import { cargoCapacity, clampCrew, crewChangeAllowed, crewSpeedMultiplier } from '../src/crew.ts';
 import { createRations, createWages } from '../src/upkeep.ts';
 
 // Mirrors CONFIG.gameTime (src/config.ts) — gameTime.ts takes its settings as
@@ -194,7 +194,8 @@ function payroll(money, hands = 1) {
 
 // --- crew size ------------------------------------------------------------
 
-const CREW = { min: 1, max: 20, speedAtMin: 1, speedAtMax: 2 }; // mirrors CONFIG.crew
+// mirrors CONFIG.crew
+const CREW = { min: 1, max: 20, speedAtMin: 1, speedAtMax: 2, cargoPerCrew: 100 };
 
 check('crew clamps to 1..20',
   clampCrew(0, CREW) === 1 && clampCrew(-5, CREW) === 1 && clampCrew(99, CREW) === 20);
@@ -209,6 +210,25 @@ check('speed is monotonic in crew size',
     .every((n) => crewSpeedMultiplier(n + 1, CREW) > crewSpeedMultiplier(n, CREW)));
 check('an out-of-range crew still gives an in-range multiplier',
   crewSpeedMultiplier(0, CREW) === 1 && crewSpeedMultiplier(50, CREW) === 2);
+
+check('one hand carries 100 units', cargoCapacity(1, CREW) === 100);
+check('a full crew carries 2000', cargoCapacity(20, CREW) === 2000);
+check('capacity is 100 per hand throughout',
+  [1, 2, 7, 13, 20].every((n) => cargoCapacity(n, CREW) === n * 100));
+check('capacity clamps with the crew',
+  cargoCapacity(0, CREW) === 100 && cargoCapacity(999, CREW) === 2000);
+
+check('an empty hold lets crew come and go',
+  crewChangeAllowed(5, 1, 0, CREW) && crewChangeAllowed(5, -1, 0, CREW));
+check('a hand may leave while their share is spare',
+  crewChangeAllowed(3, -1, 200, CREW), 'cargo 200 fits in 2 hands');
+check('a hand may not leave when the cargo would not fit',
+  !crewChangeAllowed(3, -1, 201, CREW), 'cargo 201 needs 3 hands');
+check('cargo exactly filling the smaller hold still lets them go',
+  crewChangeAllowed(2, -1, 100, CREW));
+check('the crew limits still bind',
+  !crewChangeAllowed(1, -1, 0, CREW) && !crewChangeAllowed(20, 1, 0, CREW));
+check('hiring is never blocked by cargo', crewChangeAllowed(1, 1, 100, CREW));
 
 // --- upkeep scales with the crew ------------------------------------------
 
