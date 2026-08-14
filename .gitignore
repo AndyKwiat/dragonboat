@@ -2,4 +2,7 @@ node_modules/
 dist/
 .DS_Store
 *.log
+# Scratch map exports stay out of the repo, but the world the game actually
+# loads is committed so a fresh clone runs without re-exporting.
 *.dmap
+!game/public/map.dmap

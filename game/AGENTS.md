@@ -22,7 +22,7 @@ looking at it.
 
 ## The world
 
-- The map lives in `public/map.dmap`, exported by `../world-generator` (format spec: `../world-generator/map-format.md`). **`*.dmap` is gitignored** — a fresh clone must copy an export into `public/` or the app won't load.
+- The map lives in `public/map.dmap`, exported by `../world-generator` (format spec: `../world-generator/map-format.md`). It is **committed** (the root `.gitignore` ignores `*.dmap` but un-ignores this one), so a fresh clone runs as-is; re-exporting the world means committing the new `public/map.dmap` and regenerating `cities.json`.
 - Format (little-endian): bytes 0–3 ASCII `DMAP`, uint32 width (1000), uint32 height (1000), then width×height uint8 terrain indices, row-major, **top-to-bottom**.
 - Terrain indices: 0 ocean, 1 beach, 2 grassland, 3 forest, 4 mountain, 5 river, 6 canal, 7 city.
 - Each map cell is a `TILE_SCALE`×`TILE_SCALE` block of world units (`TILE_SCALE = 20` in `src/config.ts`), so the 1000×1000 map is a 20000×20000 world. Changing `TILE_SCALE` rescales everything; nothing else hardcodes the world size.
