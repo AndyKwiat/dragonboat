@@ -17,7 +17,11 @@
         "SAFFRON",
         "FURNITURE",
         "JEWELRY"
-      ]
+      ],
+      "priceOverrides": {
+        "FISH": 0.8,
+        "CLOTHES": 1.15
+      }
     },
     {
       "name": "Emerald Reach",
@@ -36,7 +40,10 @@
         "SAFFRON",
         "FURNITURE",
         "JEWELRY"
-      ]
+      ],
+      "priceOverrides": {
+        "FRUIT": 0.5
+      }
     },
     {
       "name": "Ivory Pagoda",
@@ -70,7 +77,11 @@
         "WOOL",
         "SAFFRON",
         "JEWELRY"
-      ]
+      ],
+      "priceOverrides": {
+        "FISH": 0.95,
+        "SAFFRON": 0.5
+      }
     },
     {
       "name": "Tomari",
@@ -236,7 +247,10 @@
         "WOOL",
         "SAFFRON",
         "FURNITURE"
-      ]
+      ],
+      "priceOverrides": {
+        "FRUIT": 1.5
+      }
     },
     {
       "name": "Domon",
@@ -253,7 +267,11 @@
         "WOOL",
         "CLOTHES",
         "SAFFRON"
-      ]
+      ],
+      "priceOverrides": {
+        "WOOL": 1.5,
+        "FRUIT": 1.15
+      }
     },
     {
       "name": "Fusano",
@@ -330,7 +348,11 @@
         "WOOL",
         "SAFFRON",
         "JEWELRY"
-      ]
+      ],
+      "priceOverrides": {
+        "RICE": 0.55,
+        "SAFFRON": 0.5
+      }
     },
     {
       "name": "Maruko",
@@ -438,7 +460,11 @@
         "WOOL",
         "CLOTHES",
         "SAFFRON"
-      ]
+      ],
+      "priceOverrides": {
+        "WOOL": 1.35,
+        "CLOTHES": 0.5
+      }
     },
     {
       "name": "Kanazu",
@@ -469,7 +495,11 @@
         "SAFFRON",
         "FURNITURE",
         "JEWELRY"
-      ]
+      ],
+      "priceOverrides": {
+        "WOOD": 1.35,
+        "WOOL": 0.9
+      }
     },
     {
       "name": "Two Rivers",
@@ -503,7 +533,10 @@
         "WOOL",
         "CLOTHES",
         "SAFFRON"
-      ]
+      ],
+      "priceOverrides": {
+        "SAFFRON": 0.8
+      }
     },
     {
       "name": "Amber Cove",
@@ -520,7 +553,11 @@
         "WOOL",
         "SAFFRON",
         "JEWELRY"
-      ]
+      ],
+      "priceOverrides": {
+        "RICE": 1.2,
+        "JEWELRY": 0.8
+      }
     },
     {
       "name": "Anshan",
@@ -782,7 +819,11 @@
         "WOOL",
         "CLOTHES",
         "SAFFRON"
-      ]
+      ],
+      "priceOverrides": {
+        "FRUIT": 0.55,
+        "WOOL": 1.45
+      }
     },
     {
       "name": "Sky Lantern",
@@ -799,7 +840,10 @@
         "WOOL",
         "CLOTHES",
         "SAFFRON"
-      ]
+      ],
+      "priceOverrides": {
+        "RICE": 0.8
+      }
     },
     {
       "name": "Daiwan",
@@ -828,7 +872,10 @@
         "WOOL",
         "SAFFRON",
         "FURNITURE"
-      ]
+      ],
+      "priceOverrides": {
+        "FRUIT": 1.4
+      }
     },
     {
       "name": "Kamiya",
@@ -847,7 +894,10 @@
         "SAFFRON",
         "FURNITURE",
         "JEWELRY"
-      ]
+      ],
+      "priceOverrides": {
+        "SAFFRON": 1.2
+      }
     },
     {
       "name": "Fuyama",
@@ -900,7 +950,11 @@
         "WOOL",
         "SAFFRON",
         "FURNITURE"
-      ]
+      ],
+      "priceOverrides": {
+        "WOOD": 0.65,
+        "FRUIT": 1.4
+      }
     },
     {
       "name": "Fenglin",
@@ -917,7 +971,10 @@
         "WOOL",
         "CLOTHES",
         "SAFFRON"
-      ]
+      ],
+      "priceOverrides": {
+        "FRUIT": 0.8
+      }
     },
     {
       "name": "Baisha",
@@ -934,7 +991,11 @@
         "WOOL",
         "CLOTHES",
         "SAFFRON"
-      ]
+      ],
+      "priceOverrides": {
+        "CLOTHES": 1.5,
+        "WOOL": 1.4
+      }
     },
     {
       "name": "Nanpo",
@@ -1001,7 +1062,10 @@
         "SAFFRON",
         "FURNITURE",
         "JEWELRY"
-      ]
+      ],
+      "priceOverrides": {
+        "WOOL": 0.7
+      }
     },
     {
       "name": "Shirane",
@@ -1018,7 +1082,11 @@
         "WOOL",
         "CLOTHES",
         "SAFFRON"
-      ]
+      ],
+      "priceOverrides": {
+        "SAFFRON": 1.1,
+        "WOOL": 1.1
+      }
     },
     {
       "name": "Aoki",
@@ -1035,7 +1103,11 @@
         "WOOL",
         "CLOTHES",
         "SAFFRON"
-      ]
+      ],
+      "priceOverrides": {
+        "RICE": 1.2,
+        "WOOL": 0.6
+      }
     },
     {
       "name": "Congan",
@@ -1100,7 +1172,10 @@
         "WOOL",
         "SAFFRON",
         "FURNITURE"
-      ]
+      ],
+      "priceOverrides": {
+        "FRUIT": 1.2
+      }
     },
     {
       "name": "Silk Harbor",
@@ -1158,7 +1233,11 @@
         "WOOL",
         "SAFFRON",
         "FURNITURE"
-      ]
+      ],
+      "priceOverrides": {
+        "FURNITURE": 1.3,
+        "RICE": 1.4
+      }
     },
     {
       "name": "Enjo",
@@ -1211,7 +1290,10 @@
         "WOOL",
         "CLOTHES",
         "SAFFRON"
-      ]
+      ],
+      "priceOverrides": {
+        "FISH": 0.8
+      }
     },
     {
       "name": "Green Tortoise",
@@ -1228,7 +1310,11 @@
         "WOOL",
         "CLOTHES",
         "SAFFRON"
-      ]
+      ],
+      "priceOverrides": {
+        "FRUIT": 1.25,
+        "SAFFRON": 0.8
+      }
     },
     {
       "name": "Obara",
@@ -1327,7 +1413,11 @@
         "WOOL",
         "SAFFRON",
         "JEWELRY"
-      ]
+      ],
+      "priceOverrides": {
+        "WOOL": 0.9,
+        "SAFFRON": 1.25
+      }
     },
     {
       "name": "Phoenix Landing",
@@ -1375,7 +1465,10 @@
         "WOOL",
         "SAFFRON",
         "FURNITURE"
-      ]
+      ],
+      "priceOverrides": {
+        "FURNITURE": 0.95
+      }
     },
     {
       "name": "Fanling",
@@ -1418,7 +1511,11 @@
         "SAFFRON",
         "FURNITURE",
         "JEWELRY"
-      ]
+      ],
+      "priceOverrides": {
+        "FURNITURE": 0.55,
+        "WOOL": 0.55
+      }
     }
   ]
 }

@@ -112,7 +112,14 @@ export function createCityPopup(player: Player): CityPopup {
     refreshers = [];
 
     for (const quote of marketFor(city)) {
-      const { product, buyPrice, sellPrice } = quote;
+      const { product, buyPrice, sellPrice, priceMultiplier } = quote;
+      // A local price quirk colours the whole row: red = this city charges
+      // over the odds, green = a bargain.
+      const dear = priceMultiplier > 1;
+      const quirky = priceMultiplier !== 1;
+      const tint = !quirky
+        ? CONFIG.market.normalColor
+        : dear ? CONFIG.market.dearColor : CONFIG.market.cheapColor;
 
       const row = document.createElement('div');
       row.style.cssText = [
@@ -123,8 +130,13 @@ export function createCityPopup(player: Player): CityPopup {
       const info = document.createElement('div');
       info.style.cssText = 'flex: 1; min-width: 0';
       const name = document.createElement('div');
-      name.textContent = product.name;
-      name.style.cssText = `font: 600 ${cfg.fontPx}px system-ui, sans-serif; color: #fff`;
+      name.textContent = quirky
+        ? `${product.name}  ${dear ? '▲' : '▼'} ${Math.round(priceMultiplier * 100)}%`
+        : product.name;
+      name.title = quirky
+        ? `${city.name} trades ${product.name} at ${priceMultiplier}x the usual price`
+        : '';
+      name.style.cssText = `font: 600 ${cfg.fontPx}px system-ui, sans-serif; color: ${tint}`;
       const desc = document.createElement('div');
       desc.textContent = product.description;
       desc.style.cssText = `font: ${cfg.fontPx - 3}px system-ui, sans-serif; color: #999`;
@@ -132,7 +144,7 @@ export function createCityPopup(player: Player): CityPopup {
 
       const prices = document.createElement('div');
       prices.textContent = `buy ${buyPrice}\nsell ${sellPrice}`;
-      prices.style.cssText = `white-space: pre; text-align: right; font: ${cfg.fontPx - 2}px monospace; color: #cfd6e4`;
+      prices.style.cssText = `white-space: pre; text-align: right; font: ${cfg.fontPx - 2}px monospace; color: ${quirky ? tint : '#cfd6e4'}`;
 
       const held = document.createElement('div');
       held.style.cssText = `min-width: 72px; text-align: right; font: ${cfg.fontPx - 1}px monospace; color: #9fe8a0`;

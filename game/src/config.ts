@@ -63,6 +63,11 @@ export const CONFIG = {
     // price the city PAYS the player (rounded up); buying costs buyMarkup more.
     sizeMultiplier: { small: 1, medium: 2, large: 3 },
     buyMarkup: 1.2,
+    // A city's priceOverrides multiplier tints its market row: dearer than
+    // normal reads red, cheaper reads green.
+    dearColor: '#ff6b6b',
+    cheapColor: '#6bd97a',
+    normalColor: '#ffffff',
   },
   player: {
     startingMoney: 500,

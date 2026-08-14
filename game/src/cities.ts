@@ -14,6 +14,9 @@ export interface City {
   /** Product ids this city trades (see products.json). Prices are derived
    *  from the size in src/market.ts, never stored here. */
   products: ProductId[];
+  /** Local price quirks: id -> multiplier applied on top of the size
+   *  multiplier (>1 dearer than normal, <1 cheaper). Absent id means 1. */
+  priceOverrides?: Record<ProductId, number>;
 }
 
 export const CITIES: City[] = (citiesJson as { cities: City[] }).cities;

@@ -16,6 +16,10 @@ const SIZE_MULTIPLIER = { small: 1, medium: 2, large: 3 }; // keep in sync with 
 const BUY_MARKUP = 1.2;
 const STAPLES = ['WOOD', 'RICE', 'FISH', 'FRUIT', 'SAFFRON', 'WOOL'];
 const LUXURIES = ['JEWELRY', 'FURNITURE', 'CLOTHES'];
+// keep in sync with generate-price-overrides.js
+const MAX_OVERRIDES = 2;
+const MIN_MULT = 0.5;
+const MAX_MULT = 1.5;
 
 let passed = 0;
 function check(label, condition, detail = '') {
@@ -82,13 +86,38 @@ check('every city stocks a valid, size-appropriate, ordered product list', true,
 check('every luxury is stocked somewhere beyond the large cities',
   LUXURIES.every((id) => cities.some((c) => c.size === 'medium' && c.products.includes(id))));
 
+// --- local price overrides ------------------------------------------------
+
+let overrides = 0;
+for (const c of cities) {
+  const o = c.priceOverrides;
+  if (o === undefined) continue;
+  const entries = Object.entries(o);
+  if (entries.length === 0) throw new Error(`FAIL: ${c.name} has an empty priceOverrides`);
+  if (entries.length > MAX_OVERRIDES) throw new Error(`FAIL: ${c.name} has ${entries.length} overrides`);
+  if (c.size === 'small') throw new Error(`FAIL: small ${c.name} has price overrides`);
+  for (const [id, m] of entries) {
+    if (!c.products.includes(id)) throw new Error(`FAIL: ${c.name} overrides ${id}, which it doesn't stock`);
+    if (typeof m !== 'number' || !(m >= MIN_MULT && m <= MAX_MULT)) {
+      throw new Error(`FAIL: ${c.name} override ${id}=${m} is outside ${MIN_MULT}..${MAX_MULT}`);
+    }
+    if (m === 1) throw new Error(`FAIL: ${c.name} override ${id} is 1x, which changes nothing`);
+    overrides++;
+  }
+}
+check('overrides are 0-2 per medium/large city, on stocked products, in range', true,
+  `${overrides} overrides`);
+check('some cities are dear and some are cheap',
+  cities.some((c) => Object.values(c.priceOverrides ?? {}).some((m) => m > 1)) &&
+  cities.some((c) => Object.values(c.priceOverrides ?? {}).some((m) => m < 1)));
+
 // --- derived prices -------------------------------------------------------
 
 let priceChecks = 0;
 for (const c of cities) {
   for (const id of c.products) {
     const base = byId.get(id).basePrice;
-    const sell = Math.ceil(base * SIZE_MULTIPLIER[c.size]);
+    const sell = Math.ceil(base * SIZE_MULTIPLIER[c.size] * (c.priceOverrides?.[id] ?? 1));
     const buy = Math.ceil(sell * BUY_MARKUP);
     if (!Number.isInteger(sell) || !Number.isInteger(buy)) throw new Error(`FAIL: ${c.name}/${id} price is not an integer`);
     if (buy <= sell) throw new Error(`FAIL: ${c.name}/${id} buy ${buy} is not above sell ${sell}`);

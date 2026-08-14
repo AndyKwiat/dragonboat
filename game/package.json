@@ -6,8 +6,9 @@
   "scripts": {
     "dev": "vite",
     "build": "tsc --noEmit && vite build",
-    "cities": "node scripts/generate-cities.js && node scripts/generate-city-products.js",
-    "city-products": "node scripts/generate-city-products.js",
+    "cities": "node scripts/generate-cities.js && node scripts/generate-city-products.js && node scripts/generate-price-overrides.js",
+    "city-products": "node scripts/generate-city-products.js && node scripts/generate-price-overrides.js",
+    "price-overrides": "node scripts/generate-price-overrides.js",
     "test:cities": "node scripts/test-cities.js",
     "test:products": "node scripts/test-products.js"
   },

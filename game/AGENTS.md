@@ -9,8 +9,9 @@ npm install
 npm run dev        # vite dev server at http://localhost:5173
 npm run build      # tsc --noEmit + vite build
 npx tsc --noEmit   # typecheck only
-npm run cities        # regenerate cities.json from public/map.dmap (+ products)
-npm run city-products # re-deal just the per-city product lists
+npm run cities          # regenerate cities.json: map -> products -> overrides
+npm run city-products   # re-deal the product lists (+ overrides)
+npm run price-overrides # re-deal just the local price quirks
 npm run test:cities   # check cities.json against the map
 npm run test:products # check products.json + each city's market
 ```
@@ -54,16 +55,25 @@ map generator alone would drop the product lists. Size decides the stock:
 large = every product, medium = the six staples + one luxury, small = rice +
 one other staple.
 
+A third pass, `scripts/generate-price-overrides.js`, gives each medium/large
+city 0–2 `priceOverrides` — `{ id: multiplier }` between 0.5 and 1.5 (snapped
+to 0.05, never exactly 1) on products it actually stocks. Small cities never
+get any. The three generators must run in order (`npm run cities` does), since
+each later pass rebuilds the city objects the earlier one wrote.
+
 ## Products and markets
 
 `products.json` (committed, bundled like cities.json) is the whole catalogue:
 `id` (ALL_CAPS, human readable), `name`, `description`, `basePrice`. Tweak it
 freely — nothing about a product is hardcoded. **Prices are never stored.**
 `src/market.ts` derives them: the price a city *pays* is
-`ceil(basePrice * CONFIG.market.sizeMultiplier[size])` (1x / 2x / 3x for
-small / medium / large) and the price it *charges* is that times
-`CONFIG.market.buyMarkup` (1.2), rounded up again. Every price is an integer;
-rounding is always up, on both sides.
+`ceil(basePrice * CONFIG.market.sizeMultiplier[size] * override)` (1x / 2x / 3x
+for small / medium / large, times that city's `priceOverrides` entry if it has
+one) and the price it *charges* is that times `CONFIG.market.buyMarkup` (1.2),
+rounded up again. Every price is an integer; rounding is always up, on both
+sides. A row whose multiplier isn't 1 is tinted in the popup —
+`CONFIG.market.dearColor` (red) above 1, `cheapColor` (green) below — with the
+percentage next to the name.
 
 `src/player.ts` holds the run state: `money` (may go negative) and an
 inventory Map (a count never goes below 0 — `sell()` caps at what's held and
