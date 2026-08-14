@@ -3,10 +3,14 @@
 //
 //   node scripts/generate-cities.js
 //
-// Cities in the map export are 5x5 blocks of terrain index 7. Each block
+// Cities in a fresh map export are 5x5 blocks of terrain index 7. Each block
 // becomes one city whose location is the block's centroid in WORLD units
 // (map cell coords * TILE_SCALE). Sizes are handed out 6 small : 3 medium :
 // 1 large, then large cities are swapped around to spread them out.
+//
+// If the map has already been through scripts/resize-city-blocks.js its blocks
+// are 3x3 / 4x4 / 5x5 and the size is READ BACK from the block edge instead of
+// re-dealt — otherwise a re-run would hand a 3x3 block to a large city.
 //
 // Deterministic: a fixed PRNG seed means re-running produces the same file.
 
@@ -227,12 +231,30 @@ const cities = blocks.map((block, i) => ({
   size: 'small',
 }));
 
-const stats = assignSizes(cities, rng);
+// Block edge in cells -> size, for a map that resize-city-blocks.js has run on.
+const SIZE_BY_EDGE = { 3: 'small', 4: 'medium', 5: 'large' };
+const edges = blocks.map((b) => b.maxX - b.minX + 1);
+const preSized = edges.some((e) => e !== 5);
+
+let stats;
+if (preSized) {
+  blocks.forEach((block, i) => {
+    const size = SIZE_BY_EDGE[edges[i]];
+    if (!size) throw new Error(`block at ${block.minX},${block.minY} is ${edges[i]} cells wide — expected 3, 4 or 5`);
+    cities[i].size = size;
+  });
+} else {
+  stats = assignSizes(cities, rng);
+}
 
 writeFileSync(OUT_PATH, JSON.stringify({ cities }, null, 2) + '\n');
 
+const count = (s) => cities.filter((c) => c.size === s).length;
 const shape = new Set(blocks.map((b) => `${b.maxX - b.minX + 1}x${b.maxY - b.minY + 1}`));
 console.log(`map ${map.width}x${map.height}, ${blocks.length} city blocks (shapes: ${[...shape].join(', ')})`);
-console.log(`sizes: ${stats.smallCount} small / ${stats.mediumCount} medium / ${stats.largeCount} large`);
-console.log(`spread: ${stats.swaps} swaps, closest large pair ${Math.round(stats.before)} -> ${Math.round(stats.after)} world units`);
+console.log(`sizes: ${count('small')} small / ${count('medium')} medium / ${count('large')} large` +
+  (preSized ? ' (read back from the block shapes)' : ''));
+if (stats) {
+  console.log(`spread: ${stats.swaps} swaps, closest large pair ${Math.round(stats.before)} -> ${Math.round(stats.after)} world units`);
+}
 console.log(`wrote ${OUT_PATH}`);

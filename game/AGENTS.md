@@ -12,6 +12,7 @@ npx tsc --noEmit   # typecheck only
 npm run cities          # regenerate cities.json: map -> products -> overrides
 npm run city-products   # re-deal the product lists (+ overrides)
 npm run price-overrides # re-deal just the local price quirks
+npm run resize-cities   # re-cut the map's city blocks to match city sizes
 npm run test:cities   # check cities.json against the map
 npm run test:products # check products.json + each city's market
 ```
@@ -38,14 +39,15 @@ World coordinates are **y-down** with (0,0) at the map's **top-left**, x right �
 ## Cities
 
 `cities.json` (repo root of `game/`, committed) is generated from the map by
-`scripts/generate-cities.js`: cities are 5×5 blocks of terrain index 7, one
-city per block at the block's centroid in world units. Names come from a
+`scripts/generate-cities.js`: cities are blocks of terrain index 7, one city
+per block at the block's centroid in world units. Names come from a
 fixed pool, sizes are dealt 6 small : 3 medium : 1 large and then the large
 ones are swapped with non-large ones until their mutual 1/d² repulsion energy
 stops dropping, which spreads them across the map. A fixed PRNG seed makes
 runs reproducible. Regenerate after re-exporting the map — the file is not
 derived at runtime. `scripts/test-cities.js` re-derives the blocks from the
-.dmap and checks coverage, unique names, the 6:3:1 ratio, and that the large
+.dmap and checks coverage, that each block is solid and the right size for its
+city (see below), unique names, the 6:3:1 ratio, and that the large
 cities beat a random assignment's spread.
 
 Each city also carries a `products` list (product ids only) filled in by
@@ -60,6 +62,23 @@ city 0–2 `priceOverrides` — `{ id: multiplier }` between 0.5 and 1.5 (snappe
 to 0.05, never exactly 1) on products it actually stocks. Small cities never
 get any. The three generators must run in order (`npm run cities` does), since
 each later pass rebuilds the city objects the earlier one wrote.
+
+### Block sizes
+
+A fresh export paints every city as a 5×5 block. The last pass,
+`scripts/resize-city-blocks.js`, cuts each block down to match its city size —
+**3×3 small, 4×4 medium, 5×5 large** — turning the trimmed cells into
+grassland, and writes both `public/map.dmap` and the cities' re-centred
+locations. It's idempotent (a block already at its target size is left alone),
+so re-running is a no-op. Trimming 5→4 can't stay centred, so the extra
+row/column comes off the right/bottom and that city's location moves half a
+tile.
+
+Because the block shape now *is* the record of a city's size on the map,
+`generate-cities.js` reads the size back from the block edge whenever it sees
+a map that isn't all-5×5, instead of re-dealing the 6:3:1 ratio — otherwise a
+re-run would assign a large city to a 3×3 block. Only a freshly exported map
+gets sizes dealt (and the large ones spread).
 
 ## Products and markets
 

@@ -12,6 +12,8 @@ import { fileURLToPath } from 'node:url';
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
 const TILE_SCALE = 20;
 const CITY = 7;
+// Block edge in cells per city size — keep in sync with resize-city-blocks.js.
+const BLOCK_CELLS = { small: 3, medium: 4, large: 5 };
 
 let passed = 0;
 function check(label, condition, detail = '') {
@@ -26,21 +28,26 @@ const height = buf.readUInt32LE(8);
 const data = buf.subarray(12);
 const { cities } = JSON.parse(readFileSync(join(ROOT, 'cities.json'), 'utf8'));
 
-// 1. Every city sits on a city tile, and its location is a 5x5 block centre.
+// 1. Every city sits on a solid block of city tiles, sized by the city's size
+//    (see scripts/resize-city-blocks.js), centred on its location.
 let cityTiles = 0;
 for (const v of data) if (v === CITY) cityTiles++;
-check('one city per 5x5 block of city tiles', cities.length === cityTiles / 25,
-  `${cities.length} cities vs ${cityTiles} tiles`);
+const expectedTiles = cities.reduce((n, c) => n + BLOCK_CELLS[c.size] ** 2, 0);
+check('city tiles match the per-size block areas', cityTiles === expectedTiles,
+  `${cityTiles} tiles vs ${expectedTiles} expected`);
 
 const covered = new Set();
 for (const c of cities) {
-  const cx = c.location.x / TILE_SCALE - 0.5; // centre cell
-  const cy = c.location.y / TILE_SCALE - 0.5;
-  if (!Number.isInteger(cx) || !Number.isInteger(cy)) {
-    throw new Error(`FAIL: ${c.name} location ${c.location.x},${c.location.y} is not a 5x5 block centre`);
+  const edge = BLOCK_CELLS[c.size];
+  if (!edge) throw new Error(`FAIL: ${c.name} has unknown size ${c.size}`);
+  // location is the block's centre, so the top-left cell is half an edge back.
+  const x0 = c.location.x / TILE_SCALE - edge / 2;
+  const y0 = c.location.y / TILE_SCALE - edge / 2;
+  if (!Number.isInteger(x0) || !Number.isInteger(y0)) {
+    throw new Error(`FAIL: ${c.name} location ${c.location.x},${c.location.y} is not a ${edge}x${edge} block centre`);
   }
-  for (let y = cy - 2; y <= cy + 2; y++) {
-    for (let x = cx - 2; x <= cx + 2; x++) {
+  for (let y = y0; y < y0 + edge; y++) {
+    for (let x = x0; x < x0 + edge; x++) {
       if (x < 0 || y < 0 || x >= width || y >= height || data[y * width + x] !== CITY) {
         throw new Error(`FAIL: ${c.name} block cell ${x},${y} is not city terrain`);
       }
@@ -48,7 +55,8 @@ for (const c of cities) {
     }
   }
 }
-check('every city block is 5x5 city terrain', true);
+check('every city block is solid city terrain at its size', true,
+  `3x3 small, 4x4 medium, 5x5 large`);
 check('cities cover every city tile exactly once', covered.size === cityTiles,
   `covered ${covered.size} of ${cityTiles}`);
 

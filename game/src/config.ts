@@ -48,7 +48,7 @@ export const CONFIG = {
     // the zoomed-out map doesn't drown in names. Whole-world-fits is ~0.07
     // px/u on a normal window; large cities are labelled at every zoom.
     label: {
-      small: { fontPx: 11, weight: '400', color: '#e6e6e6', minZoom: 0.35 },
+      small: { fontPx: 11, weight: '400', color: '#e6e6e6', minZoom: 0.22 },
       medium: { fontPx: 14, weight: '600', color: '#f5f5f5', minZoom: 0.15 },
       large: { fontPx: 20, weight: '800', color: '#ffd166', minZoom: 0 },
     },

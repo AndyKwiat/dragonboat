@@ -48,8 +48,8 @@
     {
       "name": "Ivory Pagoda",
       "location": {
-        "x": 6950,
-        "y": 2910
+        "x": 6940,
+        "y": 2900
       },
       "size": "medium",
       "products": [
@@ -65,8 +65,8 @@
     {
       "name": "Sword Hill",
       "location": {
-        "x": 6770,
-        "y": 3150
+        "x": 6760,
+        "y": 3140
       },
       "size": "medium",
       "products": [
@@ -194,8 +194,8 @@
     {
       "name": "Fish Market Bay",
       "location": {
-        "x": 6710,
-        "y": 4810
+        "x": 6700,
+        "y": 4800
       },
       "size": "medium",
       "products": [
@@ -235,8 +235,8 @@
     {
       "name": "Lotus Fields",
       "location": {
-        "x": 7450,
-        "y": 5170
+        "x": 7440,
+        "y": 5160
       },
       "size": "medium",
       "products": [
@@ -255,8 +255,8 @@
     {
       "name": "Domon",
       "location": {
-        "x": 6890,
-        "y": 5350
+        "x": 6880,
+        "y": 5340
       },
       "size": "medium",
       "products": [
@@ -336,8 +336,8 @@
     {
       "name": "Old Harbor",
       "location": {
-        "x": 10870,
-        "y": 5970
+        "x": 10860,
+        "y": 5960
       },
       "size": "medium",
       "products": [
@@ -448,8 +448,8 @@
     {
       "name": "Cherry Harbor",
       "location": {
-        "x": 16090,
-        "y": 7270
+        "x": 16080,
+        "y": 7260
       },
       "size": "medium",
       "products": [
@@ -504,8 +504,8 @@
     {
       "name": "Two Rivers",
       "location": {
-        "x": 16450,
-        "y": 7390
+        "x": 16440,
+        "y": 7380
       },
       "size": "medium",
       "products": [
@@ -521,8 +521,8 @@
     {
       "name": "Bohai",
       "location": {
-        "x": 15350,
-        "y": 7510
+        "x": 15340,
+        "y": 7500
       },
       "size": "medium",
       "products": [
@@ -541,8 +541,8 @@
     {
       "name": "Amber Cove",
       "location": {
-        "x": 15690,
-        "y": 7510
+        "x": 15680,
+        "y": 7500
       },
       "size": "medium",
       "products": [
@@ -749,8 +749,8 @@
     {
       "name": "Crane Bay",
       "location": {
-        "x": 15070,
-        "y": 8530
+        "x": 15060,
+        "y": 8520
       },
       "size": "medium",
       "products": [
@@ -778,8 +778,8 @@
     {
       "name": "Tiger Gate",
       "location": {
-        "x": 3730,
-        "y": 8790
+        "x": 3720,
+        "y": 8780
       },
       "size": "medium",
       "products": [
@@ -807,8 +807,8 @@
     {
       "name": "Dragon Bay",
       "location": {
-        "x": 6670,
-        "y": 9170
+        "x": 6660,
+        "y": 9160
       },
       "size": "medium",
       "products": [
@@ -828,8 +828,8 @@
     {
       "name": "Sky Lantern",
       "location": {
-        "x": 15370,
-        "y": 9330
+        "x": 15360,
+        "y": 9320
       },
       "size": "medium",
       "products": [
@@ -860,8 +860,8 @@
     {
       "name": "Bright Lotus",
       "location": {
-        "x": 5390,
-        "y": 9530
+        "x": 5380,
+        "y": 9520
       },
       "size": "medium",
       "products": [
@@ -938,8 +938,8 @@
     {
       "name": "Jade City",
       "location": {
-        "x": 7610,
-        "y": 12250
+        "x": 7600,
+        "y": 12240
       },
       "size": "medium",
       "products": [
@@ -959,8 +959,8 @@
     {
       "name": "Fenglin",
       "location": {
-        "x": 7130,
-        "y": 12390
+        "x": 7120,
+        "y": 12380
       },
       "size": "medium",
       "products": [
@@ -979,8 +979,8 @@
     {
       "name": "Baisha",
       "location": {
-        "x": 4830,
-        "y": 12510
+        "x": 4820,
+        "y": 12500
       },
       "size": "medium",
       "products": [
@@ -1070,8 +1070,8 @@
     {
       "name": "Shirane",
       "location": {
-        "x": 15630,
-        "y": 12910
+        "x": 15620,
+        "y": 12900
       },
       "size": "medium",
       "products": [
@@ -1091,8 +1091,8 @@
     {
       "name": "Aoki",
       "location": {
-        "x": 6890,
-        "y": 12930
+        "x": 6880,
+        "y": 12920
       },
       "size": "medium",
       "products": [
@@ -1124,8 +1124,8 @@
     {
       "name": "Dragon Gate",
       "location": {
-        "x": 4710,
-        "y": 13190
+        "x": 4700,
+        "y": 13180
       },
       "size": "medium",
       "products": [
@@ -1160,8 +1160,8 @@
     {
       "name": "Ichimoto",
       "location": {
-        "x": 4870,
-        "y": 13490
+        "x": 4860,
+        "y": 13480
       },
       "size": "medium",
       "products": [
@@ -1192,8 +1192,8 @@
     {
       "name": "Kobune",
       "location": {
-        "x": 4770,
-        "y": 13750
+        "x": 4760,
+        "y": 13740
       },
       "size": "medium",
       "products": [
@@ -1221,8 +1221,8 @@
     {
       "name": "Yagami",
       "location": {
-        "x": 11250,
-        "y": 14070
+        "x": 11240,
+        "y": 14060
       },
       "size": "medium",
       "products": [
@@ -1278,8 +1278,8 @@
     {
       "name": "Jade Terrace",
       "location": {
-        "x": 6030,
-        "y": 14430
+        "x": 6020,
+        "y": 14420
       },
       "size": "medium",
       "products": [
@@ -1298,8 +1298,8 @@
     {
       "name": "Green Tortoise",
       "location": {
-        "x": 7630,
-        "y": 14490
+        "x": 7620,
+        "y": 14480
       },
       "size": "medium",
       "products": [
@@ -1319,8 +1319,8 @@
     {
       "name": "Obara",
       "location": {
-        "x": 4550,
-        "y": 14510
+        "x": 4540,
+        "y": 14500
       },
       "size": "medium",
       "products": [
@@ -1336,8 +1336,8 @@
     {
       "name": "Nine Dragons",
       "location": {
-        "x": 8610,
-        "y": 14670
+        "x": 8600,
+        "y": 14660
       },
       "size": "medium",
       "products": [
@@ -1401,8 +1401,8 @@
     {
       "name": "Meishan",
       "location": {
-        "x": 10450,
-        "y": 15090
+        "x": 10440,
+        "y": 15080
       },
       "size": "medium",
       "products": [
@@ -1453,8 +1453,8 @@
     {
       "name": "Mitani",
       "location": {
-        "x": 12310,
-        "y": 15510
+        "x": 12300,
+        "y": 15500
       },
       "size": "medium",
       "products": [
