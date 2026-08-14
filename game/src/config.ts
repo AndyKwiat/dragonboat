@@ -89,12 +89,15 @@ export const CONFIG = {
     nightColor: '#4a5568',
     fontPx: 20,
   },
-  // The crew eats rice out of the hold as game time passes (src/rations.ts).
+  // Keeping a crew costs rice and coin as game time passes (src/upkeep.ts).
   rations: {
     productId: 'RICE',
     hoursPerUnit: 8,     // game hours per unit eaten
     lowUnits: 10,        // below this the readout turns red
     lowColor: '#ff6b6b',
+  },
+  wages: {
+    moneyPerDay: 1,      // paid out of the purse every game day
   },
   // The city panel: centred, sized as a fraction of the window but never
   // narrower/shorter than the min, nor bigger than the max.

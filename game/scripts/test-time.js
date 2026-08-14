@@ -1,5 +1,5 @@
-// Checks the game-time calendar maths in src/gameTime.ts and the crew's rice
-// rations in src/rations.ts:
+// Checks the game-time calendar maths in src/gameTime.ts and the crew upkeep
+// (rice rations, daily wages) in src/upkeep.ts:
 //
 //   node scripts/test-time.js
 //
@@ -8,7 +8,7 @@
 // failed assertion.
 
 import { createGameTime, formatStamp, isNightHour, stampFor } from '../src/gameTime.ts';
-import { createRations } from '../src/rations.ts';
+import { createRations, createWages } from '../src/upkeep.ts';
 
 // Mirrors CONFIG.gameTime (src/config.ts) — gameTime.ts takes its settings as
 // arguments so this file can import it without pulling in the rest of the app.
@@ -80,11 +80,12 @@ check('time never goes backwards', time.totalMinutes() === idle);
 
 const RATIONS = { productId: 'RICE', hoursPerUnit: 8 }; // mirrors CONFIG.rations
 
-// A stand-in for the Player: rations.ts only needs held() and consume(), and
-// consume() has to obey the same "never below 0" rule the real one does.
-function fakePlayer(rice) {
+// A stand-in for the Player: upkeep.ts only needs money, held() and consume(),
+// and consume() has to obey the same "never below 0" rule the real one does.
+function fakePlayer(rice, money = 100) {
   return {
     rice,
+    money,
     held() { return this.rice; },
     consume(_id, qty) {
       const n = Math.min(Math.max(0, Math.floor(qty)), this.rice);
@@ -149,6 +150,44 @@ function crew(rice) {
   rations.update();
   check('trading moves the clock toward the next ration',
     player.rice === 20 && rations.minutesToNext() === 8 * 60 - 10);
+}
+
+// --- crew wages -----------------------------------------------------------
+
+const WAGES = { moneyPerDay: 1 }; // mirrors CONFIG.wages
+
+function payroll(money) {
+  const clock = createGameTime(start);
+  const player = fakePlayer(20, money);
+  return { clock, player, wages: createWages(player, clock, WAGES) };
+}
+
+{
+  const { clock, player, wages } = payroll(100);
+  clock.advanceHours(23);
+  wages.update();
+  check('no wages before a full day', player.money === 100);
+  clock.advanceHours(1);
+  wages.update();
+  check('one coin per game day', player.money === 99);
+  clock.advanceHours(24 * 9);
+  wages.update();
+  check('a long voyage pays every day due', player.money === 90);
+}
+
+{
+  const { clock, player, wages } = payroll(1);
+  clock.advanceHours(24 * 5);
+  wages.update();
+  check('wages can push the purse negative', player.money === -4);
+}
+
+{
+  // Transactions move the clock too, so enough trading eventually costs a day.
+  const { clock, player, wages } = payroll(100);
+  for (let i = 0; i < 144; i++) clock.advance(10); // 144 trades = exactly one day
+  check('trading alone can trigger a day of wages',
+    wages.update() === 1 && player.money === 99);
 }
 
 console.log(`\n${passed} checks passed`);

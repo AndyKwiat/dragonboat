@@ -16,7 +16,7 @@ import { createGameTime } from './gameTime';
 import { createInput } from './input';
 import { createMinimap } from './minimap';
 import { createPlayer } from './player';
-import { createRations } from './rations';
+import { createRations, createWages } from './upkeep';
 import { createTerrainMesh, gridOpacityFor, worldSize } from './terrain';
 
 const map = await loadDmap(CONFIG.mapUrl);
@@ -87,10 +87,11 @@ active.enable({
 
 const player = createPlayer();
 const time = createGameTime(CONFIG.gameTime);
-const hud = createHud(worldW, worldH, player);
+const hud = createHud(worldW, worldH);
 document.body.appendChild(hud.element);
 const rations = createRations(player, time, CONFIG.rations);
-const clock = createClock(time, rations);
+const wages = createWages(player, time, CONFIG.wages);
+const clock = createClock(time, rations, player);
 document.body.appendChild(clock.element);
 const minimap = createMinimap(map);
 document.body.appendChild(minimap.element);
@@ -144,9 +145,10 @@ function frame(now: number) {
   }
   if (escaped) cityPopup.hide();
 
-  // The crew eats on game time, so this only bites while sailing or trading.
-  // An open market panel has to be told, or it shows a stale hold.
-  if (rations.update() && cityPopup.isOpen()) cityPopup.refresh();
+  // Crew upkeep runs on game time, so it only bites while sailing or trading.
+  // An open market panel has to be told, or it shows a stale hold and purse.
+  const charged = rations.update() + wages.update();
+  if (charged && cityPopup.isOpen()) cityPopup.refresh();
   clock.update();
   minimap.update(state, view);
   hud.update(state, view, minZoomFor(view, worldW, worldH), active.name);

@@ -1,10 +1,9 @@
 import type { CameraState, ViewportInfo } from './camera/CameraController';
 import { viewRect } from './camera/CameraController';
-import type { Player } from './player';
 
-// Top-right readout: view corners in world coords, current zoom, and the
-// player's purse/cargo.
-export function createHud(worldW: number, worldH: number, player: Player): { element: HTMLDivElement; update(state: CameraState, view: ViewportInfo, minZoom: number, mode: string): void } {
+// Top-right readout: view corners in world coords, current zoom and camera
+// mode. Money and cargo live in the top-left clock overlay instead.
+export function createHud(worldW: number, worldH: number): { element: HTMLDivElement; update(state: CameraState, view: ViewportInfo, minZoom: number, mode: string): void } {
   const element = document.createElement('div');
   element.style.cssText = [
     'position: fixed', 'top: 8px', 'right: 8px',
@@ -25,8 +24,7 @@ export function createHud(worldW: number, worldH: number, player: Player): { ele
         `TL (${Math.round(clamp(r.left, worldW))}, ${Math.round(clamp(r.top, worldH))})\n` +
         `BR (${Math.round(clamp(r.right, worldW))}, ${Math.round(clamp(r.bottom, worldH))})\n` +
         `zoom ${state.zoom.toFixed(3)} px/u (${(state.zoom / minZoom).toFixed(1)}x)\n` +
-        `cam ${mode} [C]\n` +
-        `money ${player.money}  cargo ${player.totalUnits()}`;
+        `cam ${mode} [C]`;
       if (text !== lastText) {
         element.textContent = text;
         lastText = text;
