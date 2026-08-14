@@ -1,5 +1,6 @@
 import type { City } from './cities';
 import { CONFIG } from './config';
+import { crewSpeedMultiplier } from './crew';
 import type { GameTime } from './gameTime';
 import { marketFor } from './market';
 import type { Player } from './player';
@@ -59,12 +60,33 @@ export function createCityPopup(player: Player, time: GameTime): CityPopup {
   const facts = document.createElement('div');
   facts.style.cssText = `white-space: pre; line-height: 1.6; font: ${cfg.fontPx - 2}px monospace; color: #bbb`;
 
-  const marketHeading = document.createElement('div');
-  marketHeading.textContent = 'Market';
-  marketHeading.style.cssText = [
+  const headingCss = [
     'margin: 18px 0 8px', 'padding-bottom: 6px', 'border-bottom: 1px solid #444',
     `font: 600 ${cfg.fontPx + 4}px system-ui, sans-serif`, 'color: #fff',
   ].join(';');
+
+  // Crew: hiring hall, large cities only (hidden everywhere else).
+  const crewHeading = document.createElement('div');
+  crewHeading.textContent = 'Crew';
+  crewHeading.style.cssText = headingCss;
+
+  const crewSection = document.createElement('div');
+  crewSection.style.cssText = 'display: flex; align-items: center; gap: 14px; padding: 4px 0';
+
+  const crewCount = document.createElement('div');
+  crewCount.style.cssText = `flex: 1; font: ${cfg.fontPx}px monospace; color: #ddd`;
+
+  const crewActions = document.createElement('div');
+  crewActions.style.cssText = 'display: flex; gap: 6px';
+  // Free, and no haggling involved, so these don't cost the player any time.
+  const addCrew = button('Add', () => player.changeCrew(1), { costsTime: false });
+  const removeCrew = button('Remove', () => player.changeCrew(-1), { costsTime: false });
+  crewActions.append(addCrew, removeCrew);
+  crewSection.append(crewCount, crewActions);
+
+  const marketHeading = document.createElement('div');
+  marketHeading.textContent = 'Market';
+  marketHeading.style.cssText = headingCss;
 
   const market = document.createElement('div');
 
@@ -74,13 +96,17 @@ export function createCityPopup(player: Player, time: GameTime): CityPopup {
     'display: flex', 'gap: 24px', `font: 600 ${cfg.fontPx}px monospace`,
   ].join(';');
 
-  element.append(header, facts, marketHeading, market, purse);
+  element.append(header, facts, crewHeading, crewSection, marketHeading, market, purse);
 
   let current: City | null = null;
   // Per-row refreshers, rebuilt whenever a different city is shown.
   let refreshers: Array<() => void> = [];
 
-  function button(label: string, onClick: () => void): HTMLButtonElement {
+  function button(
+    label: string,
+    onClick: () => void,
+    { costsTime = true }: { costsTime?: boolean } = {},
+  ): HTMLButtonElement {
     const b = document.createElement('button');
     b.textContent = label;
     b.style.cssText = [
@@ -95,7 +121,7 @@ export function createCityPopup(player: Player, time: GameTime): CityPopup {
       onClick();
       // Haggling takes time: every market button that actually does something
       // costs the player ten minutes of the day.
-      time.advance(CONFIG.gameTime.minutesPerTransaction);
+      if (costsTime) time.advance(CONFIG.gameTime.minutesPerTransaction);
       refresh();
     });
     return b;
@@ -109,6 +135,11 @@ export function createCityPopup(player: Player, time: GameTime): CityPopup {
 
   function refresh() {
     for (const r of refreshers) r();
+    const { min, max } = CONFIG.crew;
+    crewCount.textContent =
+      `${player.crew} aboard  (max ${max})   speed x${crewSpeedMultiplier(player.crew, CONFIG.crew).toFixed(2)}`;
+    setEnabled(addCrew, player.crew < max);
+    setEnabled(removeCrew, player.crew > min);
     purse.textContent = `money ${player.money}    cargo ${player.totalUnits()} units`;
     purse.style.color = player.money < 0 ? '#ff8b7a' : '#ffd166';
   }
@@ -198,6 +229,10 @@ export function createCityPopup(player: Player, time: GameTime): CityPopup {
     show(city) {
       title.textContent = city.name;
       facts.textContent = FIELDS.map((f) => `${f.label.padEnd(8)}${f.value(city)}`).join('\n');
+      // Only the large cities have a hiring hall.
+      const hiring = city.size === 'large';
+      crewHeading.style.display = hiring ? 'block' : 'none';
+      crewSection.style.display = hiring ? 'flex' : 'none';
       if (city !== current) {
         current = city;
         buildMarket(city);

@@ -20,7 +20,7 @@ export const CONFIG = {
     length: 10,                 // world units along the heading
     width: 4,
     color: 0x7a4a1e,
-    maxSpeed: 160,               // world units/sec
+    maxSpeed: 50,               // world units/sec
     maxReverseSpeed: 20,
     accel: 40,                  // world units/sec^2
     friction: 45,               // deceleration with no throttle, units/sec^2
@@ -75,15 +75,24 @@ export const CONFIG = {
     nightColor: '#4a5568',
     fontPx: 20,
   },
+  // Crew size: hired in large cities, drives upkeep and the boat's top speed.
+  crew: {
+    starting: 1,
+    min: 1,
+    max: 20,
+    speedAtMin: 1,       // boat.maxSpeed multiplier with a minimum crew
+    speedAtMax: 2,       // ...and with a full one; linear in between
+  },
   // Keeping a crew costs rice and coin as game time passes (src/upkeep.ts).
+  // Both charges are per crew member.
   rations: {
     productId: 'RICE',
-    hoursPerUnit: 8,     // game hours per unit eaten
+    hoursPerUnit: 8,     // game hours per unit eaten, per crew member
     lowUnits: 10,        // below this the readout turns red
     lowColor: '#ff6b6b',
   },
   wages: {
-    moneyPerDay: 1,      // paid out of the purse every game day
+    moneyPerDay: 1,      // per crew member, out of the purse every game day
   },
   // The city panel: centred, sized as a fraction of the window but never
   // narrower/shorter than the min, nor bigger than the max.

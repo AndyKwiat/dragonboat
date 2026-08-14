@@ -5,10 +5,15 @@
 // never go below 0 — sells are capped at what's actually in the hold.
 
 import { CONFIG } from './config';
+import { clampCrew } from './crew';
 import type { ProductId } from './products';
 
 export interface Player {
   money: number;
+  /** Hands aboard, always within CONFIG.crew's min/max. */
+  crew: number;
+  /** Hires or dismisses crew, clamped to the limits; returns the new count. */
+  changeCrew(delta: number): number;
   /** Units held per product id. Absent id means 0; never negative. */
   inventory: Map<ProductId, number>;
   held(id: ProductId): number;
@@ -33,6 +38,11 @@ export function createPlayer(
 
   return {
     money: startingMoney,
+    crew: clampCrew(CONFIG.crew.starting, CONFIG.crew),
+    changeCrew(delta) {
+      this.crew = clampCrew(this.crew + delta, CONFIG.crew);
+      return this.crew;
+    },
     inventory,
     held,
     buy(id, qty, unitPrice) {

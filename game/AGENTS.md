@@ -15,12 +15,13 @@ npm run price-overrides # re-deal just the local price quirks
 npm run resize-cities   # re-cut the map's city blocks to match city sizes
 npm run test:cities   # check cities.json against the map
 npm run test:products # check products.json + each city's market
-npm run test:time     # check the calendar + crew rations (runs the real src/)
+npm run test:time     # check the calendar, crew and upkeep (runs the real src/)
 ```
 
 No general test suite. `npm run test:cities`, `test:products` and `test:time`
 are the only automated checks; otherwise verify changes by running the app and
-looking at it. `test:time` imports `src/gameTime.ts` and `src/upkeep.ts`
+looking at it. `test:time` imports `src/gameTime.ts`, `src/crew.ts` and
+`src/upkeep.ts`
 directly (Node strips the types) — that only works because those modules have
 no value imports, since Node can't resolve the extensionless imports the rest
 of `src/` uses. Keep them that way, or the test stops running.
@@ -111,21 +112,34 @@ accumulate internally; only whole ones are displayed. `src/clock.ts` is the
 top-left readout, dimmed to `nightColor` between `nightStartHour` (20:00) and
 `nightEndHour` (05:00) — the night test wraps past midnight, so it's an OR.
 
-### Crew upkeep
+### Crew and upkeep
 
-`src/upkeep.ts` holds both running costs, which tick on **game** time (so they
-only bite while sailing or trading) and share one `createDue` helper that
-catches up on every charge that came due — one long stretch on the throttle
-settles the whole bill, not a single unit:
+The crew is a head count on the Player, `CONFIG.crew.min`..`max` (1–20),
+starting at `starting` (1). Hands are hired and dismissed for free in the
+**large cities only** — the city panel grows a Crew section above the Market
+there and hides it everywhere else — and those buttons are the one exception to
+the market's ten-minutes-per-click rule (`button(..., { costsTime: false })`).
 
-- **Rations** — one unit of `CONFIG.rations.productId` per `hoursPerUnit` (8),
-  so rice is cargo and fuel at once. The hold stops at 0 (`player.consume` caps
-  at what's held) and missed meals are *not* owed later: restocking starts a
-  fresh 8-hour clock. Turns `lowColor` below `lowUnits` (10).
-- **Wages** — `CONFIG.wages.moneyPerDay` (1) out of the purse per game day.
+`src/crew.ts` is the pure maths: `clampCrew` and `crewSpeedMultiplier`, which
+runs straight from `speedAtMin` (1x) at a minimum crew to `speedAtMax` (2x) at
+a full one. `main.ts` feeds it into `boat.maxSpeedScale` every frame, which
+scales the boat's forward top speed only — reversing is unaffected.
+
+`src/upkeep.ts` holds both running costs, **each multiplied by the crew size**.
+They tick on **game** time (so they only bite while sailing or trading) and
+share one `createDue` helper that catches up on every charge that came due —
+one long stretch on the throttle settles the whole bill, not a single unit:
+
+- **Rations** — one unit of `CONFIG.rations.productId` per crew member per
+  `hoursPerUnit` (8), so rice is cargo and fuel at once. The hold stops at 0
+  (`player.consume` caps at what's held) and missed meals are *not* owed later:
+  restocking starts a fresh 8-hour clock. Turns `lowColor` below `lowUnits`
+  (10).
+- **Wages** — `CONFIG.wages.moneyPerDay` (1) per crew member per game day.
   Money is allowed to go negative; the readout goes red when it is.
 
-Both readouts sit under the date in the clock overlay, and a warning colour
+Rice, money and the crew count all sit under the date in the clock overlay
+(always visible, wherever you are), and a warning colour
 outranks the night dimming. The player starts with
 `CONFIG.player.startingInventory` (20 rice) so the low warning means something.
 An open market panel is refreshed when either charge lands, or it would show a
@@ -159,7 +173,8 @@ src/input.ts      Single InputState shared by all controllers: key set,
 src/boat.ts       The player boat: x/y, heading, signed speed + its brown
                   PlaneGeometry mesh (z=1, above terrain). Arcade physics:
                   accelerate/brake/friction, steering authority scaled by
-                  speed. No collision — it drives over any terrain.
+                  speed, forward top speed scaled by maxSpeedScale (crew size).
+                  No collision — it drives over any terrain.
 src/camera/CameraController.ts   The camera-mode seam (see below) + pure
                   helpers: clampCamera, minZoomFor, viewRect, applyToCamera.
 src/camera/FreeCameraController.ts  WASD/drag pan, cursor-anchored zoom.
@@ -175,14 +190,18 @@ src/cityLabels.ts DOM overlay: one absolutely-positioned label per on-screen
                   done in JS against city screen positions (circle around the
                   centre OR the padded label box, nearest wins).
 src/cityPopup.ts  Closable, screen-centred panel for the clicked city: facts
-                  (add a row to its FIELDS list) then the Market section built
-                  from marketFor(city), with buy/sell buttons wired to the
-                  Player. Sized from CONFIG.cityPopup.
+                  (add a row to its FIELDS list), a Crew section in large
+                  cities only, then the Market section built from
+                  marketFor(city), with buy/sell buttons wired to the Player.
+                  Sized from CONFIG.cityPopup.
 src/gameTime.ts   The month/day/hour clock. Pure and dependency-free (its
                   settings are passed in) so the test script can run it.
-src/upkeep.ts     Crew rations (rice) and wages (money), driven by the clock.
-                  Pure and dependency-free, same as gameTime.ts.
-src/clock.ts      Top-left date/time overlay + rice and money; dims at night.
+src/crew.ts       Crew clamping + the crew -> top-speed multiplier. Pure and
+                  dependency-free, same as gameTime.ts.
+src/upkeep.ts     Crew rations (rice) and wages (money), per head, driven by
+                  the clock. Pure and dependency-free too.
+src/clock.ts      Top-left date/time overlay + rice, money and crew; dims at
+                  night.
 src/products.ts   Loads products.json as typed Product[] + productById().
 src/market.ts     Pure price rules: sellPriceFor / buyPriceFor / marketFor.
 src/player.ts     Money + inventory, with the buy/sell invariants.

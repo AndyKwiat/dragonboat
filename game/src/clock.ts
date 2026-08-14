@@ -1,5 +1,6 @@
-// Top-left overlay: the game date and time, then the two things that drain as
-// it passes — the crew's rice and the purse. Plain DOM, updated via a text
+// Top-left overlay: the game date and time, then what drains as it passes —
+// the crew's rice, the purse, and the head count doing the draining (which
+// also sets the boat's top speed). Plain DOM, updated via a text
 // diff like the HUD. The font dims at night (CONFIG.gameTime.nightColor) so
 // you can feel the hours going by while you sail; rice goes red when the
 // larder runs low, money when it goes into debt.
@@ -29,14 +30,17 @@ export function createClock(time: GameTime, rations: Rations, player: Player): C
   const stamp = document.createElement('div');
   const rice = document.createElement('div');
   const money = document.createElement('div');
+  const crew = document.createElement('div');
   const smallFont = `font-size: ${c.fontPx - 4}px`;
   rice.style.cssText = smallFont;
   money.style.cssText = smallFont;
-  element.append(stamp, rice, money);
+  crew.style.cssText = smallFont;
+  element.append(stamp, rice, money, crew);
 
   let lastStamp = '';
   let lastRice = '';
   let lastMoney = '';
+  let lastCrew = '';
   let lastNight: boolean | null = null;
   let lastLowRice: boolean | null = null;
   let lastInDebt: boolean | null = null;
@@ -65,9 +69,16 @@ export function createClock(time: GameTime, rations: Rations, player: Player): C
         lastMoney = moneyText;
       }
 
+      const crewText = `crew  ${player.crew}`;
+      if (crewText !== lastCrew) {
+        crew.textContent = crewText;
+        lastCrew = crewText;
+      }
+
       if (night !== lastNight || lowRice !== lastLowRice || inDebt !== lastInDebt) {
         const normal = night ? c.nightColor : c.dayColor;
         stamp.style.color = normal;
+        crew.style.color = normal;
         // A warning outranks the night dimming.
         rice.style.color = lowRice ? r.lowColor : normal;
         money.style.color = inDebt ? r.lowColor : normal;

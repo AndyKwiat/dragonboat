@@ -4,6 +4,7 @@ import { applyToCamera, clampCamera, minZoomFor } from './camera/CameraControlle
 import { FollowCameraController } from './camera/FollowCameraController';
 import { FreeCameraController } from './camera/FreeCameraController';
 import { createBoat } from './boat';
+import { crewSpeedMultiplier } from './crew';
 import { CITIES } from './cities';
 import { createCityLabels } from './cityLabels';
 import { createCityPopup } from './cityPopup';
@@ -114,6 +115,8 @@ function frame(now: number) {
   // The boat is drivable in every mode that follows it; in free mode WASD
   // belongs to the camera instead.
   if (active !== freeCamera) {
+    // More hands, more speed.
+    boat.maxSpeedScale = crewSpeedMultiplier(player.crew, CONFIG.crew);
     boat.update(dt, input);
     // Being under way is what burns the day: an hour of game time per real
     // second of movement, whichever direction, including coasting to a stop.

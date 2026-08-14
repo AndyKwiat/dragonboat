@@ -12,6 +12,8 @@ export interface Boat {
   y: number;
   heading: number; // radians
   speed: number;   // world units/sec, signed (negative = reversing)
+  /** Multiplier on top speed, driven by crew size (see src/crew.ts). */
+  maxSpeedScale: number;
   update(dt: number, input: InputState): void;
   syncMesh(): void;
 }
@@ -29,6 +31,7 @@ export function createBoat(): Boat {
     y: c.startY,
     heading: c.startHeading,
     speed: 0,
+    maxSpeedScale: 1,
 
     update(dt, input) {
       const forward = input.keys.has('KeyW') || input.keys.has('ArrowUp');
@@ -43,7 +46,8 @@ export function createBoat(): Boat {
         const drop = c.friction * dt;
         boat.speed = Math.abs(boat.speed) <= drop ? 0 : boat.speed - Math.sign(boat.speed) * drop;
       }
-      boat.speed = Math.min(Math.max(boat.speed, -c.maxReverseSpeed), c.maxSpeed);
+      // Crew only helps you go forward; backing up is backing up.
+      boat.speed = Math.min(Math.max(boat.speed, -c.maxReverseSpeed), c.maxSpeed * boat.maxSpeedScale);
 
       // Steering authority scales with how fast we're moving: a dead boat
       // doesn't spin in place.

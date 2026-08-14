@@ -2,8 +2,8 @@
 // these only bite while the player is sailing or trading, never while the boat
 // sits idle.
 //
-//   rations  one unit of rice out of the hold every `hoursPerUnit` hours
-//   wages    one coin out of the purse every day
+//   rations  one unit of rice PER CREW MEMBER every `hoursPerUnit` hours
+//   wages    one coin PER CREW MEMBER every day
 //
 // Both work the same way: update() is called every frame from main.ts and
 // works out how many charges came due since the last check, so one big time
@@ -20,7 +20,7 @@ const MINUTES_PER_HOUR = 60;
 const MINUTES_PER_DAY = 24 * MINUTES_PER_HOUR;
 
 export interface Upkeep {
-  /** Charges whatever came due; returns how many charges were applied. */
+  /** Charges whatever came due; returns the number of units/coins taken. */
   update(): number;
   /** Game minutes until the next charge. */
   minutesToNext(): number;
@@ -64,9 +64,10 @@ export function createRations(player: Player, time: GameTime, options: RationsOp
   const due = createDue(time, options.hoursPerUnit * MINUTES_PER_HOUR);
   return {
     update() {
-      const n = due.take();
-      // consume() caps at what's held, so the hold never goes negative.
-      return n === 0 ? 0 : player.consume(options.productId, n);
+      const meals = due.take();
+      // Every hand aboard eats. consume() caps at what's held, so the hold
+      // never goes negative.
+      return meals === 0 ? 0 : player.consume(options.productId, meals * player.crew);
     },
     remaining: () => player.held(options.productId),
     minutesToNext: due.minutesToNext,
@@ -84,8 +85,10 @@ export function createWages(player: Player, time: GameTime, options: WagesOption
   return {
     update() {
       const days = due.take();
-      if (days > 0) player.money -= days * options.moneyPerDay;
-      return days;
+      if (days === 0) return 0;
+      const owed = days * options.moneyPerDay * player.crew;
+      player.money -= owed;
+      return owed;
     },
     minutesToNext: due.minutesToNext,
   };

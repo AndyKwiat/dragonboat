@@ -8,6 +8,7 @@
 // failed assertion.
 
 import { createGameTime, formatStamp, isNightHour, stampFor } from '../src/gameTime.ts';
+import { clampCrew, crewSpeedMultiplier } from '../src/crew.ts';
 import { createRations, createWages } from '../src/upkeep.ts';
 
 // Mirrors CONFIG.gameTime (src/config.ts) — gameTime.ts takes its settings as
@@ -82,10 +83,11 @@ const RATIONS = { productId: 'RICE', hoursPerUnit: 8 }; // mirrors CONFIG.ration
 
 // A stand-in for the Player: upkeep.ts only needs money, held() and consume(),
 // and consume() has to obey the same "never below 0" rule the real one does.
-function fakePlayer(rice, money = 100) {
+function fakePlayer(rice, money = 100, crew = 1) {
   return {
     rice,
     money,
+    crew,
     held() { return this.rice; },
     consume(_id, qty) {
       const n = Math.min(Math.max(0, Math.floor(qty)), this.rice);
@@ -95,9 +97,9 @@ function fakePlayer(rice, money = 100) {
   };
 }
 
-function crew(rice) {
+function crew(rice, hands = 1) {
   const clock = createGameTime(start);
-  const player = fakePlayer(rice);
+  const player = fakePlayer(rice, 100, hands);
   return { clock, player, rations: createRations(player, clock, RATIONS) };
 }
 
@@ -156,9 +158,9 @@ function crew(rice) {
 
 const WAGES = { moneyPerDay: 1 }; // mirrors CONFIG.wages
 
-function payroll(money) {
+function payroll(money, hands = 1) {
   const clock = createGameTime(start);
-  const player = fakePlayer(20, money);
+  const player = fakePlayer(20, money, hands);
   return { clock, player, wages: createWages(player, clock, WAGES) };
 }
 
@@ -188,6 +190,48 @@ function payroll(money) {
   for (let i = 0; i < 144; i++) clock.advance(10); // 144 trades = exactly one day
   check('trading alone can trigger a day of wages',
     wages.update() === 1 && player.money === 99);
+}
+
+// --- crew size ------------------------------------------------------------
+
+const CREW = { min: 1, max: 20, speedAtMin: 1, speedAtMax: 2 }; // mirrors CONFIG.crew
+
+check('crew clamps to 1..20',
+  clampCrew(0, CREW) === 1 && clampCrew(-5, CREW) === 1 && clampCrew(99, CREW) === 20);
+check('crew is a whole number', clampCrew(3.6, CREW) === 4);
+check('one hand is normal speed', crewSpeedMultiplier(1, CREW) === 1);
+check('a full crew is double speed', crewSpeedMultiplier(20, CREW) === 2);
+check('speed interpolates in between',
+  Math.abs(crewSpeedMultiplier(10, CREW) - (1 + 9 / 19)) < 1e-12,
+  `${crewSpeedMultiplier(10, CREW)}`);
+check('speed is monotonic in crew size',
+  Array.from({ length: 19 }, (_, i) => i + 1)
+    .every((n) => crewSpeedMultiplier(n + 1, CREW) > crewSpeedMultiplier(n, CREW)));
+check('an out-of-range crew still gives an in-range multiplier',
+  crewSpeedMultiplier(0, CREW) === 1 && crewSpeedMultiplier(50, CREW) === 2);
+
+// --- upkeep scales with the crew ------------------------------------------
+
+{
+  const { clock, player, rations } = crew(100, 5);
+  clock.advanceHours(8);
+  check('every hand eats a ration', rations.update() === 5 && player.rice === 95);
+  clock.advanceHours(16);
+  check('a bigger crew eats faster', rations.update() === 10 && player.rice === 85);
+}
+
+{
+  const { clock, player, rations } = crew(3, 5);
+  clock.advanceHours(8);
+  check('a crew can only eat what is aboard', rations.update() === 3 && player.rice === 0);
+}
+
+{
+  const { clock, player, wages } = payroll(100, 7);
+  clock.advanceHours(24);
+  check('every hand draws a wage', wages.update() === 7 && player.money === 93);
+  clock.advanceHours(48);
+  check('wages scale with days and crew alike', wages.update() === 14 && player.money === 79);
 }
 
 console.log(`\n${passed} checks passed`);
