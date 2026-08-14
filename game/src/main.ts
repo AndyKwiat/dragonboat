@@ -13,6 +13,7 @@ import { loadDmap } from './dmap';
 import { createHud } from './hud';
 import { createInput } from './input';
 import { createMinimap } from './minimap';
+import { createPlayer } from './player';
 import { createTerrainMesh, gridOpacityFor, worldSize } from './terrain';
 
 const map = await loadDmap(CONFIG.mapUrl);
@@ -81,13 +82,14 @@ active.enable({
   zoom: minZoomFor(view, worldW, worldH),
 });
 
-const hud = createHud(worldW, worldH);
+const player = createPlayer();
+const hud = createHud(worldW, worldH, player);
 document.body.appendChild(hud.element);
 const minimap = createMinimap(map);
 document.body.appendChild(minimap.element);
 const cityLabels = createCityLabels(CITIES);
 document.body.appendChild(cityLabels.element);
-const cityPopup = createCityPopup();
+const cityPopup = createCityPopup(player);
 document.body.appendChild(cityPopup.element);
 
 let lastTime = performance.now();

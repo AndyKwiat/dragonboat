@@ -9,12 +9,15 @@ npm install
 npm run dev        # vite dev server at http://localhost:5173
 npm run build      # tsc --noEmit + vite build
 npx tsc --noEmit   # typecheck only
-npm run cities     # regenerate cities.json from public/map.dmap
-npm run test:cities  # check cities.json against the map
+npm run cities        # regenerate cities.json from public/map.dmap (+ products)
+npm run city-products # re-deal just the per-city product lists
+npm run test:cities   # check cities.json against the map
+npm run test:products # check products.json + each city's market
 ```
 
-No general test suite. `npm run test:cities` is the only automated check;
-otherwise verify changes by running the app and looking at it.
+No general test suite. `npm run test:cities` and `npm run test:products` are
+the only automated checks; otherwise verify changes by running the app and
+looking at it.
 
 ## The world
 
@@ -43,6 +46,33 @@ runs reproducible. Regenerate after re-exporting the map — the file is not
 derived at runtime. `scripts/test-cities.js` re-derives the blocks from the
 .dmap and checks coverage, unique names, the 6:3:1 ratio, and that the large
 cities beat a random assignment's spread.
+
+Each city also carries a `products` list (product ids only) filled in by
+`scripts/generate-city-products.js` — a separate pass because it depends on
+`products.json`, not the map. `npm run cities` runs both in order; running the
+map generator alone would drop the product lists. Size decides the stock:
+large = every product, medium = the six staples + one luxury, small = rice +
+one other staple.
+
+## Products and markets
+
+`products.json` (committed, bundled like cities.json) is the whole catalogue:
+`id` (ALL_CAPS, human readable), `name`, `description`, `basePrice`. Tweak it
+freely — nothing about a product is hardcoded. **Prices are never stored.**
+`src/market.ts` derives them: the price a city *pays* is
+`ceil(basePrice * CONFIG.market.sizeMultiplier[size])` (1x / 2x / 3x for
+small / medium / large) and the price it *charges* is that times
+`CONFIG.market.buyMarkup` (1.2), rounded up again. Every price is an integer;
+rounding is always up, on both sides.
+
+`src/player.ts` holds the run state: `money` (may go negative) and an
+inventory Map (a count never goes below 0 — `sell()` caps at what's held and
+returns how many actually moved). Nothing persists across a reload; the run
+starts at `CONFIG.player.startingMoney`. The HUD shows money/cargo, and
+`src/cityPopup.ts` renders the market: one row per product the city trades,
+with Buy 1/10 and Sell 1/10 (sell greys out when the hold is short). The
+player can only sell what the city stocks, since only stocked products get a
+row.
 
 ## Architecture
 
@@ -82,8 +112,13 @@ src/cityLabels.ts DOM overlay: one absolutely-positioned label per on-screen
                   so map dragging still works — hover/click hit-testing is
                   done in JS against city screen positions (circle around the
                   centre OR the padded label box, nearest wins).
-src/cityPopup.ts  Closable panel for the clicked city. Add a row to its
-                  FIELDS list to show more about a city.
+src/cityPopup.ts  Closable, screen-centred panel for the clicked city: facts
+                  (add a row to its FIELDS list) then the Market section built
+                  from marketFor(city), with buy/sell buttons wired to the
+                  Player. Sized from CONFIG.cityPopup.
+src/products.ts   Loads products.json as typed Product[] + productById().
+src/market.ts     Pure price rules: sellPriceFor / buyPriceFor / marketFor.
+src/player.ts     Money + inventory, with the buy/sell invariants.
 src/hud.ts        Top-right overlay: view TL/BR corners (clamped to world
                   bounds), zoom, and active camera mode. Plain DOM, updates
                   via textContent diff.

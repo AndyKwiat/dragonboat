@@ -57,6 +57,26 @@ export const CONFIG = {
     hitRadiusPx: 26,    // forgiving click radius around the city centre
     hitPadPx: 10,       // ...plus this much slack around the label text itself
   },
+  // Prices are all derived from products.json basePrice — see src/market.ts.
+  market: {
+    // Multiplier on a product's base price, by city size. The result is the
+    // price the city PAYS the player (rounded up); buying costs buyMarkup more.
+    sizeMultiplier: { small: 1, medium: 2, large: 3 },
+    buyMarkup: 1.2,
+  },
+  player: {
+    startingMoney: 500,
+  },
+  // The city panel: centred, sized as a fraction of the window but never
+  // narrower/shorter than the min, nor bigger than the max.
+  cityPopup: {
+    widthVw: 62,
+    minWidthPx: 520,
+    maxWidthPx: 900,
+    maxHeightVh: 80,
+    fontPx: 16,        // market rows
+    titleFontPx: 28,
+  },
   minimap: {
     sizePx: 240,
     margin: 12,

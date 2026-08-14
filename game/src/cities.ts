@@ -3,6 +3,7 @@
 // The JSON is bundled at build time, so no fetch and no load ordering.
 
 import citiesJson from '../cities.json';
+import type { ProductId } from './products';
 
 export type CitySize = 'small' | 'medium' | 'large';
 
@@ -10,6 +11,9 @@ export interface City {
   name: string;
   location: { x: number; y: number }; // world units, y-down from the top-left
   size: CitySize;
+  /** Product ids this city trades (see products.json). Prices are derived
+   *  from the size in src/market.ts, never stored here. */
+  products: ProductId[];
 }
 
 export const CITIES: City[] = (citiesJson as { cities: City[] }).cities;

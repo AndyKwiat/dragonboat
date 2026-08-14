@@ -1,11 +1,18 @@
 import type { City } from './cities';
+import { CONFIG } from './config';
+import { marketFor } from './market';
+import type { Player } from './player';
 
-// Closable panel describing the clicked city. To show more about a city
-// later, add an entry to FIELDS — the panel renders whatever is in the list.
+// Closable, screen-centred panel describing the clicked city: a few facts, then
+// the city's market — one row per product it trades, with buy/sell buttons.
+// To show more about a city, add an entry to FIELDS.
 const FIELDS: Array<{ label: string; value(city: City): string }> = [
   { label: 'coords', value: (c) => `${Math.round(c.location.x)}, ${Math.round(c.location.y)}` },
   { label: 'size', value: (c) => c.size },
 ];
+
+// Quantities offered per row, for each direction.
+const STEPS = [1, 10];
 
 export interface CityPopup {
   element: HTMLDivElement;
@@ -14,48 +21,170 @@ export interface CityPopup {
   isOpen(): boolean;
 }
 
-export function createCityPopup(): CityPopup {
+export function createCityPopup(player: Player): CityPopup {
+  const cfg = CONFIG.cityPopup;
+
   const element = document.createElement('div');
   element.style.cssText = [
-    'position: fixed', 'top: 8px', 'left: 8px',
-    'min-width: 180px',
-    'font: 12px monospace', 'color: #ddd',
-    'background: rgba(0, 0, 0, 0.8)', 'border: 1px solid #555', 'border-radius: 4px',
-    'padding: 8px 10px', 'z-index: 20', 'display: none',
+    'position: fixed', 'top: 50%', 'left: 50%', 'transform: translate(-50%, -50%)',
+    `width: ${cfg.widthVw}vw`, `min-width: ${cfg.minWidthPx}px`, `max-width: ${cfg.maxWidthPx}px`,
+    `max-height: ${cfg.maxHeightVh}vh`, 'overflow-y: auto',
+    `font: ${cfg.fontPx}px system-ui, sans-serif`, 'color: #ddd',
+    'background: rgba(12, 12, 14, 0.94)', 'border: 1px solid #666', 'border-radius: 8px',
+    'box-shadow: 0 12px 40px rgba(0, 0, 0, 0.6)',
+    'padding: 20px 24px', 'z-index: 20', 'display: none',
   ].join(';');
 
   const header = document.createElement('div');
-  header.style.cssText = 'display: flex; align-items: baseline; gap: 12px; margin-bottom: 6px';
+  header.style.cssText = 'display: flex; align-items: baseline; gap: 16px; margin-bottom: 10px';
 
   const title = document.createElement('div');
-  title.style.cssText = 'font: 600 14px system-ui, sans-serif; color: #fff; flex: 1';
+  title.style.cssText = `font: 700 ${cfg.titleFontPx}px system-ui, sans-serif; color: #fff; flex: 1`;
 
   const close = document.createElement('button');
   close.textContent = '✕';
   close.title = 'Close (Esc)';
   close.style.cssText = [
     'all: unset', 'cursor: pointer', 'color: #aaa',
-    'font: 12px monospace', 'line-height: 1', 'padding: 2px 4px',
+    'font: 18px monospace', 'line-height: 1', 'padding: 4px 6px',
   ].join(';');
   close.addEventListener('click', () => hide());
   close.addEventListener('pointerdown', (e) => e.stopPropagation());
 
   header.append(title, close);
 
-  const body = document.createElement('div');
-  body.style.cssText = 'white-space: pre; line-height: 1.5';
+  const facts = document.createElement('div');
+  facts.style.cssText = `white-space: pre; line-height: 1.6; font: ${cfg.fontPx - 2}px monospace; color: #bbb`;
 
-  element.append(header, body);
+  const marketHeading = document.createElement('div');
+  marketHeading.textContent = 'Market';
+  marketHeading.style.cssText = [
+    'margin: 18px 0 8px', 'padding-bottom: 6px', 'border-bottom: 1px solid #444',
+    `font: 600 ${cfg.fontPx + 4}px system-ui, sans-serif`, 'color: #fff',
+  ].join(';');
+
+  const market = document.createElement('div');
+
+  const purse = document.createElement('div');
+  purse.style.cssText = [
+    'margin-top: 16px', 'padding-top: 10px', 'border-top: 1px solid #444',
+    'display: flex', 'gap: 24px', `font: 600 ${cfg.fontPx}px monospace`,
+  ].join(';');
+
+  element.append(header, facts, marketHeading, market, purse);
+
+  let current: City | null = null;
+  // Per-row refreshers, rebuilt whenever a different city is shown.
+  let refreshers: Array<() => void> = [];
+
+  function button(label: string, onClick: () => void): HTMLButtonElement {
+    const b = document.createElement('button');
+    b.textContent = label;
+    b.style.cssText = [
+      'all: unset', 'cursor: pointer', 'box-sizing: border-box',
+      'padding: 4px 10px', 'min-width: 58px', 'text-align: center',
+      'border: 1px solid #666', 'border-radius: 4px', 'background: #23262c',
+      `font: ${cfg.fontPx - 2}px system-ui, sans-serif`, 'color: #eee',
+    ].join(';');
+    b.addEventListener('pointerdown', (e) => e.stopPropagation());
+    b.addEventListener('click', () => {
+      if (b.getAttribute('aria-disabled') === 'true') return;
+      onClick();
+      refresh();
+    });
+    return b;
+  }
+
+  function setEnabled(b: HTMLButtonElement, enabled: boolean) {
+    b.setAttribute('aria-disabled', enabled ? 'false' : 'true');
+    b.style.opacity = enabled ? '1' : '0.35';
+    b.style.cursor = enabled ? 'pointer' : 'default';
+  }
+
+  function refresh() {
+    for (const r of refreshers) r();
+    purse.textContent = `money ${player.money}    cargo ${player.totalUnits()} units`;
+    purse.style.color = player.money < 0 ? '#ff8b7a' : '#ffd166';
+  }
+
+  function buildMarket(city: City) {
+    market.textContent = '';
+    refreshers = [];
+
+    for (const quote of marketFor(city)) {
+      const { product, buyPrice, sellPrice } = quote;
+
+      const row = document.createElement('div');
+      row.style.cssText = [
+        'display: flex', 'align-items: center', 'gap: 14px',
+        'padding: 8px 0', 'border-bottom: 1px solid #2a2a2e',
+      ].join(';');
+
+      const info = document.createElement('div');
+      info.style.cssText = 'flex: 1; min-width: 0';
+      const name = document.createElement('div');
+      name.textContent = product.name;
+      name.style.cssText = `font: 600 ${cfg.fontPx}px system-ui, sans-serif; color: #fff`;
+      const desc = document.createElement('div');
+      desc.textContent = product.description;
+      desc.style.cssText = `font: ${cfg.fontPx - 3}px system-ui, sans-serif; color: #999`;
+      info.append(name, desc);
+
+      const prices = document.createElement('div');
+      prices.textContent = `buy ${buyPrice}\nsell ${sellPrice}`;
+      prices.style.cssText = `white-space: pre; text-align: right; font: ${cfg.fontPx - 2}px monospace; color: #cfd6e4`;
+
+      const held = document.createElement('div');
+      held.style.cssText = `min-width: 72px; text-align: right; font: ${cfg.fontPx - 1}px monospace; color: #9fe8a0`;
+
+      const actions = document.createElement('div');
+      actions.style.cssText = 'display: flex; gap: 6px';
+      const sellButtons: HTMLButtonElement[] = [];
+      for (const n of STEPS) {
+        actions.appendChild(button(`Buy ${n}`, () => player.buy(product.id, n, buyPrice)));
+      }
+      for (const n of STEPS) {
+        const b = button(`Sell ${n}`, () => player.sell(product.id, n, sellPrice));
+        sellButtons.push(b);
+        actions.appendChild(b);
+      }
+
+      row.append(info, prices, held, actions);
+      market.appendChild(row);
+
+      refreshers.push(() => {
+        const have = player.held(product.id);
+        held.textContent = `have ${have}`;
+        held.style.color = have > 0 ? '#9fe8a0' : '#666';
+        // Selling is capped by the hold; buying is always allowed (money may go
+        // negative), so only the sell side ever greys out.
+        STEPS.forEach((n, i) => setEnabled(sellButtons[i]!, have >= n));
+      });
+    }
+
+    if (!refreshers.length) {
+      const empty = document.createElement('div');
+      empty.textContent = 'This city trades nothing.';
+      empty.style.cssText = 'color: #888; padding: 8px 0';
+      market.appendChild(empty);
+    }
+  }
 
   function hide() {
     element.style.display = 'none';
+    current = null;
   }
 
   return {
     element,
     show(city) {
       title.textContent = city.name;
-      body.textContent = FIELDS.map((f) => `${f.label.padEnd(7)}${f.value(city)}`).join('\n');
+      facts.textContent = FIELDS.map((f) => `${f.label.padEnd(8)}${f.value(city)}`).join('\n');
+      if (city !== current) {
+        current = city;
+        buildMarket(city);
+      }
+      refresh();
       element.style.display = 'block';
     },
     hide,
