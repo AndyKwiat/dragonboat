@@ -71,6 +71,8 @@ export const CONFIG = {
   },
   player: {
     startingMoney: 500,
+    // What's in the hold at the start — enough rice for a few days' sailing.
+    startingInventory: { RICE: 20 } as Record<string, number>,
   },
   // Game time only moves when the player acts — see src/gameTime.ts.
   gameTime: {
@@ -86,6 +88,13 @@ export const CONFIG = {
     dayColor: '#f2e9d8',
     nightColor: '#4a5568',
     fontPx: 20,
+  },
+  // The crew eats rice out of the hold as game time passes (src/rations.ts).
+  rations: {
+    productId: 'RICE',
+    hoursPerUnit: 8,     // game hours per unit eaten
+    lowUnits: 10,        // below this the readout turns red
+    lowColor: '#ff6b6b',
   },
   // The city panel: centred, sized as a fraction of the window but never
   // narrower/shorter than the min, nor bigger than the max.

@@ -16,6 +16,7 @@ import { createGameTime } from './gameTime';
 import { createInput } from './input';
 import { createMinimap } from './minimap';
 import { createPlayer } from './player';
+import { createRations } from './rations';
 import { createTerrainMesh, gridOpacityFor, worldSize } from './terrain';
 
 const map = await loadDmap(CONFIG.mapUrl);
@@ -88,7 +89,8 @@ const player = createPlayer();
 const time = createGameTime(CONFIG.gameTime);
 const hud = createHud(worldW, worldH, player);
 document.body.appendChild(hud.element);
-const clock = createClock(time);
+const rations = createRations(player, time, CONFIG.rations);
+const clock = createClock(time, rations);
 document.body.appendChild(clock.element);
 const minimap = createMinimap(map);
 document.body.appendChild(minimap.element);
@@ -142,6 +144,9 @@ function frame(now: number) {
   }
   if (escaped) cityPopup.hide();
 
+  // The crew eats on game time, so this only bites while sailing or trading.
+  // An open market panel has to be told, or it shows a stale hold.
+  if (rations.update() && cityPopup.isOpen()) cityPopup.refresh();
   clock.update();
   minimap.update(state, view);
   hud.update(state, view, minZoomFor(view, worldW, worldH), active.name);

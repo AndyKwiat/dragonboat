@@ -15,14 +15,15 @@ npm run price-overrides # re-deal just the local price quirks
 npm run resize-cities   # re-cut the map's city blocks to match city sizes
 npm run test:cities   # check cities.json against the map
 npm run test:products # check products.json + each city's market
-npm run test:time     # check the game-time calendar (runs src/gameTime.ts)
+npm run test:time     # check the calendar + crew rations (runs the real src/)
 ```
 
 No general test suite. `npm run test:cities`, `test:products` and `test:time`
 are the only automated checks; otherwise verify changes by running the app and
-looking at it. `test:time` imports `src/gameTime.ts` directly (Node strips the
-types) — that only works because that module imports nothing, since Node can't
-resolve the extensionless imports the rest of `src/` uses.
+looking at it. `test:time` imports `src/gameTime.ts` and `src/rations.ts`
+directly (Node strips the types) — that only works because those modules have
+no value imports, since Node can't resolve the extensionless imports the rest
+of `src/` uses. Keep them that way, or the test stops running.
 
 ## The world
 
@@ -109,6 +110,18 @@ accumulate internally; only whole ones are displayed. `src/clock.ts` is the
 top-left readout, dimmed to `nightColor` between `nightStartHour` (20:00) and
 `nightEndHour` (05:00) — the night test wraps past midnight, so it's an OR.
 
+### Rice is fuel
+
+`src/rations.ts`: the crew eats one unit of `CONFIG.rations.productId` per
+`hoursPerUnit` (8) of **game** time, so rice is cargo and fuel at once. It runs
+off the clock, not real time, and `update()` catches up on every ration that
+came due — one long stretch on the throttle eats the right amount, not one
+unit. The hold stops at 0 (`player.consume` caps at what's held) and missed
+rations are *not* owed later: restocking starts a fresh 8-hour clock. The count
+sits under the date in the clock overlay and turns `lowColor` below `lowUnits`
+(10), which outranks the night dimming. The player starts with
+`CONFIG.player.startingInventory` (20 rice) so the warning means something.
+
 `src/player.ts` holds the run state: `money` (may go negative) and an
 inventory Map (a count never goes below 0 — `sell()` caps at what's held and
 returns how many actually moved). Nothing persists across a reload; the run
@@ -162,7 +175,9 @@ src/cityPopup.ts  Closable, screen-centred panel for the clicked city: facts
                   Player. Sized from CONFIG.cityPopup.
 src/gameTime.ts   The month/day/hour clock. Pure and dependency-free (its
                   settings are passed in) so the test script can run it.
-src/clock.ts      Top-left date/time overlay; dims at night.
+src/rations.ts    The crew's rice consumption, driven by the clock. Pure and
+                  dependency-free, same as gameTime.ts.
+src/clock.ts      Top-left date/time overlay + rice left; dims at night.
 src/products.ts   Loads products.json as typed Product[] + productById().
 src/market.ts     Pure price rules: sellPriceFor / buyPriceFor / marketFor.
 src/player.ts     Money + inventory, with the buy/sell invariants.

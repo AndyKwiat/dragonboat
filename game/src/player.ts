@@ -14,13 +14,21 @@ export interface Player {
   held(id: ProductId): number;
   /** Buys `qty` at `unitPrice`; returns the number actually bought. */
   buy(id: ProductId, qty: number, unitPrice: number): number;
+  /** Removes up to `qty` from the hold for nothing (crew rations, spoilage);
+   *  returns the number actually removed. Never takes the count below 0. */
+  consume(id: ProductId, qty: number): number;
   /** Sells up to `qty`, limited by what's held; returns the number sold. */
   sell(id: ProductId, qty: number, unitPrice: number): number;
   totalUnits(): number;
 }
 
-export function createPlayer(startingMoney = CONFIG.player.startingMoney): Player {
-  const inventory = new Map<ProductId, number>();
+export function createPlayer(
+  startingMoney = CONFIG.player.startingMoney,
+  startingInventory: Record<ProductId, number> = CONFIG.player.startingInventory,
+): Player {
+  const inventory = new Map<ProductId, number>(
+    Object.entries(startingInventory).filter(([, n]) => n > 0),
+  );
   const held = (id: ProductId) => inventory.get(id) ?? 0;
 
   return {
@@ -34,13 +42,17 @@ export function createPlayer(startingMoney = CONFIG.player.startingMoney): Playe
       inventory.set(id, held(id) + n);
       return n;
     },
-    sell(id, qty, unitPrice) {
+    consume(id, qty) {
       const n = Math.min(Math.max(0, Math.floor(qty)), held(id));
       if (n === 0) return 0;
-      this.money += n * unitPrice;
       const left = held(id) - n;
       if (left === 0) inventory.delete(id);
       else inventory.set(id, left);
+      return n;
+    },
+    sell(id, qty, unitPrice) {
+      const n = this.consume(id, qty);
+      this.money += n * unitPrice;
       return n;
     },
     totalUnits() {

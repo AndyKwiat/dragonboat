@@ -20,6 +20,8 @@ export interface CityPopup {
   show(city: City): void;
   hide(): void;
   isOpen(): boolean;
+  /** Re-read the player's purse and hold (the crew eats between trades). */
+  refresh(): void;
 }
 
 export function createCityPopup(player: Player, time: GameTime): CityPopup {
@@ -205,5 +207,6 @@ export function createCityPopup(player: Player, time: GameTime): CityPopup {
     },
     hide,
     isOpen: () => element.style.display !== 'none',
+    refresh,
   };
 }
