@@ -11,7 +11,8 @@
     "price-overrides": "node scripts/generate-price-overrides.js",
     "test:cities": "node scripts/test-cities.js",
     "test:products": "node scripts/test-products.js",
-    "resize-cities": "node scripts/resize-city-blocks.js"
+    "resize-cities": "node scripts/resize-city-blocks.js",
+    "test:time": "node scripts/test-time.js"
   },
   "keywords": [],
   "author": "",

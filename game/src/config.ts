@@ -72,6 +72,21 @@ export const CONFIG = {
   player: {
     startingMoney: 500,
   },
+  // Game time only moves when the player acts — see src/gameTime.ts.
+  gameTime: {
+    startMonth: 1,
+    startDay: 1,
+    startHour: 8,
+    startMinute: 0,
+    hoursPerSecondSailing: 1,  // per real second holding W (forward only)
+    minutesPerTransaction: 10, // per market button press
+    // The clock reads dimmer between these hours (wraps past midnight).
+    nightStartHour: 20,
+    nightEndHour: 5,
+    dayColor: '#f2e9d8',
+    nightColor: '#4a5568',
+    fontPx: 20,
+  },
   // The city panel: centred, sized as a fraction of the window but never
   // narrower/shorter than the min, nor bigger than the max.
   cityPopup: {

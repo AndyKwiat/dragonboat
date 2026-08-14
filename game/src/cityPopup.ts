@@ -1,5 +1,6 @@
 import type { City } from './cities';
 import { CONFIG } from './config';
+import type { GameTime } from './gameTime';
 import { marketFor } from './market';
 import type { Player } from './player';
 
@@ -21,7 +22,7 @@ export interface CityPopup {
   isOpen(): boolean;
 }
 
-export function createCityPopup(player: Player): CityPopup {
+export function createCityPopup(player: Player, time: GameTime): CityPopup {
   const cfg = CONFIG.cityPopup;
 
   const element = document.createElement('div');
@@ -90,6 +91,9 @@ export function createCityPopup(player: Player): CityPopup {
     b.addEventListener('click', () => {
       if (b.getAttribute('aria-disabled') === 'true') return;
       onClick();
+      // Haggling takes time: every market button that actually does something
+      // costs the player ten minutes of the day.
+      time.advance(CONFIG.gameTime.minutesPerTransaction);
       refresh();
     });
     return b;

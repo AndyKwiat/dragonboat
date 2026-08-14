@@ -11,6 +11,8 @@ import { createCityPopup } from './cityPopup';
 import { CONFIG } from './config';
 import { loadDmap } from './dmap';
 import { createHud } from './hud';
+import { createClock } from './clock';
+import { createGameTime } from './gameTime';
 import { createInput } from './input';
 import { createMinimap } from './minimap';
 import { createPlayer } from './player';
@@ -83,13 +85,16 @@ active.enable({
 });
 
 const player = createPlayer();
+const time = createGameTime(CONFIG.gameTime);
 const hud = createHud(worldW, worldH, player);
 document.body.appendChild(hud.element);
+const clock = createClock(time);
+document.body.appendChild(clock.element);
 const minimap = createMinimap(map);
 document.body.appendChild(minimap.element);
 const cityLabels = createCityLabels(CITIES);
 document.body.appendChild(cityLabels.element);
-const cityPopup = createCityPopup(player);
+const cityPopup = createCityPopup(player, time);
 document.body.appendChild(cityPopup.element);
 
 let lastTime = performance.now();
@@ -111,6 +116,12 @@ function frame(now: number) {
   if (active !== freeCamera) {
     boat.maxSpeedScale = active === dynamicCamera ? dynamicCamera.speedScale() : 1;
     boat.update(dt, input);
+    // Sailing forward is what burns the day: an hour of game time per real
+    // second on the throttle. Nothing else here moves the clock — reversing,
+    // drifting and free-camera panning are all free.
+    if (input.keys.has('KeyW') || input.keys.has('ArrowUp')) {
+      time.advanceHours(CONFIG.gameTime.hoursPerSecondSailing * dt);
+    }
   }
 
   active.update(dt, input, view);
@@ -131,6 +142,7 @@ function frame(now: number) {
   }
   if (escaped) cityPopup.hide();
 
+  clock.update();
   minimap.update(state, view);
   hud.update(state, view, minZoomFor(view, worldW, worldH), active.name);
 
