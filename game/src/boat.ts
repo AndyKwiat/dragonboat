@@ -12,8 +12,6 @@ export interface Boat {
   y: number;
   heading: number; // radians
   speed: number;   // world units/sec, signed (negative = reversing)
-  /** Multiplier on max speed, set by the active camera mode (1 = normal). */
-  maxSpeedScale: number;
   update(dt: number, input: InputState): void;
   syncMesh(): void;
 }
@@ -31,7 +29,6 @@ export function createBoat(): Boat {
     y: c.startY,
     heading: c.startHeading,
     speed: 0,
-    maxSpeedScale: 1,
 
     update(dt, input) {
       const forward = input.keys.has('KeyW') || input.keys.has('ArrowUp');
@@ -46,8 +43,7 @@ export function createBoat(): Boat {
         const drop = c.friction * dt;
         boat.speed = Math.abs(boat.speed) <= drop ? 0 : boat.speed - Math.sign(boat.speed) * drop;
       }
-      const scale = boat.maxSpeedScale;
-      boat.speed = Math.min(Math.max(boat.speed, -c.maxReverseSpeed * scale), c.maxSpeed * scale);
+      boat.speed = Math.min(Math.max(boat.speed, -c.maxReverseSpeed), c.maxSpeed);
 
       // Steering authority scales with how fast we're moving: a dead boat
       // doesn't spin in place.
