@@ -66,7 +66,7 @@ export const CONFIG = {
     startDay: 1,
     startHour: 8,
     startMinute: 0,
-    hoursPerSecondSailing: 1,  // per real second holding W (forward only)
+    hoursPerSecondSailing: 1,  // per real second with the boat under way
     minutesPerTransaction: 10, // per market button press
     // The clock reads dimmer between these hours (wraps past midnight).
     nightStartHour: 20,

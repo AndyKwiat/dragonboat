@@ -115,10 +115,10 @@ function frame(now: number) {
   // belongs to the camera instead.
   if (active !== freeCamera) {
     boat.update(dt, input);
-    // Sailing forward is what burns the day: an hour of game time per real
-    // second on the throttle. Nothing else here moves the clock — reversing,
-    // drifting and free-camera panning are all free.
-    if (input.keys.has('KeyW') || input.keys.has('ArrowUp')) {
+    // Being under way is what burns the day: an hour of game time per real
+    // second of movement, whichever direction, including coasting to a stop.
+    // A boat sitting still costs nothing, and free-camera panning is free.
+    if (boat.speed !== 0) {
       time.advanceHours(CONFIG.gameTime.hoursPerSecondSailing * dt);
     }
   }

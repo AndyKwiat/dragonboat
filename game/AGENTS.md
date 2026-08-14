@@ -102,9 +102,10 @@ percentage next to the name.
 
 `src/gameTime.ts` is the clock: 30-day months counting up forever (no years)
 and a 24-hour time. **It only moves when the player acts** — nothing ticks it
-per frame. Sailing forward costs `hoursPerSecondSailing` (1 hour) per real
-second holding W/↑ while the boat is drivable (`main.ts`, so free-camera
-panning is free, as are reversing and drifting), and every market button that
+per frame. Being under way costs `hoursPerSecondSailing` (1 hour) per real
+second while `boat.speed !== 0` and the boat is drivable (`main.ts`) — any
+direction, coasting included, so the clock keeps running until the boat has
+fully stopped, and free-camera panning is free. Every market button that
 actually does something costs `minutesPerTransaction` (10). Fractional minutes
 accumulate internally; only whole ones are displayed. `src/clock.ts` is the
 top-left readout, dimmed to `nightColor` between `nightStartHour` (20:00) and
