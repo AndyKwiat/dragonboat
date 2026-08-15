@@ -195,19 +195,23 @@ function payroll(money, hands = 1) {
 // --- crew size ------------------------------------------------------------
 
 // mirrors CONFIG.crew
-const CREW = { min: 1, max: 20, speedAtMin: 1, speedAtMax: 2, cargoPerCrew: 100 };
+const CREW = {
+  min: 1, max: 20, speedAtMin: 1, speedAtMax: 2, speedFullCrew: 10, cargoPerCrew: 100,
+};
 
 check('crew clamps to 1..20',
   clampCrew(0, CREW) === 1 && clampCrew(-5, CREW) === 1 && clampCrew(99, CREW) === 20);
 check('crew is a whole number', clampCrew(3.6, CREW) === 4);
 check('one hand is normal speed', crewSpeedMultiplier(1, CREW) === 1);
-check('a full crew is double speed', crewSpeedMultiplier(20, CREW) === 2);
-check('speed interpolates in between',
-  Math.abs(crewSpeedMultiplier(10, CREW) - (1 + 9 / 19)) < 1e-12,
-  `${crewSpeedMultiplier(10, CREW)}`);
-check('speed is monotonic in crew size',
-  Array.from({ length: 19 }, (_, i) => i + 1)
+check('ten hands is double speed', crewSpeedMultiplier(10, CREW) === 2);
+check('speed interpolates up to ten',
+  Math.abs(crewSpeedMultiplier(4, CREW) - (1 + 3 / 9)) < 1e-12,
+  `${crewSpeedMultiplier(4, CREW)}`);
+check('speed rises with every hand up to ten',
+  Array.from({ length: 9 }, (_, i) => i + 1)
     .every((n) => crewSpeedMultiplier(n + 1, CREW) > crewSpeedMultiplier(n, CREW)));
+check('past ten hands the speed is flat',
+  [11, 15, 20].every((n) => crewSpeedMultiplier(n, CREW) === 2));
 check('an out-of-range crew still gives an in-range multiplier',
   crewSpeedMultiplier(0, CREW) === 1 && crewSpeedMultiplier(50, CREW) === 2);
 

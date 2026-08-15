@@ -123,9 +123,10 @@ the market's ten-minutes-per-click rule (`button(..., { costsTime: false })`).
 `src/crew.ts` is the pure maths:
 
 - `crewSpeedMultiplier` runs straight from `speedAtMin` (1x) at a minimum crew
-  to `speedAtMax` (2x) at a full one. `main.ts` feeds it into
-  `boat.maxSpeedScale` every frame, which scales the boat's forward top speed
-  only — reversing is unaffected.
+  to `speedAtMax` (2x) at `speedFullCrew` (10), then stays flat — hands past
+  ten are for the cargo they carry, not the pace they set. `main.ts` feeds it
+  into `boat.maxSpeedScale` every frame, which scales the boat's forward top
+  speed only — reversing is unaffected.
 - `cargoCapacity` is `crew * cargoPerCrew` (100), so the hold runs 100 units at
   one hand to 2000 at twenty. `player.buy()` caps at `cargoSpace()` — a partial
   buy is fine, so Buy 10 with 3 spaces buys 3, and the Buy buttons only grey out

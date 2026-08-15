@@ -14,8 +14,8 @@ export const CONFIG = {
     color: 0x444444,
   },
   boat: {
-    startX: 12445,
-    startY: 18727,
+    startX: 11301,
+    startY: 18085,
     startHeading: -Math.PI / 2, // pointing "up" the screen (world -y)
     length: 10,                 // world units along the heading
     width: 4,
@@ -81,7 +81,8 @@ export const CONFIG = {
     min: 1,
     max: 20,
     speedAtMin: 1,       // boat.maxSpeed multiplier with a minimum crew
-    speedAtMax: 2,       // ...and with a full one; linear in between
+    speedAtMax: 2,       // ...and at speedFullCrew; linear in between
+    speedFullCrew: 10,   // speed tops out here; more hands only carry cargo
     cargoPerCrew: 100,   // hold space each crew member brings
   },
   // Keeping a crew costs rice and coin as game time passes (src/upkeep.ts).
