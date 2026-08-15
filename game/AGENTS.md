@@ -106,8 +106,22 @@ and a 24-hour time. **It only moves when the player acts** — nothing ticks it
 per frame. Being under way costs `hoursPerSecondSailing` (1 hour) per real
 second while `boat.speed !== 0` and the boat is drivable (`main.ts`) — any
 direction, coasting included, so the clock keeps running until the boat has
-fully stopped, and free-camera panning is free. Every market button that
-actually does something costs `minutesPerTransaction` (10). Fractional minutes
+fully stopped, and free-camera panning is free (the boat isn't driven there, so
+its stale speed must not count).
+
+Zoomed out, **the whole voyage runs in fast-forward**, since the same screen
+covers more world: `timeScaleForZoom` is `nearRate` (1x) at or above `nearZoom`
+(3.5 px/u), `farRate` at or below `farZoom` (0.37), linear in zoom in between
+and flat outside. `main.ts` multiplies the frame's `dt` by it once and uses
+that `gameDt` for **both** the boat's physics and the clock, so the boat really
+does cover more ground per real second and a day of sailing still buys a day of
+distance. Because one frame can then be a long stretch of game time, the boat
+is sub-stepped in slices of at most `CONFIG.boat.maxStepSeconds` (0.05) so
+turns don't cut corners. The scale is read from the live camera state, so it
+works in every mode, and the HUD shows the current rate.
+
+This applies to travel only — every market button still costs a flat
+`minutesPerTransaction` (10). Fractional minutes
 accumulate internally; only whole ones are displayed. `src/clock.ts` is the
 top-left readout, dimmed to `nightColor` between `nightStartHour` (20:00) and
 `nightEndHour` (05:00) — the night test wraps past midnight, so it's an OR.
@@ -218,8 +232,8 @@ src/products.ts   Loads products.json as typed Product[] + productById().
 src/market.ts     Pure price rules: sellPriceFor / buyPriceFor / marketFor.
 src/player.ts     Money + inventory, with the buy/sell invariants.
 src/hud.ts        Top-right overlay: view TL/BR corners (clamped to world
-                  bounds), zoom, and active camera mode. Plain DOM, updates
-                  via textContent diff.
+                  bounds), zoom, active camera mode and the zoom-driven sailing
+                  time rate. Plain DOM, updates via textContent diff.
 src/minimap.ts    Bottom-right <canvas> overlay: static map image cached in
                   an offscreen canvas once; each frame it blits the window
                   around the camera (minimap.worldFraction of the world,

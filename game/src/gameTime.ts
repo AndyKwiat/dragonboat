@@ -43,6 +43,24 @@ export function stampFor(totalMinutes: number): Stamp {
   };
 }
 
+export interface ZoomTimeScale {
+  nearZoom: number; // at or above this zoom (px per world unit), nearRate
+  farZoom: number;  // at or below it, farRate
+  nearRate: number;
+  farRate: number;
+}
+
+/**
+ * How fast sailing burns the clock at a given zoom. Zoomed out you cover more
+ * world per screen px, so the hours should go by faster; linear in zoom
+ * between the two anchors, flat outside them. Market transactions ignore this.
+ */
+export function timeScaleForZoom(zoom: number, s: ZoomTimeScale): number {
+  const span = s.nearZoom - s.farZoom;
+  const t = span <= 0 ? 0 : Math.min(Math.max((s.nearZoom - zoom) / span, 0), 1);
+  return s.nearRate + (s.farRate - s.nearRate) * t;
+}
+
 export interface GameTimeOptions {
   startMonth: number;
   startDay: number;

@@ -27,6 +27,7 @@ export const CONFIG = {
     turnRate: Math.PI * 0.75,   // rad/sec at or above turnFullSpeed
     turnFullSpeed: 20,          // speed at which steering is at full authority
     followZoom: 5,              // screen px per world unit when follow cam starts
+    maxStepSeconds: 0.05,       // physics sub-step cap when time is fast-forwarded
   },
   cities: {
     // Label font size (screen px) and color per city size.
@@ -68,6 +69,14 @@ export const CONFIG = {
     startMinute: 0,
     hoursPerSecondSailing: 1,  // per real second with the boat under way
     minutesPerTransaction: 10, // per market button press
+    // Sailing time runs faster when zoomed out, since the same screen covers
+    // more world. Applies to travel only, never to market transactions.
+    zoomTimeScale: {
+      nearZoom: 3.5,   // screen px per world unit: at or above, normal speed
+      farZoom: 0.37,   // at or below, farRate
+      nearRate: 1,
+      farRate: 2.5,
+    },
     // The clock reads dimmer between these hours (wraps past midnight).
     nightStartHour: 20,
     nightEndHour: 5,

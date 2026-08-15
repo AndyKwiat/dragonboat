@@ -12,7 +12,7 @@ import { CONFIG } from './config';
 import { loadDmap } from './dmap';
 import { createHud } from './hud';
 import { createClock } from './clock';
-import { createGameTime } from './gameTime';
+import { createGameTime, timeScaleForZoom } from './gameTime';
 import { createInput } from './input';
 import { createMinimap } from './minimap';
 import { createPlayer } from './player';
@@ -112,23 +112,39 @@ function frame(now: number) {
   const clicked = input.clicked;
   const escaped = input.pressed.has('Escape');
 
+  // Zoomed out the whole voyage runs in fast-forward: one real second buys
+  // more game seconds, so the boat covers more ground AND the clock moves on
+  // by the same factor. Read from the live camera state, so it works in any
+  // mode (one frame stale, which is invisible).
+  const timeScale = timeScaleForZoom(active.getState().zoom, CONFIG.gameTime.zoomTimeScale);
+  const gameDt = dt * timeScale;
+
   // The boat is drivable in every mode that follows it; in free mode WASD
   // belongs to the camera instead.
   if (active !== freeCamera) {
     // More hands, more speed.
     boat.maxSpeedScale = crewSpeedMultiplier(player.crew, CONFIG.crew);
-    boat.update(dt, input);
+    // Sub-stepped: at a big scale one frame is a long stretch of game time,
+    // and a single huge Euler step would cut corners on turns.
+    let remaining = gameDt;
+    while (remaining > 0) {
+      const step = Math.min(remaining, CONFIG.boat.maxStepSeconds);
+      boat.update(step, input);
+      remaining -= step;
+    }
     // Being under way is what burns the day: an hour of game time per real
-    // second of movement, whichever direction, including coasting to a stop.
-    // A boat sitting still costs nothing, and free-camera panning is free.
+    // second of movement, whichever direction, including coasting to a stop. A
+    // boat sitting still costs nothing, and free-camera panning is free (the
+    // boat isn't driven there, so its stale speed mustn't count).
     if (boat.speed !== 0) {
-      time.advanceHours(CONFIG.gameTime.hoursPerSecondSailing * dt);
+      time.advanceHours(CONFIG.gameTime.hoursPerSecondSailing * gameDt);
     }
   }
 
   active.update(dt, input, view);
   const state = active.getState();
   clampCamera(state, view, worldW, worldH);
+
   applyToCamera(state, view, camera);
   terrain.setGridOpacity(gridOpacityFor(state.zoom));
 
@@ -150,7 +166,7 @@ function frame(now: number) {
   if (charged && cityPopup.isOpen()) cityPopup.refresh();
   clock.update();
   minimap.update(state, view);
-  hud.update(state, view, minZoomFor(view, worldW, worldH), active.name);
+  hud.update(state, view, minZoomFor(view, worldW, worldH), active.name, timeScale);
 
   requestAnimationFrame(frame);
 }

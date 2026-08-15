@@ -7,7 +7,9 @@
 // drift from what the game shows. No test framework — throws on the first
 // failed assertion.
 
-import { createGameTime, formatStamp, isNightHour, stampFor } from '../src/gameTime.ts';
+import {
+  createGameTime, formatStamp, isNightHour, stampFor, timeScaleForZoom,
+} from '../src/gameTime.ts';
 import { cargoCapacity, clampCrew, crewChangeAllowed, crewSpeedMultiplier } from '../src/crew.ts';
 import { createRations, createWages } from '../src/upkeep.ts';
 
@@ -76,6 +78,25 @@ const idle = time.totalMinutes();
 time.advance(0);
 time.advance(-500);
 check('time never goes backwards', time.totalMinutes() === idle);
+
+// --- sailing time vs. zoom ------------------------------------------------
+
+// mirrors CONFIG.gameTime.zoomTimeScale
+const ZOOM_SCALE = { nearZoom: 3.5, farZoom: 0.37, nearRate: 1, farRate: 2.5 };
+
+check('zoomed in, sailing time is normal', timeScaleForZoom(3.5, ZOOM_SCALE) === 1);
+check('zoomed further in it stays normal',
+  [4, 10, 20].every((z) => timeScaleForZoom(z, ZOOM_SCALE) === 1));
+check('zoomed out, sailing time is 2.5x', timeScaleForZoom(0.37, ZOOM_SCALE) === 2.5);
+check('zoomed further out it stays 2.5x',
+  [0.2, 0.07, 0.001].every((z) => timeScaleForZoom(z, ZOOM_SCALE) === 2.5));
+check('the rate interpolates in between', (() => {
+  const mid = (3.5 + 0.37) / 2;
+  return Math.abs(timeScaleForZoom(mid, ZOOM_SCALE) - 1.75) < 1e-12;
+})(), `${timeScaleForZoom((3.5 + 0.37) / 2, ZOOM_SCALE)}`);
+check('the rate falls as you zoom in',
+  [0.5, 1, 2, 3].every((z, i, a) =>
+    i === 0 || timeScaleForZoom(z, ZOOM_SCALE) < timeScaleForZoom(a[i - 1], ZOOM_SCALE)));
 
 // --- crew rations ---------------------------------------------------------
 
