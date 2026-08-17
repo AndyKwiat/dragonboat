@@ -1,0 +1,381 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<title>Boat Combat Prototype</title>
+<style>
+  html, body { margin: 0; height: 100%; overflow: hidden; background: #0b1c2c; font-family: monospace; }
+  canvas { display: block; }
+  #hud {
+    position: fixed; top: 10px; left: 10px; color: #eee; background: rgba(0,0,0,0.5);
+    padding: 8px 10px; border-radius: 4px; font-size: 12px; line-height: 1.5; pointer-events: none; white-space: pre;
+  }
+  #hit {
+    position: fixed; top: 10px; left: 50%; transform: translateX(-50%); color: #ff4444;
+    font-size: 28px; font-weight: bold; opacity: 0; transition: opacity 0.15s; pointer-events: none;
+    text-shadow: 0 0 8px #000;
+  }
+  #panel {
+    position: fixed; top: 10px; right: 10px; color: #eee; background: rgba(0,0,0,0.6);
+    padding: 8px 10px; border-radius: 4px; font-size: 12px; width: 230px;
+  }
+  #panel h3 { margin: 4px 0; font-size: 12px; color: #9cf; }
+  #panel label { display: flex; justify-content: space-between; align-items: center; margin: 2px 0; }
+  #panel input[type=range] { width: 110px; }
+  #panel span.val { width: 40px; text-align: right; }
+</style>
+</head>
+<body>
+<div id="hud"></div>
+<div id="hit">HIT!</div>
+<div id="panel"></div>
+
+<script type="importmap">
+{ "imports": { "three": "https://unpkg.com/three@0.170.0/build/three.module.js" } }
+</script>
+<script type="module">
+import * as THREE from 'three';
+
+// ---------------------------------------------------------------------------
+// TWEAKABLES — edit here or use the on-screen sliders
+// ---------------------------------------------------------------------------
+const P = {
+  // player boat
+  maxSpeed:        18,   // units / s
+  acceleration:    8,    // units / s^2 (W)
+  brake:           10,   // units / s^2 (S, also reverse a bit)
+  reverseMax:      5,
+  drag:            1.2,  // 1/s, exponential slow-down when coasting
+  turnSpeed:       1.4,  // rad / s at full speed
+  turnMinFactor:   0.25, // fraction of turnSpeed available when stopped
+  // enemy
+  enemyRadius:     45,
+  enemySpeed:      10,
+  // cannon
+  shotSpeed:       40,   // muzzle velocity, units / s (arc height depends on range)
+  minArcAngle:     35,   // degrees; the arc will be at least this steep
+  gravity:         30,
+  reloadTime:      0.6,
+  ballRadius:      0.6,
+  // camera
+  camDist:         140,
+  camAngle:        45,   // degrees above horizon
+};
+
+// ---------------------------------------------------------------------------
+// Scene / camera / renderer
+// ---------------------------------------------------------------------------
+const scene = new THREE.Scene();
+scene.background = new THREE.Color(0x0b1c2c);
+scene.fog = new THREE.Fog(0x0b1c2c, 250, 500);
+
+const camera = new THREE.PerspectiveCamera(45, innerWidth / innerHeight, 1, 1000);
+function placeCamera() {
+  const a = THREE.MathUtils.degToRad(P.camAngle);
+  camera.position.set(0, Math.sin(a) * P.camDist, Math.cos(a) * P.camDist);
+  camera.lookAt(0, 0, 0);
+}
+placeCamera();
+
+const renderer = new THREE.WebGLRenderer({ antialias: true });
+renderer.setSize(innerWidth, innerHeight);
+renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+renderer.shadowMap.enabled = true;
+document.body.appendChild(renderer.domElement);
+
+addEventListener('resize', () => {
+  camera.aspect = innerWidth / innerHeight;
+  camera.updateProjectionMatrix();
+  renderer.setSize(innerWidth, innerHeight);
+});
+
+scene.add(new THREE.HemisphereLight(0xbbd6ff, 0x203040, 0.9));
+const sun = new THREE.DirectionalLight(0xffffff, 1.4);
+sun.position.set(60, 100, 40);
+sun.castShadow = true;
+sun.shadow.mapSize.set(2048, 2048);
+Object.assign(sun.shadow.camera, { left: -150, right: 150, top: 150, bottom: -150, far: 400 });
+scene.add(sun);
+
+// Water
+const water = new THREE.Mesh(
+  new THREE.PlaneGeometry(600, 600),
+  new THREE.MeshStandardMaterial({ color: 0x1f5c8a, roughness: 0.8 })
+);
+water.rotation.x = -Math.PI / 2;
+water.receiveShadow = true;
+scene.add(water);
+const grid = new THREE.GridHelper(600, 60, 0x2a6f9f, 0x2a6f9f);
+grid.position.y = 0.02;
+grid.material.opacity = 0.35; grid.material.transparent = true;
+scene.add(grid);
+
+// ---------------------------------------------------------------------------
+// Boats
+// ---------------------------------------------------------------------------
+// Boat local frame: forward = +Z, right = +X, up = +Y.
+function makeBoat(hullColor) {
+  const g = new THREE.Group();
+  const hull = new THREE.Mesh(
+    new THREE.BoxGeometry(4, 2, 12),
+    new THREE.MeshStandardMaterial({ color: hullColor })
+  );
+  hull.position.y = 1; hull.castShadow = true; hull.receiveShadow = true;
+  g.add(hull);
+  // bow (a wedge made from a rotated box, cheap and readable)
+  const bow = new THREE.Mesh(new THREE.BoxGeometry(2.83, 2, 2.83), hull.material);
+  bow.position.set(0, 1, 6); bow.rotation.y = Math.PI / 4; bow.castShadow = true;
+  g.add(bow);
+  // masts + sails
+  const mastMat = new THREE.MeshStandardMaterial({ color: 0x5a3a1a });
+  const sailMat = new THREE.MeshStandardMaterial({ color: 0xf4f0e6, side: THREE.DoubleSide });
+  for (const z of [-2.5, 2.5]) {
+    const mast = new THREE.Mesh(new THREE.BoxGeometry(0.3, 8, 0.3), mastMat);
+    mast.position.set(0, 6, z); mast.castShadow = true; g.add(mast);
+    // triangular sail
+    const shape = new THREE.Shape();
+    shape.moveTo(0, 0); shape.lineTo(3.5, 0); shape.lineTo(0, 5.5); shape.lineTo(0, 0);
+    const sail = new THREE.Mesh(new THREE.ShapeGeometry(shape), sailMat);
+    sail.position.set(0.2, 3.5, z); sail.rotation.y = Math.PI / 2; sail.castShadow = true;
+    g.add(sail);
+  }
+  g.userData.hull = hull;
+  g.userData.hullMat = hull.material;
+  scene.add(g);
+  return g;
+}
+
+// Player
+const player = makeBoat(0x8b5a2b);
+player.position.set(-70, 0, 20);
+player.rotation.y = Math.PI / 2;
+const playerState = { speed: 0 };
+
+// Cannon(s): each is a small box mounted on the boat; the ball spawns at its muzzle.
+// Add more entries here later (e.g. broadside cannons at x=±2).
+const cannons = [];
+function addCannon(boat, localPos, yaw = 0) {
+  const c = new THREE.Mesh(
+    new THREE.BoxGeometry(0.8, 0.8, 2),
+    new THREE.MeshStandardMaterial({ color: 0x222222 })
+  );
+  c.position.copy(localPos); c.rotation.y = yaw; c.castShadow = true;
+  boat.add(c);
+  cannons.push(c);
+  return c;
+}
+addCannon(player, new THREE.Vector3(0, 2.4, 6.5));   // front cannon
+
+// Enemy: circles around a centre
+const enemy = makeBoat(0x6b3a2b);
+const enemyState = { angle: 0, center: new THREE.Vector3(10, 0, 0) };
+const enemyBox = new THREE.Box3();
+
+// ---------------------------------------------------------------------------
+// Input
+// ---------------------------------------------------------------------------
+const keys = {};
+addEventListener('keydown', e => { keys[e.key.toLowerCase()] = true; });
+addEventListener('keyup',   e => { keys[e.key.toLowerCase()] = false; });
+
+const raycaster = new THREE.Raycaster();
+const seaPlane = new THREE.Plane(new THREE.Vector3(0, 1, 0), 0);
+const mouseNDC = new THREE.Vector2();
+const aimPoint = new THREE.Vector3();
+let aimValid = false;
+
+// aim reticle
+const reticle = new THREE.Mesh(
+  new THREE.RingGeometry(1.2, 1.6, 32),
+  new THREE.MeshBasicMaterial({ color: 0xffdd55, side: THREE.DoubleSide })
+);
+reticle.rotation.x = -Math.PI / 2; reticle.position.y = 0.05;
+scene.add(reticle);
+
+renderer.domElement.addEventListener('pointermove', e => {
+  mouseNDC.set((e.clientX / innerWidth) * 2 - 1, -(e.clientY / innerHeight) * 2 + 1);
+  raycaster.setFromCamera(mouseNDC, camera);
+  aimValid = raycaster.ray.intersectPlane(seaPlane, aimPoint) !== null;
+});
+let reload = 0;
+renderer.domElement.addEventListener('pointerdown', e => {
+  if (e.button !== 0 || !aimValid || reload > 0) return;
+  fire(cannons[0], aimPoint);
+  shots++;
+  reload = P.reloadTime;
+});
+
+// ---------------------------------------------------------------------------
+// Cannonballs
+// ---------------------------------------------------------------------------
+const balls = [];
+const ballGeo = new THREE.SphereGeometry(1, 12, 12);
+const ballMat = new THREE.MeshStandardMaterial({ color: 0x111111 });
+const splashMat = new THREE.MeshBasicMaterial({ color: 0xcfe8ff, transparent: true, opacity: 0.8 });
+const splashGeo = new THREE.RingGeometry(0.5, 1.5, 24);
+const effects = [];
+
+// Solve a ballistic arc from muzzle to target with fixed speed; if the target
+// is out of range at that speed, raise the speed so we still reach it.
+function fire(cannon, target) {
+  const start = new THREE.Vector3();
+  cannon.getWorldPosition(start);
+  const flat = new THREE.Vector3(target.x - start.x, 0, target.z - start.z);
+  const d = flat.length();
+  const h = target.y - start.y;
+  const g = P.gravity;
+  const minA = THREE.MathUtils.degToRad(P.minArcAngle);
+  let v = P.shotSpeed, angle;
+  // choose the high arc solution: angle = atan((v^2 + sqrt(v^4 - g(g d^2 + 2 h v^2))) / (g d))
+  const solve = (v) => {
+    const disc = v ** 4 - g * (g * d * d + 2 * h * v * v);
+    return disc < 0 ? null : Math.atan2(v * v + Math.sqrt(disc), g * d);
+  };
+  angle = solve(v);
+  while (angle === null) { v *= 1.1; angle = solve(v); }
+  if (angle < minA) {
+    // recompute speed for the fixed steep angle
+    angle = minA;
+    v = Math.sqrt((g * d * d) / (2 * Math.cos(angle) ** 2 * (d * Math.tan(angle) - h)));
+  }
+  flat.normalize();
+  const vel = new THREE.Vector3(flat.x * Math.cos(angle) * v, Math.sin(angle) * v, flat.z * Math.cos(angle) * v);
+  const mesh = new THREE.Mesh(ballGeo, ballMat);
+  mesh.scale.setScalar(P.ballRadius);
+  mesh.position.copy(start); mesh.castShadow = true;
+  scene.add(mesh);
+  balls.push({ mesh, vel, alive: true });
+  // muzzle flash
+  spawnEffect(start, 0xffaa33, 0.15, 1.5, false);
+}
+
+function spawnEffect(pos, color, life, size, flat = true) {
+  const m = new THREE.Mesh(flat ? splashGeo : ballGeo, new THREE.MeshBasicMaterial({ color, transparent: true, opacity: 0.9 }));
+  m.position.copy(pos);
+  if (flat) { m.rotation.x = -Math.PI / 2; m.position.y = 0.06; }
+  m.scale.setScalar(size);
+  scene.add(m);
+  effects.push({ mesh: m, life, maxLife: life, grow: flat });
+}
+
+let hitFlash = 0;
+const hitEl = document.getElementById('hit');
+function onHit(pos) {
+  hitFlash = 0.4;
+  hitEl.style.opacity = 1;
+  spawnEffect(pos, 0xff5522, 0.5, 2.5, false);
+  hits++;
+}
+let hits = 0, shots = 0;
+
+// ---------------------------------------------------------------------------
+// Update loop
+// ---------------------------------------------------------------------------
+const clock = new THREE.Clock();
+const hud = document.getElementById('hud');
+const fwd = new THREE.Vector3();
+
+function update(dt) {
+  // --- player movement
+  const s = playerState;
+  if (keys['w']) s.speed += P.acceleration * dt;
+  else if (keys['s']) s.speed -= P.brake * dt;
+  else s.speed -= s.speed * P.drag * dt;
+  s.speed = THREE.MathUtils.clamp(s.speed, -P.reverseMax, P.maxSpeed);
+  const speedFrac = Math.min(1, Math.abs(s.speed) / P.maxSpeed);
+  const turnRate = P.turnSpeed * (P.turnMinFactor + (1 - P.turnMinFactor) * speedFrac);
+  const dir = s.speed >= 0 ? 1 : -1;
+  if (keys['a']) player.rotation.y += turnRate * dt * dir;
+  if (keys['d']) player.rotation.y -= turnRate * dt * dir;
+  fwd.set(Math.sin(player.rotation.y), 0, Math.cos(player.rotation.y));
+  player.position.addScaledVector(fwd, s.speed * dt);
+  // little bob/roll for life
+  player.rotation.z = (keys['a'] ? -1 : keys['d'] ? 1 : 0) * 0.08 * speedFrac;
+  player.position.y = Math.sin(performance.now() * 0.002) * 0.15;
+
+  // --- enemy circling
+  const e = enemyState;
+  e.angle += (P.enemySpeed / P.enemyRadius) * dt;
+  enemy.position.set(e.center.x + Math.cos(e.angle) * P.enemyRadius, 0, e.center.z + Math.sin(e.angle) * P.enemyRadius);
+  // tangent direction: heading such that forward (+Z rotated by yaw) matches velocity
+  const vx = -Math.sin(e.angle), vz = Math.cos(e.angle);
+  enemy.rotation.y = Math.atan2(vx, vz);
+  enemyBox.setFromObject(enemy.userData.hull);
+  enemyBox.expandByScalar(0.5);
+
+  // --- balls
+  for (const b of balls) {
+    if (!b.alive) continue;
+    b.vel.y -= P.gravity * dt;
+    b.mesh.position.addScaledVector(b.vel, dt);
+    if (enemyBox.containsPoint(b.mesh.position)) {
+      b.alive = false; onHit(b.mesh.position);
+    } else if (b.mesh.position.y <= 0) {
+      b.alive = false; spawnEffect(b.mesh.position, 0xcfe8ff, 0.6, 1);
+    }
+    if (!b.alive) scene.remove(b.mesh);
+  }
+  for (let i = balls.length - 1; i >= 0; i--) if (!balls[i].alive) balls.splice(i, 1);
+
+  // --- effects
+  for (let i = effects.length - 1; i >= 0; i--) {
+    const f = effects[i]; f.life -= dt;
+    const t = 1 - f.life / f.maxLife;
+    f.mesh.material.opacity = 1 - t;
+    if (f.grow) f.mesh.scale.setScalar(1 + t * 4);
+    if (f.life <= 0) { scene.remove(f.mesh); f.mesh.material.dispose(); effects.splice(i, 1); }
+  }
+
+  // --- hit indicator: flash enemy hull red
+  if (hitFlash > 0) {
+    hitFlash -= dt;
+    enemy.userData.hullMat.emissive.setHex(0xff2200);
+    enemy.userData.hullMat.emissiveIntensity = Math.max(0, hitFlash / 0.4);
+    if (hitFlash <= 0) hitEl.style.opacity = 0;
+  }
+
+  reload = Math.max(0, reload - dt);
+  reticle.position.set(aimPoint.x, 0.05, aimPoint.z);
+  reticle.visible = aimValid;
+  reticle.material.color.setHex(reload > 0 ? 0x888888 : 0xffdd55);
+
+  hud.textContent =
+    `WASD move · click to fire (front cannon)\n` +
+    `speed ${s.speed.toFixed(1)} / ${P.maxSpeed}\n` +
+    `hits ${hits} / shots ${shots}`;
+}
+
+function loop() {
+  const dt = Math.min(clock.getDelta(), 0.05);
+  update(dt);
+  renderer.render(scene, camera);
+  requestAnimationFrame(loop);
+}
+loop();
+
+// ---------------------------------------------------------------------------
+// Tweak panel
+// ---------------------------------------------------------------------------
+const panel = document.getElementById('panel');
+const sliders = [
+  ['Boat', null],
+  ['maxSpeed', 2, 60, 1], ['acceleration', 1, 40, 0.5], ['brake', 1, 40, 0.5],
+  ['drag', 0, 5, 0.1], ['turnSpeed', 0.2, 5, 0.1], ['turnMinFactor', 0, 1, 0.05],
+  ['Enemy', null], ['enemyRadius', 10, 100, 1], ['enemySpeed', 0, 40, 0.5],
+  ['Cannon', null], ['shotSpeed', 10, 120, 1], ['minArcAngle', 10, 80, 1],
+  ['gravity', 5, 100, 1], ['reloadTime', 0, 3, 0.1],
+  ['Camera', null], ['camDist', 40, 300, 5], ['camAngle', 20, 89, 1],
+];
+for (const [name, min, max, step] of sliders) {
+  if (min === null) { const h = document.createElement('h3'); h.textContent = name; panel.appendChild(h); continue; }
+  const label = document.createElement('label');
+  const span = document.createElement('span'); span.textContent = name;
+  const input = document.createElement('input');
+  Object.assign(input, { type: 'range', min, max, step, value: P[name] });
+  const val = document.createElement('span'); val.className = 'val'; val.textContent = P[name];
+  input.oninput = () => { P[name] = parseFloat(input.value); val.textContent = input.value; if (name.startsWith('cam')) placeCamera(); };
+  label.append(span, input, val); panel.appendChild(label);
+}
+</script>
+</body>
+</html>
