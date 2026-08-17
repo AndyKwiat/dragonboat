@@ -52,10 +52,10 @@ const P = {
   enemyRadius:     45,
   enemySpeed:      10,
   // cannon
-  shotSpeed:       40,   // muzzle velocity, units / s (arc height depends on range)
-  minArcAngle:     35,   // degrees; the arc will be at least this steep
+  arcAngle:        45,   // degrees; launch angle is fixed, power adapts to range
   gravity:         30,
-  reloadTime:      0.6,
+  reloadTime:      2.0,  // seconds, per cannon
+  firingArc:       60,   // degrees, total arc each cannon can cover
   ballRadius:      0.6,
   // camera
   camDist:         140,
@@ -160,11 +160,37 @@ function addCannon(boat, localPos, yaw = 0) {
     new THREE.MeshStandardMaterial({ color: 0x222222 })
   );
   c.position.copy(localPos); c.rotation.y = yaw; c.castShadow = true;
+  c.userData.reload = 0;
   boat.add(c);
   cannons.push(c);
   return c;
 }
-addCannon(player, new THREE.Vector3(0, 2.4, 6.5));   // front cannon
+addCannon(player, new THREE.Vector3(0, 2.4, 6.5), 0);   // bow cannon, facing forward
+for (const z of [-3, 0, 3]) {
+  addCannon(player, new THREE.Vector3(-2, 2.4, z), -Math.PI / 2);  // port (left) broadside, facing -X
+  addCannon(player, new THREE.Vector3( 2, 2.4, z), Math.PI / 2);   // starboard (right) broadside, facing +X
+}
+
+// Angle (radians) between a cannon's facing and the direction to the target.
+const _cpos = new THREE.Vector3(), _cdir = new THREE.Vector3(), _toT = new THREE.Vector3();
+function cannonOffAngle(c, target) {
+  c.getWorldPosition(_cpos);
+  c.getWorldDirection(_cdir); _cdir.y = 0; _cdir.normalize();
+  _toT.subVectors(target, _cpos); _toT.y = 0; _toT.normalize();
+  return Math.acos(THREE.MathUtils.clamp(_cdir.dot(_toT), -1, 1));
+}
+// Pick the loaded cannon that can bear on the target (within its firing arc)
+// and is facing it most directly. Returns null if none can fire.
+function bestCannon(target) {
+  const half = THREE.MathUtils.degToRad(P.firingArc) / 2;
+  let best = null, bestOff = Infinity;
+  for (const c of cannons) {
+    if (c.userData.reload > 0) continue;
+    const off = cannonOffAngle(c, target);
+    if (off <= half && off < bestOff) { bestOff = off; best = c; }
+  }
+  return best;
+}
 
 // Enemy: circles around a centre
 const enemy = makeBoat(0x6b3a2b);
@@ -197,12 +223,13 @@ renderer.domElement.addEventListener('pointermove', e => {
   raycaster.setFromCamera(mouseNDC, camera);
   aimValid = raycaster.ray.intersectPlane(seaPlane, aimPoint) !== null;
 });
-let reload = 0;
 renderer.domElement.addEventListener('pointerdown', e => {
-  if (e.button !== 0 || !aimValid || reload > 0) return;
-  fire(cannons[0], aimPoint);
+  if (e.button !== 0 || !aimValid) return;
+  const c = bestCannon(aimPoint);
+  if (!c) return;
+  fire(c, aimPoint);
   shots++;
-  reload = P.reloadTime;
+  c.userData.reload = P.reloadTime;
 });
 
 // ---------------------------------------------------------------------------
@@ -215,29 +242,19 @@ const splashMat = new THREE.MeshBasicMaterial({ color: 0xcfe8ff, transparent: tr
 const splashGeo = new THREE.RingGeometry(0.5, 1.5, 24);
 const effects = [];
 
-// Solve a ballistic arc from muzzle to target with fixed speed; if the target
-// is out of range at that speed, raise the speed so we still reach it.
+// Fixed launch angle (P.arcAngle); solve for the muzzle speed that lands the
+// ball exactly on the target.
 function fire(cannon, target) {
   const start = new THREE.Vector3();
   cannon.getWorldPosition(start);
   const flat = new THREE.Vector3(target.x - start.x, 0, target.z - start.z);
-  const d = flat.length();
+  const d = Math.max(flat.length(), 0.01);
   const h = target.y - start.y;
   const g = P.gravity;
-  const minA = THREE.MathUtils.degToRad(P.minArcAngle);
-  let v = P.shotSpeed, angle;
-  // choose the high arc solution: angle = atan((v^2 + sqrt(v^4 - g(g d^2 + 2 h v^2))) / (g d))
-  const solve = (v) => {
-    const disc = v ** 4 - g * (g * d * d + 2 * h * v * v);
-    return disc < 0 ? null : Math.atan2(v * v + Math.sqrt(disc), g * d);
-  };
-  angle = solve(v);
-  while (angle === null) { v *= 1.1; angle = solve(v); }
-  if (angle < minA) {
-    // recompute speed for the fixed steep angle
-    angle = minA;
-    v = Math.sqrt((g * d * d) / (2 * Math.cos(angle) ** 2 * (d * Math.tan(angle) - h)));
-  }
+  const angle = THREE.MathUtils.degToRad(P.arcAngle);
+  // v^2 = g d^2 / (2 cos^2(a) (d tan(a) - h))
+  const denom = 2 * Math.cos(angle) ** 2 * (d * Math.tan(angle) - h);
+  const v = Math.sqrt((g * d * d) / Math.max(denom, 1e-6));
   flat.normalize();
   const vel = new THREE.Vector3(flat.x * Math.cos(angle) * v, Math.sin(angle) * v, flat.z * Math.cos(angle) * v);
   const mesh = new THREE.Mesh(ballGeo, ballMat);
@@ -334,15 +351,19 @@ function update(dt) {
     if (hitFlash <= 0) hitEl.style.opacity = 0;
   }
 
-  reload = Math.max(0, reload - dt);
+  for (const c of cannons) {
+    c.userData.reload = Math.max(0, c.userData.reload - dt);
+    c.material.color.setHex(c.userData.reload > 0 ? 0x8a6a4a : 0x222222);
+  }
   reticle.position.set(aimPoint.x, 0.05, aimPoint.z);
   reticle.visible = aimValid;
-  reticle.material.color.setHex(reload > 0 ? 0x888888 : 0xffdd55);
+  reticle.material.color.setHex(aimValid && bestCannon(aimPoint) ? 0xffdd55 : 0x888888);
 
   hud.textContent =
-    `WASD move · click to fire (front cannon)\n` +
+    `WASD move · click to fire (nearest loaded cannon in arc)\n` +
     `speed ${s.speed.toFixed(1)} / ${P.maxSpeed}\n` +
-    `hits ${hits} / shots ${shots}`;
+    `hits ${hits} / shots ${shots}\n` +
+    `loaded ${cannons.filter(c => c.userData.reload === 0).length} / ${cannons.length}`;
 }
 
 function loop() {
@@ -362,8 +383,8 @@ const sliders = [
   ['maxSpeed', 2, 60, 1], ['acceleration', 1, 40, 0.5], ['brake', 1, 40, 0.5],
   ['drag', 0, 5, 0.1], ['turnSpeed', 0.2, 5, 0.1], ['turnMinFactor', 0, 1, 0.05],
   ['Enemy', null], ['enemyRadius', 10, 100, 1], ['enemySpeed', 0, 40, 0.5],
-  ['Cannon', null], ['shotSpeed', 10, 120, 1], ['minArcAngle', 10, 80, 1],
-  ['gravity', 5, 100, 1], ['reloadTime', 0, 3, 0.1],
+  ['Cannon', null], ['arcAngle', 10, 85, 1],
+  ['gravity', 5, 100, 1], ['reloadTime', 0, 6, 0.1], ['firingArc', 10, 180, 5],
   ['Camera', null], ['camDist', 40, 300, 5], ['camAngle', 20, 89, 1],
 ];
 for (const [name, min, max, step] of sliders) {
