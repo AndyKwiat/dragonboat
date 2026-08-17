@@ -45,8 +45,8 @@ export const CONFIG = {
     color: 0x444444,
   },
   boat: {
-    startX: 11301,
-    startY: 18085,
+    startX: 2556,
+    startY: 15829,
     startHeading: -Math.PI / 2, // pointing "up" the screen (world -y)
     length: 10,                 // world units along the heading
     width: 4,
