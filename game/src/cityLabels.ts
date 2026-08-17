@@ -1,6 +1,7 @@
 import type { CameraState, ViewportInfo } from './camera/CameraController';
 import type { City } from './cities';
 import { CONFIG } from './config';
+import { TERRAIN } from './dmap';
 
 // DOM overlay drawing a name label for every city currently on screen, plus
 // the hit-testing for hover/click. The layer itself never takes pointer
@@ -23,10 +24,13 @@ interface LabelEntry {
   hovered: boolean;
 }
 
+/** World point (x, y, height) -> screen px; false when it's behind the camera. */
+export type Projector = (x: number, y: number, z: number, out: { x: number; y: number }) => boolean;
+
 export interface CityLabels {
   element: HTMLDivElement;
   /** Positions visible labels and returns the city under the cursor, if any. */
-  update(state: CameraState, view: ViewportInfo, cursorPx: { x: number; y: number }): City | null;
+  update(state: CameraState, view: ViewportInfo, cursorPx: { x: number; y: number }, project: Projector): City | null;
 }
 
 function measureText(text: string, font: string): number {
@@ -80,21 +84,24 @@ export function createCityLabels(cities: City[]): CityLabels {
   return {
     element,
 
-    update(state, view, cursorPx) {
+    update(state, view, cursorPx, project) {
       const { labelOffsetPx, hitRadiusPx, hitPadPx } = CONFIG.cities;
-      const halfW = view.widthPx / (2 * state.zoom);
-      const halfH = view.heightPx / (2 * state.zoom);
       const margin = 200; // px of slack so labels don't pop at the edges
+      const cityTop = CONFIG.terrainHeights[TERRAIN.CITY]!;
+      const p = { x: 0, y: 0 };
 
       let best: LabelEntry | null = null;
       let bestDistance = Infinity;
 
       for (const entry of entries) {
-        const screenX = (entry.city.location.x - (state.centerX - halfW)) * state.zoom;
-        const screenY = (entry.city.location.y - (state.centerY - halfH)) * state.zoom;
+        // Labels hang off the top of the city block.
+        const onScreen = project(entry.city.location.x, entry.city.location.y, cityTop, p);
+        const screenX = p.x;
+        const screenY = p.y;
         // Smaller cities only earn a label once zoomed in past their
         // threshold; hidden labels are also unclickable.
         const visible =
+          onScreen &&
           state.zoom >= entry.minZoom &&
           screenX > -margin && screenX < view.widthPx + margin &&
           screenY > -margin && screenY < view.heightPx + margin;

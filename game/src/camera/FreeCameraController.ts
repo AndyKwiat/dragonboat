@@ -1,6 +1,7 @@
 import { CONFIG } from '../config';
 import type { InputState } from '../input';
 import type { CameraController, CameraState, ViewportInfo } from './CameraController';
+import { GROUND_Y_SCALE } from './CameraController';
 
 // Free camera: WASD/arrow pan, drag pan, wheel zoom anchored at the cursor.
 export class FreeCameraController implements CameraController {
@@ -30,12 +31,13 @@ export class FreeCameraController implements CameraController {
     if (input.keys.has('KeyD') || input.keys.has('ArrowRight')) dx += 1;
     if (input.keys.has('KeyW') || input.keys.has('ArrowUp')) dy -= 1;
     if (input.keys.has('KeyS') || input.keys.has('ArrowDown')) dy += 1;
+    // Vertical screen distances cover more ground because of the camera pitch.
     s.centerX += (dx * panPx) / s.zoom;
-    s.centerY += (dy * panPx) / s.zoom;
+    s.centerY += (dy * panPx) / (s.zoom * GROUND_Y_SCALE);
 
     // Drag pan: world follows the cursor (screen and world are both y-down).
     s.centerX -= input.dragDeltaPx.x / s.zoom;
-    s.centerY -= input.dragDeltaPx.y / s.zoom;
+    s.centerY -= input.dragDeltaPx.y / (s.zoom * GROUND_Y_SCALE);
 
     // Wheel zoom toward the cursor: the world point under the cursor stays put.
     if (input.wheelDelta !== 0) {
@@ -48,7 +50,7 @@ export class FreeCameraController implements CameraController {
         const px = input.cursorPx.x - view.widthPx / 2;
         const py = input.cursorPx.y - view.heightPx / 2;
         s.centerX += px / oldZoom - px / newZoom;
-        s.centerY += py / oldZoom - py / newZoom;
+        s.centerY += (py / oldZoom - py / newZoom) / GROUND_Y_SCALE;
         s.zoom = newZoom;
       }
     }

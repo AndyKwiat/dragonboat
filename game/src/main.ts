@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import type { CameraController, ViewportInfo } from './camera/CameraController';
-import { applyToCamera, clampCamera, minZoomFor } from './camera/CameraController';
+import { applyToCamera, clampCamera, minZoomFor, screenToGround, worldToScreen } from './camera/CameraController';
 import { FollowCameraController } from './camera/FollowCameraController';
 import { FreeCameraController } from './camera/FreeCameraController';
 import { createBoat } from './boat';
@@ -18,6 +18,7 @@ import { createMinimap } from './minimap';
 import { createPlayer } from './player';
 import { createRations, createWages } from './upkeep';
 import { createTerrainMesh, gridOpacityFor, worldSize } from './terrain';
+import { createTerrainChunks } from './terrainChunks';
 
 const map = await loadDmap(CONFIG.mapUrl);
 const { w: worldW, h: worldH } = worldSize(map);
@@ -28,17 +29,27 @@ renderer.setPixelRatio(window.devicePixelRatio);
 renderer.setClearColor(CONFIG.clearColor);
 
 const scene = new THREE.Scene();
+// Everything lives in this group, scaled -1 in y: local coords are world
+// coords (y-down) with z as height, and three's y-up scene sees world -y as
+// "north" so the pitched camera looks up the screen. three flips face winding
+// for negatively-scaled objects, so meshes render normally.
+const world = new THREE.Group();
+world.scale.y = -1;
+scene.add(world);
+// The flat 2D terrain plane is the ground (and the water); raised columns
+// are streamed on top of it in chunks.
 const terrain = createTerrainMesh(map);
-scene.add(terrain.mesh);
+world.add(terrain.mesh);
+const chunks = createTerrainChunks(map);
+world.add(chunks.group);
 
-const camera = new THREE.OrthographicCamera(0, 1, 0, 1, 0.1, 100);
-camera.position.z = 10;
+const camera = new THREE.PerspectiveCamera(CONFIG.camera3d.fovDeg, 1, 0.1, 1000);
 
 const view: ViewportInfo = { widthPx: window.innerWidth, heightPx: window.innerHeight };
 const input = createInput(canvas);
 
 const boat = createBoat();
-scene.add(boat.mesh);
+world.add(boat.mesh);
 
 // Camera modes: added to this record and switched via switchMode(), which
 // hands the current state across.
@@ -148,11 +159,27 @@ function frame(now: number) {
   applyToCamera(state, view, camera);
   terrain.setGridOpacity(gridOpacityFor(state.zoom));
 
+  // Stream terrain chunks for the ground area the camera can see: the four
+  // screen corners cast onto the ground, capped so a shallow view doesn't
+  // ask for the whole world.
+  const maxDist = CONFIG.chunks.maxViewDistance;
+  const corners = [[0, 0], [view.widthPx, 0], [0, view.heightPx], [view.widthPx, view.heightPx]] as const;
+  const bounds = { left: Infinity, top: Infinity, right: -Infinity, bottom: -Infinity };
+  const gp = { x: 0, y: 0 };
+  for (const [px, py] of corners) {
+    screenToGround(camera, view, px, py, maxDist, gp);
+    bounds.left = Math.min(bounds.left, gp.x);
+    bounds.right = Math.max(bounds.right, gp.x);
+    bounds.top = Math.min(bounds.top, gp.y);
+    bounds.bottom = Math.max(bounds.bottom, gp.y);
+  }
+  chunks.update(bounds, state.centerX, state.centerY);
+
   renderer.render(scene, camera);
 
   // City labels are DOM on top of the canvas; hit-testing is ours, so the
   // hovered city has to be recomputed after the camera has settled.
-  const hoveredCity = cityLabels.update(state, view, input.cursorPx);
+  const hoveredCity = cityLabels.update(state, view, input.cursorPx, (x, y, z, out) => worldToScreen(camera, view, x, y, z, out));
   canvas.style.cursor = hoveredCity ? 'pointer' : 'default';
   if (clicked) {
     if (hoveredCity) cityPopup.show(hoveredCity);
@@ -166,7 +193,7 @@ function frame(now: number) {
   if (charged && cityPopup.isOpen()) cityPopup.refresh();
   clock.update();
   minimap.update(state, view);
-  hud.update(state, view, minZoomFor(view, worldW, worldH), active.name, timeScale);
+  hud.update(state, view, minZoomFor(view, worldW, worldH), active.name, timeScale, chunks.stats());
 
   requestAnimationFrame(frame);
 }

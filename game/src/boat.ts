@@ -2,7 +2,7 @@ import * as THREE from 'three';
 import { CONFIG } from './config';
 import type { InputState } from './input';
 
-// The player boat: a brown rectangle that drives around the world. World
+// The player boat: a brown box that drives around the world. World
 // coords are y-down, so a heading of 0 points +x (right) and increasing
 // heading turns clockwise on screen — the same sense as the mesh's
 // rotation.z, since the mesh lives in the same y-down frame.
@@ -20,10 +20,10 @@ export interface Boat {
 
 export function createBoat(): Boat {
   const c = CONFIG.boat;
-  const geometry = new THREE.PlaneGeometry(c.length, c.width);
+  const geometry = new THREE.BoxGeometry(c.length, c.width, c.height);
   const material = new THREE.MeshBasicMaterial({ color: c.color, side: THREE.DoubleSide });
   const mesh = new THREE.Mesh(geometry, material);
-  mesh.position.z = 1; // above the terrain plane at z=0
+  mesh.position.z = c.height / 2; // sitting on the water plane at z=0
 
   const boat: Boat = {
     mesh,

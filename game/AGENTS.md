@@ -1,6 +1,6 @@
 # dragonboat/game
 
-A top-down 2D world viewer (the start of a game) built with TypeScript, three.js, and Vite. It loads a world exported from the sibling `../world-generator` project and lets you explore it with a free camera.
+A 3D world viewer (the start of a game) built with TypeScript, three.js, and Vite, seen from a perspective camera pitched 45° down. (The previous top-down 2D version is kept, un-tracked, in `../game-old` for comparison.) It loads a world exported from the sibling `../world-generator` project and lets you explore it with a free camera.
 
 ## Running
 
@@ -35,11 +35,15 @@ of `src/` uses. Keep them that way, or the test stops running.
 
 ### Coordinate system (important)
 
-World coordinates are **y-down** with (0,0) at the map's **top-left**, x right — matching the dmap file's row order and screen space. All camera state, HUD readouts, and minimap math use these coordinates (0–20000 on both axes). Three.js is y-up internally; the trick that makes everything line up is in `applyToCamera` (`src/camera/CameraController.ts`): the orthographic frustum sets `top` to the *smaller* y, vertically flipping the view. Consequences:
+World coordinates are **y-down** with (0,0) at the map's **top-left**, x right — matching the dmap file's row order and screen space; height is z (up). All camera state, HUD readouts, and minimap math use these coordinates (0–20000 on both axes). Three.js is y-up internally; the trick that makes everything line up is the `world` group in `main.ts`, scaled by -1 in y: every mesh lives inside it with local position = world position, and three flips face winding for the negative determinant so meshes render normally (materials use `DoubleSide` anyway). Consequences:
 
 - dmap rows map straight into texture rows — no flips anywhere (terrain bake, minimap, cursor math are all direct).
-- The flipped projection reverses triangle winding, so the terrain material uses `side: THREE.DoubleSide`.
-- Screen-px → world conversions never negate y: `world = center + (cursorPx - screenCenterPx) / zoom` on both axes.
+- Scene y = -world y. `applyToCamera` (`src/camera/CameraController.ts`) places a `PerspectiveCamera` south of the focus (larger world y) looking north and down at `camera3d.pitchDeg`, so screen-up is world -y like the 2D version. `zoom` is still screen px per world unit, measured at the focus point; the camera distance is derived from it (`focusDistanceFor`).
+- Screen-px → world conversions: use `screenToGround` (ray onto z=0) when exact; the free camera's pan/zoom-anchoring uses the linear `px / zoom` approximation with vertical distances divided by `GROUND_Y_SCALE` (= sin(pitch), the foreshortening at the focus). `worldToScreen` projects world points (city labels).
+
+### 3D terrain (src/terrainChunks.ts)
+
+The flat textured plane from the 2D version is still drawn at z=0 — it is the ground and the water. Raised terrain (`CONFIG.terrainHeights` per terrain index: land 8, forest 10, mountain 14, city 24, water 0) is streamed on top as chunk meshes: each chunk is `chunks.cellsPerChunk`² columns merged into one vertex-colored `MeshBasicMaterial` mesh (top face + only exposed side faces, sides shaded darker; water columns emit nothing). Every frame `main.ts` casts the four screen corners onto the ground (`screenToGround`, capped at `maxViewDistance`), and `chunks.update(bounds)` picks the smallest LOD step (1, 2, 4 … `maxLodStep` map cells per column, majority terrain per block) whose chunk count fits `maxVisibleChunks`, shows cached chunks, builds missing ones nearest-first within `buildBudgetMs`, and evicts the least-recently-used beyond `maxCachedChunks`. Chunks are keyed by `step:ci:cj`, so zooming across an LOD boundary reuses whatever was built before. Never build per-tile meshes; add new things as meshes/instances inside the `world` group.
 
 ## Cities
 
@@ -189,14 +193,17 @@ src/dmap.ts       Pure .dmap parser (no three.js import). Exposes DMap
                   — use terrainAt for gameplay logic reading the map.
 src/terrain.ts    Bakes indices → 1000×1000 RGBA DataTexture (NearestFilter)
                   on ONE PlaneGeometry covering the whole world; a raw
-                  ShaderMaterial samples it and overlays the tile grid.
+                  ShaderMaterial samples it and overlays the tile grid. In 3D
+                  this is the ground/water plane at z=0.
+src/terrainChunks.ts  Streamed raised-terrain chunk meshes with LOD (see
+                  "3D terrain" above).
 src/input.ts      Single InputState shared by all controllers: key set,
                   `pressed` (keys that went down this frame, for one-shot
                   actions), drag deltas, wheel delta, cursor pos. Deltas
                   accumulate between frames; the active controller reads them
                   then calls consumeFrameDeltas(). No per-controller listeners.
 src/boat.ts       The player boat: x/y, heading, signed speed + its brown
-                  PlaneGeometry mesh (z=1, above terrain). Arcade physics:
+                  BoxGeometry mesh (sitting on the water at z=0). Arcade physics:
                   accelerate/brake/friction, steering authority scaled by
                   speed, forward top speed scaled by maxSpeedScale (crew size).
                   No collision — it drives over any terrain.
@@ -239,7 +246,7 @@ src/minimap.ts    Bottom-right <canvas> overlay: static map image cached in
                   around the camera (minimap.worldFraction of the world,
                   clamped to bounds) + a white viewport strokeRect clipped to
                   that window. Not a three.js scene.
-src/main.ts       Wiring: load map → renderer/scene → boat → controllers →
+src/main.ts       Wiring: load map → renderer/scene/world group → terrain plane + chunks → boat → controllers →
                   rAF loop (mode toggle → boat → camera update → clamp →
                   apply → grid opacity → render → minimap/hud). Resize
                   handler recomputes minZoom and re-clamps.
@@ -263,7 +270,7 @@ Controllers only mutate their own state; `main.ts` clamps (`clampCamera`) and ap
 
 ### Rendering notes
 
-- The whole terrain is one draw call. Don't create per-tile meshes — for gameplay entities, add new meshes/instances on top (terrain sits at z=0; camera looks down -z from z=10, near 0.1 / far 100).
+- The flat terrain plane is one draw call, plus one draw call per visible chunk (bounded by `maxVisibleChunks`). Camera near/far are derived from the focus distance in `applyToCamera`.
 - The grid is drawn in the terrain fragment shader using `fract(worldPos / uTileScale)` + `fwidth()` for constant ~1px lines; it fades in between `grid.fadeMinPxPerTile` and `fadeMaxPxPerTile` screen px per tile (config).
 - The terrain `DataTexture` is deliberately `NoColorSpace`: the raw ShaderMaterial skips three.js sRGB output encoding, so an untagged texture passes hex colors through 1:1 and matches the minimap's 2D canvas. If you switch to a built-in material, revisit this or colors will shift.
 - Wheel zoom is exponential and anchored at the cursor (the world point under the cursor stays fixed). Keyboard pan speed is in screen px/sec (`keyPanPxPerSec / zoom` world units), so panning feels the same at any zoom.

@@ -7,6 +7,29 @@ export const CONFIG = {
   zoomWheelSensitivity: 0.0015,
   keyPanPxPerSec: 600,         // keyboard pan speed in screen px/sec (constant feel at any zoom)
   clearColor: 0x111111,
+  // 3D camera: a perspective camera pitched down at the focus point. zoom is
+  // still screen px per world unit, measured at the focus point.
+  camera3d: {
+    pitchDeg: 45,             // angle between the view direction and the ground (90 = top-down)
+    fovDeg: 45,               // vertical field of view
+  },
+  // Column heights per terrain index (world units): water is the ground at 0,
+  // land rises out of it, cities rise 3x again.
+  // ocean, beach, grassland, forest, mountain, river, canal, city
+  terrainHeights: [0, 3, 8, 10, 14, 0, 0, 24],
+  // Terrain is streamed as chunk meshes around the camera; far out, chunks
+  // switch to coarser cells (LOD) so the whole world stays cheap.
+  chunks: {
+    cellsPerChunk: 32,        // chunk edge in (LOD) cells
+    maxVisibleChunks: 110,    // pick the coarsest-necessary LOD to stay under this
+    maxCachedChunks: 360,     // built chunks kept around before evicting the oldest
+    buildBudgetMs: 5,         // per-frame CPU budget for building chunk meshes
+    maxLodStep: 16,           // coarsest LOD: this many map cells per column
+    sideShadeX: 0.72,         // brightness of x-facing column sides
+    sideShadeY: 0.55,         // ...and y-facing sides
+    boundsPadCells: 2,        // extra cells loaded around the visible area
+    maxViewDistance: 40000,   // world units: cap on how far the top of the screen looks
+  },
   grid: {
     fadeMinPxPerTile: 8,       // grid hidden below this many screen px per tile
     fadeMaxPxPerTile: 24,      // grid fully visible above this
@@ -19,6 +42,7 @@ export const CONFIG = {
     startHeading: -Math.PI / 2, // pointing "up" the screen (world -y)
     length: 10,                 // world units along the heading
     width: 4,
+    height: 3,                  // box height; sits on the water at z=0
     color: 0x7a4a1e,
     maxSpeed: 50,               // world units/sec
     maxReverseSpeed: 20,
@@ -26,7 +50,7 @@ export const CONFIG = {
     friction: 45,               // deceleration with no throttle, units/sec^2
     turnRate: Math.PI * 0.75,   // rad/sec at or above turnFullSpeed
     turnFullSpeed: 20,          // speed at which steering is at full authority
-    followZoom: 5,              // screen px per world unit when follow cam starts
+    followZoom: 2.5,             // screen px per world unit when follow cam starts
     maxStepSeconds: 0.05,       // physics sub-step cap when time is fast-forwarded
   },
   cities: {
