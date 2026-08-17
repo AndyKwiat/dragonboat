@@ -1,0 +1,22 @@
+; Godot 4.7 C# port of ../game (the three.js dragonboat game). See README.md.
+config_version=5
+
+[application]
+config/name="dragonboat"
+run/main_scene="res://Main.tscn"
+config/features=PackedStringArray("4.7", "C#", "Forward Plus")
+
+[dotnet]
+project/assembly_name="DragonboatGame"
+
+[display]
+window/size/viewport_width=1280
+window/size/viewport_height=800
+; Keep viewport px = window points, so "px" means the same as CSS px in the
+; web version (fonts, zoom = px per world unit, hit radii...).
+window/dpi/allow_hidpi=false
+
+[rendering]
+renderer/rendering_method="forward_plus"
+environment/defaults/default_clear_color=Color(0.0667, 0.0667, 0.0667, 1)
+anti_aliasing/quality/msaa_3d=0

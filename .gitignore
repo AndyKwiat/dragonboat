@@ -6,4 +6,5 @@ dist/
 # loads is committed so a fresh clone runs without re-exporting.
 *.dmap
 !game/public/map.dmap
+!godot-game/data/map.dmap
 game-old

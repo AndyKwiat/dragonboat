@@ -1,0 +1,58 @@
+{
+  "products": [
+    {
+      "id": "RICE",
+      "name": "Rice",
+      "description": "Basic rice used to feed people. Every port has it.",
+      "basePrice": 4
+    },
+    {
+      "id": "FISH",
+      "name": "Fish",
+      "description": "Salted river fish, cheap and always in demand.",
+      "basePrice": 6
+    },
+    {
+      "id": "FRUIT",
+      "name": "Fruit",
+      "description": "Crates of orchard fruit that spoil if you dawdle.",
+      "basePrice": 7
+    },
+    {
+      "id": "WOOD",
+      "name": "Wood",
+      "description": "Rough timber cut from the forests inland.",
+      "basePrice": 9
+    },
+    {
+      "id": "WOOL",
+      "name": "Wool",
+      "description": "Raw fleece from the hill country, bundled in bales.",
+      "basePrice": 15
+    },
+    {
+      "id": "CLOTHES",
+      "name": "Clothes",
+      "description": "Finished garments woven and dyed in the guild houses.",
+      "basePrice": 30
+    },
+    {
+      "id": "SAFFRON",
+      "name": "Saffron",
+      "description": "Hand-picked crimson threads, worth their weight in trouble.",
+      "basePrice": 38
+    },
+    {
+      "id": "FURNITURE",
+      "name": "Furniture",
+      "description": "Lacquered cabinets and chairs, bulky but prized.",
+      "basePrice": 45
+    },
+    {
+      "id": "JEWELRY",
+      "name": "Jewelry",
+      "description": "Jade and gold worked into rings, beads and clasps.",
+      "basePrice": 60
+    }
+  ]
+}

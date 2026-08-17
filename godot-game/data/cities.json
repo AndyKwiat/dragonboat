@@ -1,0 +1,1521 @@
+{
+  "cities": [
+    {
+      "name": "Harumi",
+      "location": {
+        "x": 7170,
+        "y": 2590
+      },
+      "size": "large",
+      "products": [
+        "RICE",
+        "FISH",
+        "FRUIT",
+        "WOOD",
+        "WOOL",
+        "CLOTHES",
+        "SAFFRON",
+        "FURNITURE",
+        "JEWELRY"
+      ],
+      "priceOverrides": {
+        "FISH": 0.8,
+        "CLOTHES": 1.15
+      }
+    },
+    {
+      "name": "Emerald Reach",
+      "location": {
+        "x": 11630,
+        "y": 2710
+      },
+      "size": "large",
+      "products": [
+        "RICE",
+        "FISH",
+        "FRUIT",
+        "WOOD",
+        "WOOL",
+        "CLOTHES",
+        "SAFFRON",
+        "FURNITURE",
+        "JEWELRY"
+      ],
+      "priceOverrides": {
+        "FRUIT": 0.5
+      }
+    },
+    {
+      "name": "Ivory Pagoda",
+      "location": {
+        "x": 6940,
+        "y": 2900
+      },
+      "size": "medium",
+      "products": [
+        "RICE",
+        "FISH",
+        "FRUIT",
+        "WOOD",
+        "WOOL",
+        "SAFFRON",
+        "JEWELRY"
+      ]
+    },
+    {
+      "name": "Sword Hill",
+      "location": {
+        "x": 6760,
+        "y": 3140
+      },
+      "size": "medium",
+      "products": [
+        "RICE",
+        "FISH",
+        "FRUIT",
+        "WOOD",
+        "WOOL",
+        "SAFFRON",
+        "JEWELRY"
+      ],
+      "priceOverrides": {
+        "FISH": 0.95,
+        "SAFFRON": 0.5
+      }
+    },
+    {
+      "name": "Tomari",
+      "location": {
+        "x": 5530,
+        "y": 3210
+      },
+      "size": "small",
+      "products": [
+        "RICE",
+        "FISH"
+      ]
+    },
+    {
+      "name": "Isumi",
+      "location": {
+        "x": 6950,
+        "y": 3370
+      },
+      "size": "small",
+      "products": [
+        "RICE",
+        "SAFFRON"
+      ]
+    },
+    {
+      "name": "Golden Pagoda",
+      "location": {
+        "x": 11270,
+        "y": 3370
+      },
+      "size": "small",
+      "products": [
+        "RICE",
+        "FRUIT"
+      ]
+    },
+    {
+      "name": "Haisha",
+      "location": {
+        "x": 6690,
+        "y": 3570
+      },
+      "size": "small",
+      "products": [
+        "RICE",
+        "FISH"
+      ]
+    },
+    {
+      "name": "Yamato",
+      "location": {
+        "x": 6890,
+        "y": 3790
+      },
+      "size": "small",
+      "products": [
+        "RICE",
+        "FRUIT"
+      ]
+    },
+    {
+      "name": "Nagase",
+      "location": {
+        "x": 5550,
+        "y": 3990
+      },
+      "size": "small",
+      "products": [
+        "RICE",
+        "WOOD"
+      ]
+    },
+    {
+      "name": "Bamboo Grove",
+      "location": {
+        "x": 6750,
+        "y": 4050
+      },
+      "size": "small",
+      "products": [
+        "RICE",
+        "SAFFRON"
+      ]
+    },
+    {
+      "name": "Moon Bridge",
+      "location": {
+        "x": 11570,
+        "y": 4230
+      },
+      "size": "small",
+      "products": [
+        "RICE",
+        "WOOD"
+      ]
+    },
+    {
+      "name": "Danhu",
+      "location": {
+        "x": 6610,
+        "y": 4330
+      },
+      "size": "small",
+      "products": [
+        "RICE",
+        "WOOD"
+      ]
+    },
+    {
+      "name": "Fish Market Bay",
+      "location": {
+        "x": 6700,
+        "y": 4800
+      },
+      "size": "medium",
+      "products": [
+        "RICE",
+        "FISH",
+        "FRUIT",
+        "WOOD",
+        "WOOL",
+        "CLOTHES",
+        "SAFFRON"
+      ]
+    },
+    {
+      "name": "Okumi",
+      "location": {
+        "x": 12050,
+        "y": 4910
+      },
+      "size": "small",
+      "products": [
+        "RICE",
+        "FISH"
+      ]
+    },
+    {
+      "name": "Mingzhu",
+      "location": {
+        "x": 7170,
+        "y": 5050
+      },
+      "size": "small",
+      "products": [
+        "RICE",
+        "FISH"
+      ]
+    },
+    {
+      "name": "Lotus Fields",
+      "location": {
+        "x": 7440,
+        "y": 5160
+      },
+      "size": "medium",
+      "products": [
+        "RICE",
+        "FISH",
+        "FRUIT",
+        "WOOD",
+        "WOOL",
+        "SAFFRON",
+        "FURNITURE"
+      ],
+      "priceOverrides": {
+        "FRUIT": 1.5
+      }
+    },
+    {
+      "name": "Domon",
+      "location": {
+        "x": 6880,
+        "y": 5340
+      },
+      "size": "medium",
+      "products": [
+        "RICE",
+        "FISH",
+        "FRUIT",
+        "WOOD",
+        "WOOL",
+        "CLOTHES",
+        "SAFFRON"
+      ],
+      "priceOverrides": {
+        "WOOL": 1.5,
+        "FRUIT": 1.15
+      }
+    },
+    {
+      "name": "Fusano",
+      "location": {
+        "x": 11290,
+        "y": 5510
+      },
+      "size": "small",
+      "products": [
+        "RICE",
+        "FISH"
+      ]
+    },
+    {
+      "name": "Naru",
+      "location": {
+        "x": 7070,
+        "y": 5530
+      },
+      "size": "small",
+      "products": [
+        "RICE",
+        "WOOL"
+      ]
+    },
+    {
+      "name": "Sendo",
+      "location": {
+        "x": 6850,
+        "y": 5810
+      },
+      "size": "small",
+      "products": [
+        "RICE",
+        "SAFFRON"
+      ]
+    },
+    {
+      "name": "Monsoon Bay",
+      "location": {
+        "x": 6390,
+        "y": 5830
+      },
+      "size": "small",
+      "products": [
+        "RICE",
+        "FRUIT"
+      ]
+    },
+    {
+      "name": "Jasmine Bay",
+      "location": {
+        "x": 7710,
+        "y": 5870
+      },
+      "size": "small",
+      "products": [
+        "RICE",
+        "SAFFRON"
+      ]
+    },
+    {
+      "name": "Old Harbor",
+      "location": {
+        "x": 10860,
+        "y": 5960
+      },
+      "size": "medium",
+      "products": [
+        "RICE",
+        "FISH",
+        "FRUIT",
+        "WOOD",
+        "WOOL",
+        "SAFFRON",
+        "JEWELRY"
+      ],
+      "priceOverrides": {
+        "RICE": 0.55,
+        "SAFFRON": 0.5
+      }
+    },
+    {
+      "name": "Maruko",
+      "location": {
+        "x": 6030,
+        "y": 6090
+      },
+      "size": "large",
+      "products": [
+        "RICE",
+        "FISH",
+        "FRUIT",
+        "WOOD",
+        "WOOL",
+        "CLOTHES",
+        "SAFFRON",
+        "FURNITURE",
+        "JEWELRY"
+      ]
+    },
+    {
+      "name": "Hakuba",
+      "location": {
+        "x": 7730,
+        "y": 6730
+      },
+      "size": "small",
+      "products": [
+        "RICE",
+        "FRUIT"
+      ]
+    },
+    {
+      "name": "Tsubaki",
+      "location": {
+        "x": 8090,
+        "y": 6870
+      },
+      "size": "small",
+      "products": [
+        "RICE",
+        "WOOD"
+      ]
+    },
+    {
+      "name": "Taipa",
+      "location": {
+        "x": 11550,
+        "y": 6870
+      },
+      "size": "small",
+      "products": [
+        "RICE",
+        "WOOD"
+      ]
+    },
+    {
+      "name": "Kunlai",
+      "location": {
+        "x": 15210,
+        "y": 6930
+      },
+      "size": "small",
+      "products": [
+        "RICE",
+        "SAFFRON"
+      ]
+    },
+    {
+      "name": "Hanwei",
+      "location": {
+        "x": 15930,
+        "y": 6990
+      },
+      "size": "small",
+      "products": [
+        "RICE",
+        "WOOD"
+      ]
+    },
+    {
+      "name": "Ineda",
+      "location": {
+        "x": 15270,
+        "y": 7210
+      },
+      "size": "small",
+      "products": [
+        "RICE",
+        "SAFFRON"
+      ]
+    },
+    {
+      "name": "Cherry Harbor",
+      "location": {
+        "x": 16080,
+        "y": 7260
+      },
+      "size": "medium",
+      "products": [
+        "RICE",
+        "FISH",
+        "FRUIT",
+        "WOOD",
+        "WOOL",
+        "CLOTHES",
+        "SAFFRON"
+      ],
+      "priceOverrides": {
+        "WOOL": 1.35,
+        "CLOTHES": 0.5
+      }
+    },
+    {
+      "name": "Kanazu",
+      "location": {
+        "x": 15550,
+        "y": 7290
+      },
+      "size": "small",
+      "products": [
+        "RICE",
+        "WOOD"
+      ]
+    },
+    {
+      "name": "Salt Harbor",
+      "location": {
+        "x": 17370,
+        "y": 7330
+      },
+      "size": "large",
+      "products": [
+        "RICE",
+        "FISH",
+        "FRUIT",
+        "WOOD",
+        "WOOL",
+        "CLOTHES",
+        "SAFFRON",
+        "FURNITURE",
+        "JEWELRY"
+      ],
+      "priceOverrides": {
+        "WOOD": 1.35,
+        "WOOL": 0.9
+      }
+    },
+    {
+      "name": "Two Rivers",
+      "location": {
+        "x": 16440,
+        "y": 7380
+      },
+      "size": "medium",
+      "products": [
+        "RICE",
+        "FISH",
+        "FRUIT",
+        "WOOD",
+        "WOOL",
+        "CLOTHES",
+        "SAFFRON"
+      ]
+    },
+    {
+      "name": "Bohai",
+      "location": {
+        "x": 15340,
+        "y": 7500
+      },
+      "size": "medium",
+      "products": [
+        "RICE",
+        "FISH",
+        "FRUIT",
+        "WOOD",
+        "WOOL",
+        "CLOTHES",
+        "SAFFRON"
+      ],
+      "priceOverrides": {
+        "SAFFRON": 0.8
+      }
+    },
+    {
+      "name": "Amber Cove",
+      "location": {
+        "x": 15680,
+        "y": 7500
+      },
+      "size": "medium",
+      "products": [
+        "RICE",
+        "FISH",
+        "FRUIT",
+        "WOOD",
+        "WOOL",
+        "SAFFRON",
+        "JEWELRY"
+      ],
+      "priceOverrides": {
+        "RICE": 1.2,
+        "JEWELRY": 0.8
+      }
+    },
+    {
+      "name": "Anshan",
+      "location": {
+        "x": 16010,
+        "y": 7550
+      },
+      "size": "small",
+      "products": [
+        "RICE",
+        "WOOD"
+      ]
+    },
+    {
+      "name": "Paper Lantern",
+      "location": {
+        "x": 14910,
+        "y": 7730
+      },
+      "size": "small",
+      "products": [
+        "RICE",
+        "SAFFRON"
+      ]
+    },
+    {
+      "name": "Meilin",
+      "location": {
+        "x": 15190,
+        "y": 7730
+      },
+      "size": "small",
+      "products": [
+        "RICE",
+        "WOOL"
+      ]
+    },
+    {
+      "name": "Temple Rock",
+      "location": {
+        "x": 16790,
+        "y": 7730
+      },
+      "size": "small",
+      "products": [
+        "RICE",
+        "WOOL"
+      ]
+    },
+    {
+      "name": "Pearl Cove",
+      "location": {
+        "x": 15650,
+        "y": 7790
+      },
+      "size": "small",
+      "products": [
+        "RICE",
+        "FRUIT"
+      ]
+    },
+    {
+      "name": "Painted Bridge",
+      "location": {
+        "x": 16530,
+        "y": 7810
+      },
+      "size": "small",
+      "products": [
+        "RICE",
+        "FISH"
+      ]
+    },
+    {
+      "name": "Kaido",
+      "location": {
+        "x": 5470,
+        "y": 7870
+      },
+      "size": "small",
+      "products": [
+        "RICE",
+        "SAFFRON"
+      ]
+    },
+    {
+      "name": "Thunder Gate",
+      "location": {
+        "x": 14890,
+        "y": 7990
+      },
+      "size": "small",
+      "products": [
+        "RICE",
+        "FISH"
+      ]
+    },
+    {
+      "name": "Sakuma",
+      "location": {
+        "x": 16770,
+        "y": 8030
+      },
+      "size": "small",
+      "products": [
+        "RICE",
+        "SAFFRON"
+      ]
+    },
+    {
+      "name": "Baiyun",
+      "location": {
+        "x": 17210,
+        "y": 8030
+      },
+      "size": "small",
+      "products": [
+        "RICE",
+        "WOOD"
+      ]
+    },
+    {
+      "name": "Kaiping",
+      "location": {
+        "x": 16950,
+        "y": 8230
+      },
+      "size": "small",
+      "products": [
+        "RICE",
+        "WOOD"
+      ]
+    },
+    {
+      "name": "Silver Bay",
+      "location": {
+        "x": 15030,
+        "y": 8250
+      },
+      "size": "small",
+      "products": [
+        "RICE",
+        "FRUIT"
+      ]
+    },
+    {
+      "name": "Red Lantern",
+      "location": {
+        "x": 13470,
+        "y": 8290
+      },
+      "size": "small",
+      "products": [
+        "RICE",
+        "FISH"
+      ]
+    },
+    {
+      "name": "Sunrise Gate",
+      "location": {
+        "x": 13130,
+        "y": 8470
+      },
+      "size": "large",
+      "products": [
+        "RICE",
+        "FISH",
+        "FRUIT",
+        "WOOD",
+        "WOOL",
+        "CLOTHES",
+        "SAFFRON",
+        "FURNITURE",
+        "JEWELRY"
+      ]
+    },
+    {
+      "name": "Rensei",
+      "location": {
+        "x": 14210,
+        "y": 8470
+      },
+      "size": "small",
+      "products": [
+        "RICE",
+        "SAFFRON"
+      ]
+    },
+    {
+      "name": "Crane Bay",
+      "location": {
+        "x": 15060,
+        "y": 8520
+      },
+      "size": "medium",
+      "products": [
+        "RICE",
+        "FISH",
+        "FRUIT",
+        "WOOD",
+        "WOOL",
+        "CLOTHES",
+        "SAFFRON"
+      ]
+    },
+    {
+      "name": "Panyu",
+      "location": {
+        "x": 4210,
+        "y": 8670
+      },
+      "size": "small",
+      "products": [
+        "RICE",
+        "FISH"
+      ]
+    },
+    {
+      "name": "Tiger Gate",
+      "location": {
+        "x": 3720,
+        "y": 8780
+      },
+      "size": "medium",
+      "products": [
+        "RICE",
+        "FISH",
+        "FRUIT",
+        "WOOD",
+        "WOOL",
+        "CLOTHES",
+        "SAFFRON"
+      ]
+    },
+    {
+      "name": "Hualin",
+      "location": {
+        "x": 6090,
+        "y": 8830
+      },
+      "size": "small",
+      "products": [
+        "RICE",
+        "WOOL"
+      ]
+    },
+    {
+      "name": "Dragon Bay",
+      "location": {
+        "x": 6660,
+        "y": 9160
+      },
+      "size": "medium",
+      "products": [
+        "RICE",
+        "FISH",
+        "FRUIT",
+        "WOOD",
+        "WOOL",
+        "CLOTHES",
+        "SAFFRON"
+      ],
+      "priceOverrides": {
+        "FRUIT": 0.55,
+        "WOOL": 1.45
+      }
+    },
+    {
+      "name": "Sky Lantern",
+      "location": {
+        "x": 15360,
+        "y": 9320
+      },
+      "size": "medium",
+      "products": [
+        "RICE",
+        "FISH",
+        "FRUIT",
+        "WOOD",
+        "WOOL",
+        "CLOTHES",
+        "SAFFRON"
+      ],
+      "priceOverrides": {
+        "RICE": 0.8
+      }
+    },
+    {
+      "name": "Daiwan",
+      "location": {
+        "x": 4790,
+        "y": 9450
+      },
+      "size": "small",
+      "products": [
+        "RICE",
+        "FRUIT"
+      ]
+    },
+    {
+      "name": "Bright Lotus",
+      "location": {
+        "x": 5380,
+        "y": 9520
+      },
+      "size": "medium",
+      "products": [
+        "RICE",
+        "FISH",
+        "FRUIT",
+        "WOOD",
+        "WOOL",
+        "SAFFRON",
+        "FURNITURE"
+      ],
+      "priceOverrides": {
+        "FRUIT": 1.4
+      }
+    },
+    {
+      "name": "Kamiya",
+      "location": {
+        "x": 2850,
+        "y": 9550
+      },
+      "size": "large",
+      "products": [
+        "RICE",
+        "FISH",
+        "FRUIT",
+        "WOOD",
+        "WOOL",
+        "CLOTHES",
+        "SAFFRON",
+        "FURNITURE",
+        "JEWELRY"
+      ],
+      "priceOverrides": {
+        "SAFFRON": 1.2
+      }
+    },
+    {
+      "name": "Fuyama",
+      "location": {
+        "x": 15070,
+        "y": 11150
+      },
+      "size": "small",
+      "products": [
+        "RICE",
+        "SAFFRON"
+      ]
+    },
+    {
+      "name": "Joban",
+      "location": {
+        "x": 14030,
+        "y": 11610
+      },
+      "size": "small",
+      "products": [
+        "RICE",
+        "WOOL"
+      ]
+    },
+    {
+      "name": "Wanli",
+      "location": {
+        "x": 13130,
+        "y": 12050
+      },
+      "size": "small",
+      "products": [
+        "RICE",
+        "FRUIT"
+      ]
+    },
+    {
+      "name": "Jade City",
+      "location": {
+        "x": 7600,
+        "y": 12240
+      },
+      "size": "medium",
+      "products": [
+        "RICE",
+        "FISH",
+        "FRUIT",
+        "WOOD",
+        "WOOL",
+        "SAFFRON",
+        "FURNITURE"
+      ],
+      "priceOverrides": {
+        "WOOD": 0.65,
+        "FRUIT": 1.4
+      }
+    },
+    {
+      "name": "Fenglin",
+      "location": {
+        "x": 7120,
+        "y": 12380
+      },
+      "size": "medium",
+      "products": [
+        "RICE",
+        "FISH",
+        "FRUIT",
+        "WOOD",
+        "WOOL",
+        "CLOTHES",
+        "SAFFRON"
+      ],
+      "priceOverrides": {
+        "FRUIT": 0.8
+      }
+    },
+    {
+      "name": "Baisha",
+      "location": {
+        "x": 4820,
+        "y": 12500
+      },
+      "size": "medium",
+      "products": [
+        "RICE",
+        "FISH",
+        "FRUIT",
+        "WOOD",
+        "WOOL",
+        "CLOTHES",
+        "SAFFRON"
+      ],
+      "priceOverrides": {
+        "CLOTHES": 1.5,
+        "WOOL": 1.4
+      }
+    },
+    {
+      "name": "Nanpo",
+      "location": {
+        "x": 14210,
+        "y": 12530
+      },
+      "size": "small",
+      "products": [
+        "RICE",
+        "WOOD"
+      ]
+    },
+    {
+      "name": "Lucky Wind",
+      "location": {
+        "x": 4430,
+        "y": 12590
+      },
+      "size": "small",
+      "products": [
+        "RICE",
+        "FRUIT"
+      ]
+    },
+    {
+      "name": "Willow Port",
+      "location": {
+        "x": 16350,
+        "y": 12730
+      },
+      "size": "small",
+      "products": [
+        "RICE",
+        "SAFFRON"
+      ]
+    },
+    {
+      "name": "Nozomi",
+      "location": {
+        "x": 14810,
+        "y": 12850
+      },
+      "size": "small",
+      "products": [
+        "RICE",
+        "FISH"
+      ]
+    },
+    {
+      "name": "Ubaru",
+      "location": {
+        "x": 16990,
+        "y": 12870
+      },
+      "size": "large",
+      "products": [
+        "RICE",
+        "FISH",
+        "FRUIT",
+        "WOOD",
+        "WOOL",
+        "CLOTHES",
+        "SAFFRON",
+        "FURNITURE",
+        "JEWELRY"
+      ],
+      "priceOverrides": {
+        "WOOL": 0.7
+      }
+    },
+    {
+      "name": "Shirane",
+      "location": {
+        "x": 15620,
+        "y": 12900
+      },
+      "size": "medium",
+      "products": [
+        "RICE",
+        "FISH",
+        "FRUIT",
+        "WOOD",
+        "WOOL",
+        "CLOTHES",
+        "SAFFRON"
+      ],
+      "priceOverrides": {
+        "SAFFRON": 1.1,
+        "WOOL": 1.1
+      }
+    },
+    {
+      "name": "Aoki",
+      "location": {
+        "x": 6880,
+        "y": 12920
+      },
+      "size": "medium",
+      "products": [
+        "RICE",
+        "FISH",
+        "FRUIT",
+        "WOOD",
+        "WOOL",
+        "CLOTHES",
+        "SAFFRON"
+      ],
+      "priceOverrides": {
+        "RICE": 1.2,
+        "WOOL": 0.6
+      }
+    },
+    {
+      "name": "Congan",
+      "location": {
+        "x": 4850,
+        "y": 12970
+      },
+      "size": "small",
+      "products": [
+        "RICE",
+        "FRUIT"
+      ]
+    },
+    {
+      "name": "Dragon Gate",
+      "location": {
+        "x": 4700,
+        "y": 13180
+      },
+      "size": "medium",
+      "products": [
+        "RICE",
+        "FISH",
+        "FRUIT",
+        "WOOD",
+        "WOOL",
+        "SAFFRON",
+        "FURNITURE"
+      ]
+    },
+    {
+      "name": "Mekaru",
+      "location": {
+        "x": 11110,
+        "y": 13310
+      },
+      "size": "large",
+      "products": [
+        "RICE",
+        "FISH",
+        "FRUIT",
+        "WOOD",
+        "WOOL",
+        "CLOTHES",
+        "SAFFRON",
+        "FURNITURE",
+        "JEWELRY"
+      ]
+    },
+    {
+      "name": "Ichimoto",
+      "location": {
+        "x": 4860,
+        "y": 13480
+      },
+      "size": "medium",
+      "products": [
+        "RICE",
+        "FISH",
+        "FRUIT",
+        "WOOD",
+        "WOOL",
+        "SAFFRON",
+        "FURNITURE"
+      ],
+      "priceOverrides": {
+        "FRUIT": 1.2
+      }
+    },
+    {
+      "name": "Silk Harbor",
+      "location": {
+        "x": 5130,
+        "y": 13710
+      },
+      "size": "small",
+      "products": [
+        "RICE",
+        "WOOL"
+      ]
+    },
+    {
+      "name": "Kobune",
+      "location": {
+        "x": 4760,
+        "y": 13740
+      },
+      "size": "medium",
+      "products": [
+        "RICE",
+        "FISH",
+        "FRUIT",
+        "WOOD",
+        "WOOL",
+        "SAFFRON",
+        "JEWELRY"
+      ]
+    },
+    {
+      "name": "Yuhan",
+      "location": {
+        "x": 7310,
+        "y": 13950
+      },
+      "size": "small",
+      "products": [
+        "RICE",
+        "WOOL"
+      ]
+    },
+    {
+      "name": "Yagami",
+      "location": {
+        "x": 11240,
+        "y": 14060
+      },
+      "size": "medium",
+      "products": [
+        "RICE",
+        "FISH",
+        "FRUIT",
+        "WOOD",
+        "WOOL",
+        "SAFFRON",
+        "FURNITURE"
+      ],
+      "priceOverrides": {
+        "FURNITURE": 1.3,
+        "RICE": 1.4
+      }
+    },
+    {
+      "name": "Enjo",
+      "location": {
+        "x": 7050,
+        "y": 14150
+      },
+      "size": "small",
+      "products": [
+        "RICE",
+        "SAFFRON"
+      ]
+    },
+    {
+      "name": "Toya",
+      "location": {
+        "x": 6770,
+        "y": 14230
+      },
+      "size": "small",
+      "products": [
+        "RICE",
+        "WOOL"
+      ]
+    },
+    {
+      "name": "Hoshin",
+      "location": {
+        "x": 7370,
+        "y": 14270
+      },
+      "size": "small",
+      "products": [
+        "RICE",
+        "WOOL"
+      ]
+    },
+    {
+      "name": "Jade Terrace",
+      "location": {
+        "x": 6020,
+        "y": 14420
+      },
+      "size": "medium",
+      "products": [
+        "RICE",
+        "FISH",
+        "FRUIT",
+        "WOOD",
+        "WOOL",
+        "CLOTHES",
+        "SAFFRON"
+      ],
+      "priceOverrides": {
+        "FISH": 0.8
+      }
+    },
+    {
+      "name": "Green Tortoise",
+      "location": {
+        "x": 7620,
+        "y": 14480
+      },
+      "size": "medium",
+      "products": [
+        "RICE",
+        "FISH",
+        "FRUIT",
+        "WOOD",
+        "WOOL",
+        "CLOTHES",
+        "SAFFRON"
+      ],
+      "priceOverrides": {
+        "FRUIT": 1.25,
+        "SAFFRON": 0.8
+      }
+    },
+    {
+      "name": "Obara",
+      "location": {
+        "x": 4540,
+        "y": 14500
+      },
+      "size": "medium",
+      "products": [
+        "RICE",
+        "FISH",
+        "FRUIT",
+        "WOOD",
+        "WOOL",
+        "CLOTHES",
+        "SAFFRON"
+      ]
+    },
+    {
+      "name": "Nine Dragons",
+      "location": {
+        "x": 8600,
+        "y": 14660
+      },
+      "size": "medium",
+      "products": [
+        "RICE",
+        "FISH",
+        "FRUIT",
+        "WOOD",
+        "WOOL",
+        "SAFFRON",
+        "FURNITURE"
+      ]
+    },
+    {
+      "name": "Linhe",
+      "location": {
+        "x": 7810,
+        "y": 14710
+      },
+      "size": "small",
+      "products": [
+        "RICE",
+        "SAFFRON"
+      ]
+    },
+    {
+      "name": "Tanaru",
+      "location": {
+        "x": 8230,
+        "y": 14710
+      },
+      "size": "small",
+      "products": [
+        "RICE",
+        "WOOL"
+      ]
+    },
+    {
+      "name": "Ruilin",
+      "location": {
+        "x": 7570,
+        "y": 14730
+      },
+      "size": "small",
+      "products": [
+        "RICE",
+        "FRUIT"
+      ]
+    },
+    {
+      "name": "Yulin",
+      "location": {
+        "x": 11310,
+        "y": 14870
+      },
+      "size": "small",
+      "products": [
+        "RICE",
+        "WOOL"
+      ]
+    },
+    {
+      "name": "Meishan",
+      "location": {
+        "x": 10440,
+        "y": 15080
+      },
+      "size": "medium",
+      "products": [
+        "RICE",
+        "FISH",
+        "FRUIT",
+        "WOOD",
+        "WOOL",
+        "SAFFRON",
+        "JEWELRY"
+      ],
+      "priceOverrides": {
+        "WOOL": 0.9,
+        "SAFFRON": 1.25
+      }
+    },
+    {
+      "name": "Phoenix Landing",
+      "location": {
+        "x": 4210,
+        "y": 15190
+      },
+      "size": "large",
+      "products": [
+        "RICE",
+        "FISH",
+        "FRUIT",
+        "WOOD",
+        "WOOL",
+        "CLOTHES",
+        "SAFFRON",
+        "FURNITURE",
+        "JEWELRY"
+      ]
+    },
+    {
+      "name": "Tea Hill",
+      "location": {
+        "x": 11990,
+        "y": 15370
+      },
+      "size": "small",
+      "products": [
+        "RICE",
+        "WOOD"
+      ]
+    },
+    {
+      "name": "Mitani",
+      "location": {
+        "x": 12300,
+        "y": 15500
+      },
+      "size": "medium",
+      "products": [
+        "RICE",
+        "FISH",
+        "FRUIT",
+        "WOOD",
+        "WOOL",
+        "SAFFRON",
+        "FURNITURE"
+      ],
+      "priceOverrides": {
+        "FURNITURE": 0.95
+      }
+    },
+    {
+      "name": "Fanling",
+      "location": {
+        "x": 12670,
+        "y": 15970
+      },
+      "size": "small",
+      "products": [
+        "RICE",
+        "WOOL"
+      ]
+    },
+    {
+      "name": "Kirishima",
+      "location": {
+        "x": 12010,
+        "y": 16850
+      },
+      "size": "small",
+      "products": [
+        "RICE",
+        "WOOL"
+      ]
+    },
+    {
+      "name": "Chenglu",
+      "location": {
+        "x": 11390,
+        "y": 17950
+      },
+      "size": "large",
+      "products": [
+        "RICE",
+        "FISH",
+        "FRUIT",
+        "WOOD",
+        "WOOL",
+        "CLOTHES",
+        "SAFFRON",
+        "FURNITURE",
+        "JEWELRY"
+      ],
+      "priceOverrides": {
+        "FURNITURE": 0.55,
+        "WOOL": 0.55
+      }
+    }
+  ]
+}
