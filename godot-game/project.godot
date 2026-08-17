@@ -16,6 +16,11 @@ window/size/viewport_height=800
 ; web version (fonts, zoom = px per world unit, hit radii...).
 window/dpi/allow_hidpi=false
 
+[gui]
+; Labels are positioned at fractional px as they track the world; snapping
+; them to whole pixels makes them jitter while the camera moves.
+common/snap_controls_to_pixels=false
+
 [rendering]
 renderer/rendering_method="forward_plus"
 environment/defaults/default_clear_color=Color(0.0667, 0.0667, 0.0667, 1)
