@@ -51,6 +51,8 @@ const P = {
   // enemy
   enemyRadius:     45,
   enemySpeed:      10,
+  wobbleAmp:       8,    // units of radial deviation from the circle
+  wobbleFreq:      6,    // wobbles per lap
   // cannon
   arcAngle:        45,   // degrees; launch angle is fixed, power adapts to range
   gravity:         30,
@@ -310,13 +312,15 @@ function update(dt) {
   player.rotation.z = (keys['a'] ? -1 : keys['d'] ? 1 : 0) * 0.08 * speedFrac;
   player.position.y = Math.sin(performance.now() * 0.002) * 0.15;
 
-  // --- enemy circling
+  // --- enemy: circle with a sine-wave radial wobble
   const e = enemyState;
   e.angle += (P.enemySpeed / P.enemyRadius) * dt;
-  enemy.position.set(e.center.x + Math.cos(e.angle) * P.enemyRadius, 0, e.center.z + Math.sin(e.angle) * P.enemyRadius);
-  // tangent direction: heading such that forward (+Z rotated by yaw) matches velocity
-  const vx = -Math.sin(e.angle), vz = Math.cos(e.angle);
-  enemy.rotation.y = Math.atan2(vx, vz);
+  const r = P.enemyRadius + Math.sin(e.angle * P.wobbleFreq) * P.wobbleAmp;
+  const nx = e.center.x + Math.cos(e.angle) * r, nz = e.center.z + Math.sin(e.angle) * r;
+  // heading follows the actual direction of travel
+  const vx = nx - enemy.position.x, vz = nz - enemy.position.z;
+  if (vx * vx + vz * vz > 1e-8) enemy.rotation.y = Math.atan2(vx, vz);
+  enemy.position.set(nx, 0, nz);
   enemyBox.setFromObject(enemy.userData.hull);
   enemyBox.expandByScalar(0.5);
 
@@ -382,7 +386,7 @@ const sliders = [
   ['Boat', null],
   ['maxSpeed', 2, 60, 1], ['acceleration', 1, 40, 0.5], ['brake', 1, 40, 0.5],
   ['drag', 0, 5, 0.1], ['turnSpeed', 0.2, 5, 0.1], ['turnMinFactor', 0, 1, 0.05],
-  ['Enemy', null], ['enemyRadius', 10, 100, 1], ['enemySpeed', 0, 40, 0.5],
+  ['Enemy', null], ['enemyRadius', 10, 100, 1], ['enemySpeed', 0, 40, 0.5], ['wobbleAmp', 0, 30, 0.5], ['wobbleFreq', 0, 20, 0.5],
   ['Cannon', null], ['arcAngle', 10, 85, 1],
   ['gravity', 5, 100, 1], ['reloadTime', 0, 6, 0.1], ['firingArc', 10, 180, 5],
   ['Camera', null], ['camDist', 40, 300, 5], ['camAngle', 20, 89, 1],
