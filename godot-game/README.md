@@ -10,8 +10,9 @@ to the other.
 ## Running
 
 ```bash
-dotnet build                                            # after any code change (~1 s incremental)
-/Applications/Godot_mono.app/Contents/MacOS/Godot --path .   # run
+./build.sh          # dotnet build — after any code change (~1 s incremental)
+./run.sh            # Godot --path .  (extra args pass through, e.g. ./run.sh -- --screenshot=x.png)
+./buildAndRun.sh    # both
 ```
 
 Requires the Godot 4.7 **.NET** build (`/Applications/Godot_mono.app`; the
