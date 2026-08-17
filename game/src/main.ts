@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import type { CameraController, ViewportInfo } from './camera/CameraController';
-import { applyToCamera, clampCamera, minZoomFor, screenToGround, worldToScreen } from './camera/CameraController';
+import { applyToCamera, clampCamera, createRig, minZoomFor, screenToGround, worldToScreen } from './camera/CameraController';
 import { FollowCameraController } from './camera/FollowCameraController';
 import { FreeCameraController } from './camera/FreeCameraController';
 import { createBoat } from './boat';
@@ -43,7 +43,9 @@ world.add(terrain.mesh);
 const chunks = createTerrainChunks(map);
 world.add(chunks.group);
 
-const camera = new THREE.PerspectiveCamera(CONFIG.camera3d.fovDeg, 1, 0.1, 1000);
+// Camera rigs (projection + view angle), cycled with V; camera modes below
+// decide where the focus is and are independent of the rig.
+let rig = createRig(CONFIG.camera3d.defaultRig);
 
 const view: ViewportInfo = { widthPx: window.innerWidth, heightPx: window.innerHeight };
 const input = createInput(canvas);
@@ -53,7 +55,7 @@ world.add(boat.mesh);
 
 // Camera modes: added to this record and switched via switchMode(), which
 // hands the current state across.
-const freeCamera = new FreeCameraController();
+const freeCamera = new FreeCameraController(rig);
 const followCamera = new FollowCameraController(boat);
 const controllers: Record<string, CameraController> = {
   free: freeCamera,
@@ -119,6 +121,12 @@ function frame(now: number) {
   if (input.pressed.has('KeyC')) {
     switchMode(MODE_CYCLE[(MODE_CYCLE.indexOf(active.name) + 1) % MODE_CYCLE.length]!);
   }
+  // V cycles the camera rig (isometric / perspective).
+  if (input.pressed.has('KeyV')) {
+    const cycle = CONFIG.camera3d.rigCycle;
+    rig = createRig(cycle[(cycle.indexOf(rig.name) + 1) % cycle.length]!);
+    freeCamera.setRig(rig);
+  }
   // Latched here: the active controller clears the frame deltas in update().
   const clicked = input.clicked;
   const escaped = input.pressed.has('Escape');
@@ -156,7 +164,8 @@ function frame(now: number) {
   const state = active.getState();
   clampCamera(state, view, worldW, worldH);
 
-  applyToCamera(state, view, camera);
+  applyToCamera(rig, state, view);
+  const camera = rig.camera;
   terrain.setGridOpacity(gridOpacityFor(state.zoom));
 
   // Stream terrain chunks for the ground area the camera can see: the four
@@ -193,7 +202,7 @@ function frame(now: number) {
   if (charged && cityPopup.isOpen()) cityPopup.refresh();
   clock.update();
   minimap.update(state, view);
-  hud.update(state, view, minZoomFor(view, worldW, worldH), active.name, timeScale, chunks.stats());
+  hud.update(state, view, rig, minZoomFor(view, worldW, worldH), active.name, timeScale, chunks.stats());
 
   requestAnimationFrame(frame);
 }

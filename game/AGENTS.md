@@ -1,6 +1,6 @@
 # dragonboat/game
 
-A 3D world viewer (the start of a game) built with TypeScript, three.js, and Vite, seen from a perspective camera pitched 45° down. (The previous top-down 2D version is kept, un-tracked, in `../game-old` for comparison.) It loads a world exported from the sibling `../world-generator` project and lets you explore it with a free camera.
+A 3D world viewer (the start of a game) built with TypeScript, three.js, and Vite, seen from an isometric camera by default (V switches to a 45° perspective rig). (The previous top-down 2D version is kept, un-tracked, in `../game-old` for comparison.) It loads a world exported from the sibling `../world-generator` project and lets you explore it with a free camera.
 
 ## Running
 
@@ -38,8 +38,8 @@ of `src/` uses. Keep them that way, or the test stops running.
 World coordinates are **y-down** with (0,0) at the map's **top-left**, x right — matching the dmap file's row order and screen space; height is z (up). All camera state, HUD readouts, and minimap math use these coordinates (0–20000 on both axes). Three.js is y-up internally; the trick that makes everything line up is the `world` group in `main.ts`, scaled by -1 in y: every mesh lives inside it with local position = world position, and three flips face winding for the negative determinant so meshes render normally (materials use `DoubleSide` anyway). Consequences:
 
 - dmap rows map straight into texture rows — no flips anywhere (terrain bake, minimap, cursor math are all direct).
-- Scene y = -world y. `applyToCamera` (`src/camera/CameraController.ts`) places a `PerspectiveCamera` south of the focus (larger world y) looking north and down at `camera3d.pitchDeg`, so screen-up is world -y like the 2D version. `zoom` is still screen px per world unit, measured at the focus point; the camera distance is derived from it (`focusDistanceFor`).
-- Screen-px → world conversions: use `screenToGround` (ray onto z=0) when exact; the free camera's pan/zoom-anchoring uses the linear `px / zoom` approximation with vertical distances divided by `GROUND_Y_SCALE` (= sin(pitch), the foreshortening at the focus). `worldToScreen` projects world points (city labels).
+- Scene y = -world y. A **camera rig** (`createRig` in `src/camera/CameraController.ts`, configured in `CONFIG.camera3d.rigs`) is a projection (orthographic or perspective) plus pitch and yaw; `applyToCamera(rig, state, view)` places the rig's camera behind the focus along the rig's `forward` ground direction, looking down at `pitch`, so screen-up is `forward` on the ground. Yaw 0 = screen-up is north (world -y); the default `isometric` rig is orthographic, pitch 35.264°, yaw 45° (north appears up-left, east up-right). `zoom` is still screen px per world unit, measured at the focus point; a perspective rig derives its distance from it (`focusDistanceFor`), an orthographic one sets its frustum from it. Rigs are independent of camera *modes* (follow/free decide where the focus is); `main.ts` cycles rigs with V (`rigCycle`) and hands the new rig to the free camera.
+- Screen-px → world conversions: `screenToGround` (ray onto z=0, works for both projections) when exact; the free camera's pan/drag/zoom-anchoring uses `screenDeltaToGround(rig, …)`, the linear focus-plane approximation rotated by yaw with vertical distances divided by `rig.groundYScale` (= sin(pitch)). `worldToScreen` projects world points (city labels).
 
 ### 3D terrain (src/terrainChunks.ts)
 

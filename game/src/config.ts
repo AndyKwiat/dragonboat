@@ -7,11 +7,19 @@ export const CONFIG = {
   zoomWheelSensitivity: 0.0015,
   keyPanPxPerSec: 600,         // keyboard pan speed in screen px/sec (constant feel at any zoom)
   clearColor: 0x111111,
-  // 3D camera: a perspective camera pitched down at the focus point. zoom is
-  // still screen px per world unit, measured at the focus point.
+  // 3D camera rigs, cycled with V. zoom is still screen px per world unit,
+  // measured at the focus point. pitch = angle between the view direction and
+  // the ground (90 = top-down); yaw = rotation of the view about the vertical
+  // (0 = screen-up is world north/-y, positive turns clockwise on the map).
   camera3d: {
-    pitchDeg: 45,             // angle between the view direction and the ground (90 = top-down)
-    fovDeg: 45,               // vertical field of view
+    defaultRig: 'isometric',
+    rigCycle: ['isometric', 'perspective'],
+    rigs: {
+      // Classic isometric: orthographic, looking down the cube diagonal.
+      isometric: { projection: 'orthographic', pitchDeg: 35.264, yawDeg: 45, fovDeg: 0 },
+      perspective: { projection: 'perspective', pitchDeg: 45, yawDeg: 0, fovDeg: 45 },
+    } as Record<string, { projection: 'orthographic' | 'perspective'; pitchDeg: number; yawDeg: number; fovDeg: number }>,
+    orthoDistance: 30000,     // how far back the orthographic camera sits (only affects clipping)
   },
   // Column heights per terrain index (world units): water is the ground at 0,
   // land rises out of it, cities rise 3x again.

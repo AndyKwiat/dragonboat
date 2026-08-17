@@ -1,13 +1,18 @@
 import { CONFIG } from '../config';
 import type { InputState } from '../input';
 import type { CameraController, CameraState, ViewportInfo } from './CameraController';
-import { GROUND_Y_SCALE } from './CameraController';
+import { screenDeltaToGround, type CameraRig } from './CameraController';
 
 // Free camera: WASD/arrow pan, drag pan, wheel zoom anchored at the cursor.
 export class FreeCameraController implements CameraController {
   readonly name = 'free';
   private state: CameraState = { centerX: 0, centerY: 0, zoom: 1 };
   private minZoom = 0;
+  private ground = { x: 0, y: 0 };
+
+  constructor(private rig: CameraRig) {}
+
+  setRig(rig: CameraRig) { this.rig = rig; }
 
   setMinZoom(z: number) { this.minZoom = z; }
 
@@ -31,13 +36,11 @@ export class FreeCameraController implements CameraController {
     if (input.keys.has('KeyD') || input.keys.has('ArrowRight')) dx += 1;
     if (input.keys.has('KeyW') || input.keys.has('ArrowUp')) dy -= 1;
     if (input.keys.has('KeyS') || input.keys.has('ArrowDown')) dy += 1;
-    // Vertical screen distances cover more ground because of the camera pitch.
-    s.centerX += (dx * panPx) / s.zoom;
-    s.centerY += (dy * panPx) / (s.zoom * GROUND_Y_SCALE);
-
-    // Drag pan: world follows the cursor (screen and world are both y-down).
-    s.centerX -= input.dragDeltaPx.x / s.zoom;
-    s.centerY -= input.dragDeltaPx.y / (s.zoom * GROUND_Y_SCALE);
+    // Screen-space pan and drag, turned into ground movement by the rig
+    // (yaw rotates it, pitch foreshortens the vertical axis).
+    screenDeltaToGround(this.rig, dx * panPx - input.dragDeltaPx.x, dy * panPx - input.dragDeltaPx.y, s.zoom, this.ground);
+    s.centerX += this.ground.x;
+    s.centerY += this.ground.y;
 
     // Wheel zoom toward the cursor: the world point under the cursor stays put.
     if (input.wheelDelta !== 0) {
@@ -49,8 +52,9 @@ export class FreeCameraController implements CameraController {
       if (newZoom !== oldZoom) {
         const px = input.cursorPx.x - view.widthPx / 2;
         const py = input.cursorPx.y - view.heightPx / 2;
-        s.centerX += px / oldZoom - px / newZoom;
-        s.centerY += (py / oldZoom - py / newZoom) / GROUND_Y_SCALE;
+        screenDeltaToGround(this.rig, px, py, 1, this.ground);
+        s.centerX += this.ground.x * (1 / oldZoom - 1 / newZoom);
+        s.centerY += this.ground.y * (1 / oldZoom - 1 / newZoom);
         s.zoom = newZoom;
       }
     }
