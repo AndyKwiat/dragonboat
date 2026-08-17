@@ -16,7 +16,7 @@ export const CONFIG = {
     rigCycle: ['isometric', 'perspective'],
     rigs: {
       // Classic isometric: orthographic, looking down the cube diagonal.
-      isometric: { projection: 'orthographic', pitchDeg: 35.264, yawDeg: 45, fovDeg: 0 },
+      isometric: { projection: 'orthographic', pitchDeg: 35.264, yawDeg: 23, fovDeg: 0 },
       perspective: { projection: 'perspective', pitchDeg: 45, yawDeg: 0, fovDeg: 45 },
     } as Record<string, { projection: 'orthographic' | 'perspective'; pitchDeg: number; yawDeg: number; fovDeg: number }>,
     orthoDistance: 30000,     // how far back the orthographic camera sits (only affects clipping)
