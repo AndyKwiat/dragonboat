@@ -138,11 +138,13 @@ function addRock(x, z, size) {
   scene.add(r); rocks.push(r);
   return r;
 }
-addRock(10, 0, 6);
-addRock(2, 9, 4);
-addRock(19, -7, 4.5);
-addRock(-2, -8, 3);
-addRock(22, 8, 3);
+// Random layout every reload.
+const rand = Math.random;
+const rockField = { x: 10, z: 0, radius: 55 };
+for (let i = 0; i < 25; i++) {
+  const a = rand() * Math.PI * 2, d = Math.sqrt(rand()) * rockField.radius;
+  addRock(rockField.x + Math.cos(a) * d, rockField.z + Math.sin(a) * d, 2 + rand() * 4);
+}
 
 // ---------------------------------------------------------------------------
 // Boats
