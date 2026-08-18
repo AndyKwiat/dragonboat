@@ -24,4 +24,4 @@ common/snap_controls_to_pixels=false
 [rendering]
 renderer/rendering_method="forward_plus"
 environment/defaults/default_clear_color=Color(0.0667, 0.0667, 0.0667, 1)
-anti_aliasing/quality/msaa_3d=0
+anti_aliasing/quality/msaa_3d=2

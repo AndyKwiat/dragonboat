@@ -106,7 +106,7 @@ chunk streamer casts the four screen corners onto the ground with
   values equal the hex values, like the web version's raw shader / minimap. The
   ground grid is mixed in sRGB space on purpose to match the web look.
 - Everything is `unshaded`; column sides are pre-darkened (`SideShadeX/Y`, in
-  linear space like three.js). No lights, no environment, MSAA off.
+  linear space like three.js). No lights, no environment; 4x MSAA on the 3D scene.
 - Terrain: the plane is one draw call; chunks are one `ArrayMesh` each,
   bounded by `MaxVisibleChunks` via the LOD step (majority terrain per block).
   Built nearest-first inside `BuildBudgetMs` per frame, LRU-evicted past
