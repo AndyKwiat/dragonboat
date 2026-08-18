@@ -11,6 +11,9 @@ public partial class Boat : Node3D
     public float Heading = Config.BoatStartHeading;
     public float Speed;            // world units/sec, signed (negative = reversing)
     public float MaxSpeedScale = 1; // multiplier on top speed, driven by crew size
+    public bool Turning;            // a steering key was held this frame
+    public float TurnRateScale = 1; // multiplier on turn rate; Main sets 1/timeScale so
+                                    // steering feels the same in fast-forward
 
     public override void _Ready()
     {
@@ -49,10 +52,11 @@ public partial class Boat : Node3D
 
         // Steering authority scales with speed: a dead boat doesn't spin in place.
         int turn = (right ? 1 : 0) - (left ? 1 : 0);
+        Turning = turn != 0;
         if (turn != 0 && Speed != 0)
         {
             float authority = Math.Min(Math.Abs(Speed) / Config.BoatTurnFullSpeed, 1f);
-            Heading += turn * Config.BoatTurnRate * authority * Math.Sign(Speed) * dt;
+            Heading += turn * Config.BoatTurnRate * TurnRateScale * authority * Math.Sign(Speed) * dt;
         }
 
         X += Mathf.Cos(Heading) * Speed * dt;

@@ -64,9 +64,22 @@ public static class Config
     public const float BoatMaxReverseSpeed = 20f;
     public const float BoatAccel = 40f;
     public const float BoatFriction = 45f;
-    public const float BoatTurnRate = Mathf.Pi * 0.75f;
+    public const float BoatTurnRate = Mathf.Pi * 0.55f;
     public const float BoatTurnFullSpeed = 20f;
     public const float BoatFollowZoom = 2.5f;
+    // Follow camera look-ahead: at top speed, sailing straight, the boat sits
+    // this many screen px behind centre (scaled by speed, so world offset =
+    // px * speedFrac / zoom); stationary = centred. The lead only builds up
+    // while you're not steering: it ramps in over RampUpSec of straight sailing
+    // and drops back over RampDownSec once you turn. SmoothSec is the 1/e time
+    // constant of a final ease on the offset vector, and MaxPxPerSec caps how
+    // fast the offset may move on screen (a long lead swinging with the
+    // heading during a turn is what this tames).
+    public const float FollowLookAheadPx = 520f;
+    public const float FollowLookAheadMaxPxPerSec = 250f;
+    public const float FollowLookAheadRampUpSec = 6f;
+    public const float FollowLookAheadRampDownSec = 2f;
+    public const float FollowLookAheadSmoothSec = 1.6f;
     public const float BoatMaxStepSeconds = 0.05f;
 
     // City labels: font size (px), weight, colour and the zoom below which

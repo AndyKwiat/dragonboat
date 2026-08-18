@@ -220,6 +220,9 @@ public partial class Main : Node3D
         if (active != freeCamera)
         {
             boat.MaxSpeedScale = Crew.SpeedMultiplier(player.CrewCount, Config.Crew);
+            // Fast-forward speeds the voyage, not the helm: keep the turn rate
+            // constant per real second so steering feels the same at any zoom.
+            boat.TurnRateScale = 1 / timeScale;
             // Sub-stepped so a big time scale doesn't cut corners on turns.
             float remaining = gameDt;
             while (remaining > 0)

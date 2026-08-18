@@ -13,19 +13,26 @@ public interface ICameraController
     void Update(float dt, InputState input, Vector2 view);
 }
 
-// Follow camera: locked to a target (the boat stays screen-centred). Wheel
-// still zooms, but there's no cursor anchoring — the centre is not ours to move.
+// Follow camera: locked to a target. Stationary, the boat is screen-centred;
+// sailing straight for a while, the centre leads it along its heading ("look
+// ahead"), by a screen distance proportional to speed so it feels the same at
+// any zoom. Steering bleeds the lead back off, so turns don't swing the view. Wheel still zooms, but there's no cursor
+// anchoring — the centre is not ours to move.
 public sealed class FollowCameraController : ICameraController
 {
     public string Name => "follow";
     public CameraState State { get; private set; } = new(0, 0, Config.BoatFollowZoom);
     public float MinZoom;
     private readonly Boat target;
+    private Vector2 lookAhead;   // smoothed world-space offset from boat to centre
+    private float straightness;  // 0..1: how long we've been sailing without steering
 
     public FollowCameraController(Boat target) { this.target = target; }
 
     public void Enable(CameraState state)
     {
+        lookAhead = Vector2.Zero;
+        straightness = 0;
         State = new CameraState(target.X, target.Y, State.Zoom > 0 ? State.Zoom : state.Zoom);
     }
     public void Disable() { }
@@ -35,8 +42,26 @@ public sealed class FollowCameraController : ICameraController
         var s = State;
         if (input.WheelDelta != 0)
             s.Zoom = Math.Clamp(s.Zoom * Mathf.Exp(-input.WheelDelta * Config.ZoomWheelSensitivity), MinZoom, Config.MaxZoom);
-        s.CenterX = target.X;
-        s.CenterY = target.Y;
+        // Straightness ramps up while not steering, down while steering, and is
+        // eased (smoothstep) so both ends of the ramp are gentle.
+        float rampRate = target.Turning ? -1 / Config.FollowLookAheadRampDownSec : 1 / Config.FollowLookAheadRampUpSec;
+        straightness = Math.Clamp(straightness + rampRate * dt, 0, 1);
+        float eased = straightness * straightness * (3 - 2 * straightness);
+        // Target offset: screen px scaled by speed fraction and straightness,
+        // converted to world units at the current zoom, pointing along the
+        // heading (behind when reversing, since Speed is signed).
+        float speedFrac = target.Speed / Config.BoatMaxSpeed;
+        float worldPx = Config.FollowLookAheadPx * speedFrac * eased / s.Zoom;
+        var want = new Vector2(Mathf.Cos(target.Heading), Mathf.Sin(target.Heading)) * worldPx;
+        // Framerate-independent exponential ease toward the target offset,
+        // then a slew cap so a long lead can't whip round with the heading.
+        float k = 1 - Mathf.Exp(-dt / Config.FollowLookAheadSmoothSec);
+        var step = (want - lookAhead) * k;
+        float maxStep = Config.FollowLookAheadMaxPxPerSec / s.Zoom * dt;
+        if (step.Length() > maxStep) step = step.Normalized() * maxStep;
+        lookAhead += step;
+        s.CenterX = target.X + lookAhead.X;
+        s.CenterY = target.Y + lookAhead.Y;
         input.ConsumeFrameDeltas();
     }
 }
