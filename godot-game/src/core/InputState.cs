@@ -16,6 +16,8 @@ public partial class InputState : Node
     public Vector2 DragDeltaPx;
     public float WheelDelta;
     public Vector2 CursorPx;
+    /// False until the mouse has been seen at all (scripted runs never move it).
+    public bool HasCursor;
 
     private Vector2? pressAt;
     private const float ClickSlopPx = 4f;
@@ -59,7 +61,7 @@ public partial class InputState : Node
                 break;
 
             case InputEventMouseButton mb:
-                CursorPx = mb.Position;
+                CursorPx = mb.Position; HasCursor = true;
                 if (mb.ButtonIndex == MouseButton.WheelUp) WheelDelta -= WheelNotchPx * mb.Factor;
                 else if (mb.ButtonIndex == MouseButton.WheelDown) WheelDelta += WheelNotchPx * mb.Factor;
                 else if (mb.ButtonIndex == MouseButton.Left || mb.ButtonIndex == MouseButton.Middle)
@@ -81,7 +83,7 @@ public partial class InputState : Node
                 break;
 
             case InputEventMouseMotion mm:
-                CursorPx = mm.Position;
+                CursorPx = mm.Position; HasCursor = true;
                 if (Dragging) DragDeltaPx += mm.Relative;
                 break;
 

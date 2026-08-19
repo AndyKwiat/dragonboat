@@ -50,7 +50,7 @@ public sealed class FollowCameraController : ICameraController
         // Target offset: screen px scaled by speed fraction and straightness,
         // converted to world units at the current zoom, pointing along the
         // heading (behind when reversing, since Speed is signed).
-        float speedFrac = target.Speed / Config.BoatMaxSpeed;
+        float speedFrac = target.GroundSpeed / BoatConfig.MaxSpeed;   // actual progress, so a boat held by the shore stays centred
         float worldPx = Config.FollowLookAheadPx * speedFrac * eased / s.Zoom;
         var want = new Vector2(Mathf.Cos(target.Heading), Mathf.Sin(target.Heading)) * worldPx;
         // Framerate-independent exponential ease toward the target offset,

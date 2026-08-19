@@ -1,7 +1,9 @@
 using Godot;
 using System.Collections.Generic;
 
-// All tunables, mirroring ../game/src/config.ts. New knobs go here.
+// World, camera, trading and UI tunables, mirroring ../game/src/config.ts.
+// Boat and combat knobs live next to their systems (BoatConfig, CombatConfig)
+// because those are live-tunable; everything here is a constant.
 public static class Config
 {
     // World units per map cell — change this to resize the whole world.
@@ -52,20 +54,8 @@ public static class Config
     public const float GridMaxAlpha = 0.35f;
     public static readonly Color GridColor = new Color(0x444444FF);
 
-    // The boat.
-    public const float BoatStartX = 2556f;
-    public const float BoatStartY = 15829f;
-    public const float BoatStartHeading = -Mathf.Pi / 2; // pointing "up" (world -y)
-    public const float BoatLength = 10f;
-    public const float BoatWidth = 4f;
-    public const float BoatHeight = 3f;
-    public static readonly Color BoatColor = new Color(0x7a4a1eFF);
-    public const float BoatMaxSpeed = 50f;
-    public const float BoatMaxReverseSpeed = 20f;
-    public const float BoatAccel = 40f;
-    public const float BoatFriction = 45f;
-    public const float BoatTurnRate = Mathf.Pi * 0.55f;
-    public const float BoatTurnFullSpeed = 20f;
+    // Boat handling, size and lean live in boat/BoatConfig.cs; combat in
+    // combat/CombatConfig.cs. Both are live-tunable (core/Tweaks.cs).
     public const float BoatFollowZoom = 2.5f;
     // Follow camera look-ahead: at top speed, sailing straight, the boat sits
     // this many screen px behind centre (scaled by speed, so world offset =
@@ -80,7 +70,6 @@ public static class Config
     public const float FollowLookAheadRampUpSec = 6f;
     public const float FollowLookAheadRampDownSec = 2f;
     public const float FollowLookAheadSmoothSec = 1.6f;
-    public const float BoatMaxStepSeconds = 0.05f;
 
     // City labels: font size (px), weight, colour and the zoom below which
     // the label is hidden, per city size.

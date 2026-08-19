@@ -2,9 +2,13 @@ using Godot;
 using System;
 using System.Collections.Generic;
 
-// Wiring: load map → world (terrain plane + chunks) → boat → camera rigs and
-// modes → UI overlays → per-frame loop (mode/rig toggles → boat → camera →
-// clamp → apply → chunks → labels/popup → upkeep → clock/minimap/hud).
+// Wiring: load map → world (terrain plane + chunks + light) → boat → combat
+// (guns, targets) → camera rigs and modes → UI overlays → per-frame loop
+// (mode/rig/panel toggles → boat → camera → clamp → apply → chunks → labels
+// → combat (aim/fire) → popup → upkeep → clock/minimap/hud).
+//
+// Subsystems live in their own folders (world/, boat/, combat/, trading/, ui/)
+// with a doc each under docs/; this file is the only place they all meet.
 //
 // Test hooks (user args after `--`): see ParseArgs. Example:
 //   Godot --path . -- --screenshot=shot.png --frames=90 --zoom=0.5 --rig=perspective
@@ -13,7 +17,9 @@ public partial class Main : Node3D
     private DMap map = null!;
     private TerrainPlane terrain = null!;
     private TerrainChunks chunks = null!;
+    private Terrain terrainQuery = null!;
     private Boat boat = null!;
+    private CombatSystem combat = null!;
     private InputState input = null!;
     private CameraRig rig = null!;
     private readonly Dictionary<string, CameraRig> rigs = new();
@@ -32,20 +38,25 @@ public partial class Main : Node3D
     private Minimap minimap = null!;
     private CityLabels cityLabels = null!;
     private CityPopup cityPopup = null!;
+    private TweakPanel tweakPanel = null!;
 
     // Test hooks.
     private string? screenshotPath;
     private int screenshotFrames = 90;
     private int frameCount;
     private readonly List<Key> heldKeys = new();
+    private Vector2? fireOffset;                 // --fire=dx,dy: aim point relative to the boat
+    private readonly List<int> fireFrames = new();
 
     private Vector2 View => GetViewport().GetVisibleRect().Size;
 
     public override void _Ready()
     {
         var args = ParseArgs();
+        Tweaks.Register(typeof(BoatConfig), typeof(CombatConfig));
         GameData.Load();
         map = DMap.Load(Config.MapPath);
+        terrainQuery = new Terrain(map);
 
         // The world: terrain plane (ground/water) + streamed raised chunks + boat.
         terrain = new TerrainPlane();
@@ -55,7 +66,33 @@ public partial class Main : Node3D
         chunks.Init(map);
         AddChild(chunks);
         boat = new Boat();
+        boat.Init(terrainQuery);
         AddChild(boat);
+        // The terrain is unshaded, so this light only touches the boats,
+        // guns and balls — enough to make the model read.
+        AddChild(new DirectionalLight3D
+        {
+            Name = "Sun",
+            Rotation = new Vector3(Mathf.DegToRad(-55), Mathf.DegToRad(35), 0),
+            LightEnergy = 1.2f,
+        });
+        AddChild(new WorldEnvironment
+        {
+            Environment = new Godot.Environment
+            {
+                AmbientLightSource = Godot.Environment.AmbientSource.Color,
+                AmbientLightColor = new Color(0.75f, 0.82f, 0.95f),
+                AmbientLightEnergy = 0.9f,
+            },
+        });
+
+        // Combat: the player's guns ride on the boat; the boat is itself a
+        // target so enemy fire can hit it later.
+        combat = new CombatSystem();
+        combat.Init(terrainQuery);
+        AddChild(combat);
+        combat.PlayerGuns = combat.Arm(boat, CombatConfig.PlayerMounts, BoatConfig.Length);
+        combat.AddTarget(boat);
 
         input = new InputState();
         AddChild(input);
@@ -102,6 +139,9 @@ public partial class Main : Node3D
         cityPopup = new CityPopup();
         cityPopup.Init(player, time);
         ui.AddChild(cityPopup);
+        tweakPanel = new TweakPanel();
+        tweakPanel.Init(topPx: 130);   // under the clock
+        ui.AddChild(tweakPanel);
 
         GetTree().Root.SizeChanged += Resize;
         ApplyArgs(args);
@@ -129,8 +169,33 @@ public partial class Main : Node3D
     // --city=Name          open the city popup for this city
     // --size=WxH           window size
     // --hold=W,D           keys held down for the whole run (physical key names)
+    // --start=x,y[,deg]    put the boat here (world units, heading in degrees, 0 = east)
+    // --set=Name=V,...     override [Tweak] values by field name (see core/Tweaks.cs)
+    // --fire=dx,dy@f,...   fire at the point dx,dy from the boat on those frames
+    // --tweaks             start with the tweak panel open
     private void ApplyArgs(Dictionary<string, string> args)
     {
+        float F(string v) => float.Parse(v, System.Globalization.CultureInfo.InvariantCulture);
+        if (args.TryGetValue("set", out var sets))
+            foreach (var a in sets.Split(','))
+                if (!Tweaks.Apply(a)) GD.PushWarning($"--set: unknown tweak or bad value '{a}'");
+        if (args.TryGetValue("start", out var start))
+        {
+            var parts = start.Split(',');
+            if (parts.Length >= 2) { boat.X = F(parts[0]); boat.Y = F(parts[1]); }
+            if (parts.Length >= 3) boat.Heading = Mathf.DegToRad(F(parts[2]));
+            boat.SyncMesh();
+            active.Enable(new CameraState(boat.X, boat.Y, active.State.Zoom));
+        }
+        if (args.TryGetValue("fire", out var fire))
+        {
+            var at = fire.IndexOf('@');
+            var xy = (at < 0 ? fire : fire[..at]).Split(',');
+            fireOffset = new Vector2(F(xy[0]), F(xy[1]));
+            if (at >= 0) foreach (var f in fire[(at + 1)..].Split(',')) fireFrames.Add(int.Parse(f));
+            else fireFrames.Add(10);
+        }
+        if (args.ContainsKey("tweaks")) tweakPanel.Toggle();
         if (args.TryGetValue("size", out var size))
         {
             var parts = size.Split('x');
@@ -205,6 +270,8 @@ public partial class Main : Node3D
             var cycle = Config.RigCycle;
             SetRig(cycle[(Array.IndexOf(cycle, rig.Name) + 1) % cycle.Length]);
         }
+        // T shows the live-tuning panel.
+        if (input.Pressed.Contains(Key.T)) tweakPanel.Toggle();
         // Latched here: the active controller clears the frame deltas in Update().
         bool clicked = input.Clicked;
         bool escaped = input.Pressed.Contains(Key.Escape);
@@ -227,7 +294,7 @@ public partial class Main : Node3D
             float remaining = gameDt;
             while (remaining > 0)
             {
-                float step = Math.Min(remaining, Config.BoatMaxStepSeconds);
+                float step = Math.Min(remaining, BoatConfig.MaxStepSeconds);
                 boat.Update(step, input);
                 remaining -= step;
             }
@@ -261,6 +328,11 @@ public partial class Main : Node3D
             if (hoveredCity != null) cityPopup.Show(hoveredCity);
             else cityPopup.Hide();
         }
+        // Combat runs on game time like the boat; a click that didn't land
+        // on a city label is a shot at the reticle.
+        if (fireOffset is Vector2 fo && fireFrames.Contains(frameCount))
+            combat.FireAtGround(boat.X + fo.X, boat.Y + fo.Y);
+        combat.Update(gameDt, rig, state, input.HasCursor ? input.CursorPx : null, clicked && hoveredCity == null);
         if (escaped) cityPopup.Hide();
         cityPopup.Update(view);
 
@@ -270,14 +342,19 @@ public partial class Main : Node3D
         if (charged > 0 && cityPopup.IsOpen) cityPopup.Refresh();
         clock.Update();
         minimap.Update(state, view, rig);
-        hud.Update(state, view, rig, CameraRig.MinZoomFor(view, map.WorldW, map.WorldH), active.Name, timeScale, chunks.GetStats());
+        string guns = combat.PlayerGuns == null ? "" :
+            $"guns {combat.PlayerGuns.LoadedCount}/{combat.PlayerGuns.Cannons.Count} loaded, shots {combat.Projectiles.Shots}, in air {combat.Projectiles.InFlight}";
+        hud.Update(state, view, rig, CameraRig.MinZoomFor(view, map.WorldW, map.WorldH), active.Name, timeScale, chunks.GetStats(), guns);
+        tweakPanel.Update(view);
 
         frameCount++;
         if (screenshotPath != null && frameCount >= screenshotFrames)
         {
             var img = GetViewport().GetTexture().GetImage();
             var err = img.SavePng(screenshotPath);
-            GD.Print($"screenshot {(err == Error.Ok ? "saved to" : "FAILED " + err + " for")} {screenshotPath} at frame {frameCount}");
+            GD.Print($"screenshot {(err == Error.Ok ? "saved to" : "FAILED " + err + " for")} {screenshotPath} at frame {frameCount}; " +
+                     $"boat at ({boat.X:F1}, {boat.Y:F1}) heading {Mathf.RadToDeg(boat.Heading):F0}° speed {boat.Speed:F1}; " +
+                     $"shots {combat.Projectiles.Shots} hits {combat.Projectiles.Hits}");
             screenshotPath = null;
             GetTree().Quit();
         }

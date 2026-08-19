@@ -1,7 +1,8 @@
 using Godot;
 
 // Top-right readout: fps, view corners in world coords, zoom, camera mode
-// and rig, sail-time factor, chunk stats. Money and cargo live in the clock.
+// and rig, sail-time factor, chunk stats, gun status. Money and cargo live
+// in the clock.
 public partial class Hud : PanelContainer
 {
     private Label label = null!;
@@ -24,7 +25,7 @@ public partial class Hud : PanelContainer
         fpsWindowStart = Time.GetTicksMsec();
     }
 
-    public void Update(CameraState state, Vector2 view, CameraRig rig, float minZoom, string mode, float timeScale, TerrainChunks.Stats chunks)
+    public void Update(CameraState state, Vector2 view, CameraRig rig, float minZoom, string mode, float timeScale, TerrainChunks.Stats chunks, string combat)
     {
         // FPS over the last ~half second, refreshed on the boundary.
         fpsFrames++;
@@ -45,7 +46,8 @@ public partial class Hud : PanelContainer
             $"zoom {state.Zoom:F3} px/u ({state.Zoom / minZoom:F1}x)\n" +
             $"cam {mode} [C]  rig {rig.Name} [V]\n" +
             $"sail time x{timeScale:F2}\n" +
-            $"chunks {chunks.Visible} vis / {chunks.Cached} cached, lod x{chunks.Step}{pending}";
+            $"chunks {chunks.Visible} vis / {chunks.Cached} cached, lod x{chunks.Step}{pending}" +
+            (combat.Length > 0 ? "\n" + combat : "");
         if (text != lastText)
         {
             label.Text = text;
