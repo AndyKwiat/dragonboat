@@ -12,6 +12,12 @@ public abstract class StoryEvent
 {
     public City City = null!;
     public long ExpiresAtMinutes;    // a midnight, in GameTime total minutes
+    // Set when the player opens the city's popup while the event is live;
+    // gates the event's price intel under the city's map label.
+    public bool Discovered;
+
+    public int DaysLeftAt(long nowMinutes) =>
+        (int)Math.Ceiling((ExpiresAtMinutes - nowMinutes) / (double)GameTime.MinutesPerDay);
 }
 
 public sealed class ProductPriceStoryEvent : StoryEvent
@@ -42,6 +48,14 @@ public sealed class StoryEvents
         foreach (var id in new List<string>(rarity.Keys)) rarity[id] = 1.0 / rarity[id];
         nextMidnight = GameTime.MidnightAfter(time.TotalMinutes);
         TopUp();
+    }
+
+    // The player has seen this city's market: every event live there is now
+    // known (the popup shows its price and expiry).
+    public void DiscoverAt(City city)
+    {
+        foreach (var e in events)
+            if (e.City == city) e.Discovered = true;
     }
 
     // The active price event for this product at this city, if any.
@@ -75,9 +89,9 @@ public sealed class StoryEvents
     }
 
     // A random city, one of the products it actually trades (rarity-weighted),
-    // low or high with even odds — but never a second price event on the same
-    // product in the same city, so a quote always has one unambiguous
-    // multiplier.
+    // high StoryEventHighOddsToOne times as often as low — but never a second
+    // price event on the same product in the same city, so a quote always has
+    // one unambiguous multiplier.
     private ProductPriceStoryEvent? RollPriceEvent()
     {
         for (int tries = 0; tries < 100; tries++)
@@ -91,7 +105,8 @@ public sealed class StoryEvents
             {
                 City = city,
                 Product = product,
-                PriceMultiplier = rng.Next(2) == 0 ? Config.StoryEventLowMultiplier : Config.StoryEventHighMultiplier,
+                PriceMultiplier = rng.Next(Config.StoryEventHighOddsToOne + 1) == 0
+                    ? Config.StoryEventLowMultiplier : Config.StoryEventHighMultiplier,
                 // "days into the future", landing on that day's midnight.
                 ExpiresAtMinutes = GameTime.StartOfDay(time.TotalMinutes) + (long)days * GameTime.MinutesPerDay,
             };

@@ -18,6 +18,9 @@ public sealed class City
     public float X, Y;                        // world units, y-down from the top-left
     public string Size = "small";             // small | medium | large
     public List<string> Products = new();
+    // Runtime state, not from JSON: set forever once the player opens the
+    // city's popup; gates the price intel shown under its map label.
+    public bool Discovered;
 }
 
 public static class GameData

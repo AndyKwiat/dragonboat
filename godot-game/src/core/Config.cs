@@ -85,6 +85,9 @@ public static class Config
     };
     public static readonly Color CityHoverColor = new Color("#7fe3ff");
     public const float CityLabelOffsetPx = 6f;
+    // Price intel under a discovered city's name (see CityLabels.RefreshIntel).
+    public const int CityIntelFontPx = 10;
+    public const float CityIntelBoxPx = 220f;
     public const float CityHitRadiusPx = 26f;
     public const float CityHitPadPx = 10f;
 
@@ -95,9 +98,11 @@ public static class Config
     public static readonly HashSet<string> LuxuryProductIds = new() { "CLOTHES", "FURNITURE", "JEWELRY" };
 
     // Story events.
-    public const int StoryEventCount = 20;
+    public const int StoryEventCount = 40;
     public const int StoryEventMinDays = 7, StoryEventMaxDays = 21;
     public const double StoryEventLowMultiplier = 0.5, StoryEventHighMultiplier = 1.5;
+    // High-price events are this many times likelier than low-price ones.
+    public const int StoryEventHighOddsToOne = 2;
     public static readonly Color MarketDearColor = new Color("#ff6b6b");
     public static readonly Color MarketCheapColor = new Color("#6bd97a");
     public static readonly Color MarketNormalColor = new Color("#ffffff");

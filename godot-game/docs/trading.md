@@ -35,19 +35,29 @@ them.
   lists a `Quote` per product; the quote carries the event, if any, so the
   UI can show its expiry.
 - **Story events** (`StoryEvents.cs`): the world always holds
-  `StoryEventCount` (20) of them, each tied to a city — a city can hold
+  `StoryEventCount` (40) of them, each tied to a city — a city can hold
   several. The only kind so far is `ProductPriceStoryEvent`: one product
   the city trades — picked with weight 1/(cities trading it), so rare
   goods headline more events but ubiquitous rice keeps a small chance —
-  at `StoryEventLowMultiplier` (50%) or
-  `StoryEventHighMultiplier` (150%) of its base price, with even odds,
-  never two on the same (city, product). Each expires at a midnight
+  at `StoryEventLowMultiplier` (50%) or `StoryEventHighMultiplier` (150%)
+  of its base price, high `StoryEventHighOddsToOne` (2) times as likely
+  as low, never two on the same (city, product). Each expires at a midnight
   `StoryEventMinDays`–`StoryEventMaxDays` (7–21) days out; expiries only
   happen at midnight, so `StoryEvents.Update()` (run every frame from
   `Main`) is a single compare until the clock crosses one, then a single
   pass drops lapsed events and rolls replacements at random cities. When
   the pass runs, `Main` rebuilds the open city popup, whose prices and
-  days-left tags are baked into its rows.
+  days-left tags are baked into its rows, and the map labels' price intel.
+- **Discovery**: opening a city's popup marks the city discovered forever
+  (`City.Discovered`) and marks every event live there discovered
+  (`StoryEvent.Discovered`; via `StoryEvents.DiscoverAt`, also called when
+  the popup rebuilds at midnight while open). On the map, under a city's
+  name label (`CityLabels.RefreshIntel`): a discovered event shows its
+  product, price and days left even if the city itself is undiscovered; a
+  discovered city additionally shows every product whose permanent
+  structural price is off base. An undiscovered event on a discovered city
+  shows nothing for that product — the player hasn't seen that market
+  since the event began.
 - **Player** (`Player.cs`): purse (may go negative), crew count, inventory.
   `Buy`/`Sell`/`Consume` clamp to what's held and what the hold can carry;
   `ChangeCrew` goes through `Crew.ChangeAllowed`.

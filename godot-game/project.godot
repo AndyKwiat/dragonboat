@@ -12,9 +12,11 @@ project/assembly_name="DragonboatGame"
 [display]
 window/size/viewport_width=1280
 window/size/viewport_height=800
-; Keep viewport px = window points, so "px" means the same as CSS px in the
-; web version (fonts, zoom = px per world unit, hit radii...).
-window/dpi/allow_hidpi=false
+; Render at native pixel density; Main sets the window's content scale
+; factor to the display scale (the web's devicePixelRatio), so "px" still
+; means the same as CSS px in the web version (fonts, zoom = px per world
+; unit, hit radii...) while text rasterises at full resolution.
+window/dpi/allow_hidpi=true
 
 [gui]
 ; Labels are positioned at fractional px as they track the world; snapping

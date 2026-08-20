@@ -54,6 +54,18 @@ public partial class Main : Node3D
 
     public override void _Ready()
     {
+        // Hi-dpi: render at the display's native density but keep every
+        // coordinate in logical px (the web version's CSS px). The content
+        // scale factor is the devicePixelRatio equivalent; the window is
+        // enlarged to match so the logical size stays what project.godot asks
+        // for. Fonts rasterise at the scaled size, so small text stays crisp.
+        float screenScale = (float)DisplayServer.ScreenGetScale();
+        if (screenScale > 1f)
+        {
+            GetWindow().ContentScaleFactor = screenScale;
+            DisplayServer.WindowSetSize((Vector2I)((Vector2)DisplayServer.WindowGetSize() * screenScale));
+        }
+
         var args = ParseArgs();
         Tweaks.Register(typeof(BoatConfig), typeof(CombatConfig));
         GameData.Load();
@@ -130,7 +142,7 @@ public partial class Main : Node3D
         var ui = new CanvasLayer();
         AddChild(ui);
         cityLabels = new CityLabels();
-        cityLabels.Init(GameData.Cities);
+        cityLabels.Init(GameData.Cities, storyEvents, time);
         ui.AddChild(cityLabels);
         hud = new Hud();
         hud.Init(map.WorldW, map.WorldH);
@@ -221,7 +233,7 @@ public partial class Main : Node3D
         if (args.TryGetValue("city", out var cityName))
         {
             var city = GameData.Cities.Find(c => c.Name == cityName);
-            if (city != null) cityPopup.Show(city);
+            if (city != null) { cityPopup.Show(city); cityLabels.RefreshIntel(); }
         }
         if (args.TryGetValue("hold", out var hold))
             foreach (var k in hold.Split(',')) heldKeys.Add(Enum.Parse<Key>(k, true));
@@ -337,7 +349,9 @@ public partial class Main : Node3D
         Input.SetDefaultCursorShape(hoveredCity != null ? Input.CursorShape.PointingHand : Input.CursorShape.Arrow);
         if (clicked)
         {
-            if (hoveredCity != null) cityPopup.Show(hoveredCity);
+            // Opening the popup discovers the city and its live events, so
+            // the map labels may have new price intel to show.
+            if (hoveredCity != null) { cityPopup.Show(hoveredCity); cityLabels.RefreshIntel(); }
             else cityPopup.Hide();
         }
         // Combat runs on game time like the boat; a click is a shot at the
@@ -356,8 +370,9 @@ public partial class Main : Node3D
         int charged = rations.Update() + wages.Update();
         if (charged > 0 && cityPopup.IsOpen) cityPopup.Refresh();
         // Story events roll over at midnight; an open market menu has prices
-        // and days-left tags baked into its rows, so rebuild them.
-        if (storyEvents.Update()) cityPopup.Rebuild();
+        // and days-left tags baked into its rows, and the map labels show
+        // days-left intel, so rebuild both.
+        if (storyEvents.Update()) { cityPopup.Rebuild(); cityLabels.RefreshIntel(); }
         clock.Update();
         minimap.Update(state, view, rig);
         string guns = combat.PlayerGuns == null ? "" :

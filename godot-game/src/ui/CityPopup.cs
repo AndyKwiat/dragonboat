@@ -172,8 +172,7 @@ public partial class CityPopup : PanelContainer
             var tint = !quirky ? Config.MarketNormalColor : dear ? Config.MarketDearColor : Config.MarketCheapColor;
             // A price driven by a story event carries its shelf life; the
             // structural small/medium discounts are permanent, so no tag.
-            int daysLeft = quote.Event == null ? 0
-                : (int)Math.Ceiling((quote.Event.ExpiresAtMinutes - time.TotalMinutes) / (double)GameTime.MinutesPerDay);
+            int daysLeft = quote.Event?.DaysLeftAt(time.TotalMinutes) ?? 0;
 
             var row = new HBoxContainer();
             row.AddThemeConstantOverride("separation", 14);
@@ -257,6 +256,9 @@ public partial class CityPopup : PanelContainer
 
     public void Show(City city)
     {
+        // Seeing the market is what discovers the city and its live events.
+        city.Discovered = true;
+        storyEvents.DiscoverAt(city);
         title.Text = city.Name;
         facts.Text = $"{"coords",-8}{Mathf.RoundToInt(city.X)}, {Mathf.RoundToInt(city.Y)}\n{"size",-8}{city.Size}";
         // Only the large cities have a hiring hall.
@@ -278,6 +280,7 @@ public partial class CityPopup : PanelContainer
     public void Rebuild()
     {
         if (current == null || !Visible) return;
+        storyEvents.DiscoverAt(current);   // events that just rolled in while watching
         BuildMarket(current);
         Refresh();
         layoutFrames = 3;

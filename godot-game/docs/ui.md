@@ -21,7 +21,11 @@ or zooming the map.
   world following the camera, with the view rectangle.
 - **CityLabels** — one label per city, styled by size (`Config.CityLabel`),
   hidden below each size's min zoom, hover highlight; returns the hovered
-  city to `Main` for the click.
+  city to `Main` for the click. Under the name, discovered price intel
+  (`RefreshIntel`): one red/green line per product the player knows trades
+  off base price, with days left for story events — rebuilt only when the
+  popup opens or the midnight pass runs, never per frame. Discovery rules:
+  [trading.md](trading.md).
 - **CityPopup** — the market panel; measures its content for a few frames
   after opening / resizing (wrapped labels only know their height after
   layout) and sizes itself to 62vw clamped to 520–900 px, at most 80vh,
