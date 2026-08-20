@@ -126,4 +126,22 @@ public static class Tweaks
 
     // Only the values moved off their code defaults — what a dump is for.
     public static string DumpChanged() => string.Join("\n", All.Where(e => e.IsChanged).Select(e => e.AsCode()));
+
+    // One "Owner.Name = value;" line as Dump writes them (comments and blank
+    // lines are skipped) — how a tweaks.dump is applied back at launch.
+    // Returns false only for an assignment-shaped line that didn't apply.
+    public static bool ApplyDumpedLine(string line)
+    {
+        line = line.Trim();
+        if (line.Length == 0 || line.StartsWith("//")) return true;
+        int eq = line.IndexOf('=');
+        if (eq < 0) return false;
+        string name = line[..eq].Trim();
+        int dot = name.LastIndexOf('.');
+        if (dot >= 0) name = name[(dot + 1)..];
+        string raw = line[(eq + 1)..].Trim().TrimEnd(';').Trim();
+        if (raw.Length > 1 && (raw.EndsWith("f") || raw.EndsWith("F")) && char.IsDigit(raw[^2]))
+            raw = raw[..^1];
+        return Apply($"{name}={raw}");
+    }
 }

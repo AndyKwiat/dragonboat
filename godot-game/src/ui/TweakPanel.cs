@@ -5,7 +5,9 @@ using System.Collections.Generic;
 // core/Tweaks.cs), grouped, built by reflection so adding a knob is just
 // adding an attribute. T toggles it. "Dump" saves every value moved off its
 // code default as C# lines to tweaks.dump in the project root (and the
-// console and clipboard) — hand that file to Claude to fold into the config.
+// console and clipboard); Main re-applies that file at every launch, so
+// dumped tweaks stick between runs — hand the file to Claude to fold into
+// the config for keeps.
 public partial class TweakPanel : PanelContainer
 {
     public const string DumpPath = "res://tweaks.dump";
@@ -25,7 +27,8 @@ public partial class TweakPanel : PanelContainer
         using var f = FileAccess.Open(DumpPath, FileAccess.ModeFlags.Write);
         if (f == null) { GD.PushWarning($"tweaks: could not write {DumpPath}"); return; }
         f.StoreString("// tweaks.dump — values moved off their code defaults, written by the\n" +
-                      "// tweak panel's dump button. Ask Claude to fold these into the config.\n" +
+                      "// tweak panel's dump button and re-applied at every launch. Delete this\n" +
+                      "// file for the defaults; ask Claude to fold it into the config for keeps.\n" +
                       body + "\n");
         GD.Print($"tweaks saved to {ProjectSettings.GlobalizePath(DumpPath)}");
     }

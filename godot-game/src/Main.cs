@@ -68,6 +68,13 @@ public partial class Main : Node3D
 
         var args = ParseArgs();
         Tweaks.Register(typeof(BoatConfig), typeof(CombatConfig));
+        // Tweaks persist: the panel's dump button writes tweaks.dump, and it
+        // is applied over the code defaults at every launch (--set on top of
+        // that; delete the file to get the defaults back).
+        if (FileAccess.FileExists(TweakPanel.DumpPath))
+            foreach (var line in FileAccess.GetFileAsString(TweakPanel.DumpPath).Split('\n'))
+                if (!Tweaks.ApplyDumpedLine(line))
+                    GD.PushWarning($"tweaks.dump: could not apply '{line.Trim()}'");
         GameData.Load();
         map = DMap.Load(Config.MapPath);
         terrainQuery = new Terrain(map);
@@ -122,7 +129,7 @@ public partial class Main : Node3D
         SetRig(args.TryGetValue("rig", out var rigName) && rigs.ContainsKey(rigName) ? rigName : Config.DefaultRig);
 
         freeCamera = new FreeCameraController(rig);
-        followCamera = new FollowCameraController(boat);
+        followCamera = new FollowCameraController(boat, rig);
         edgeCamera = new EdgeCameraController(boat, rig);
         controllers["free"] = freeCamera;
         controllers["follow"] = followCamera;
@@ -251,6 +258,7 @@ public partial class Main : Node3D
         rig = rigs[name];
         foreach (var r in rigs.Values) r.Camera.Current = r == rig;
         if (freeCamera != null) freeCamera.Rig = rig;
+        if (followCamera != null) followCamera.Rig = rig;
         if (edgeCamera != null) edgeCamera.Rig = rig;
     }
 

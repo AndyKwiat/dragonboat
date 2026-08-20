@@ -38,7 +38,9 @@ or zooming the map.
   `Tweaks.All`: a group header per `[Tweak]` group, a name / slider (or
   checkbox) / value row per field, a *dump* button that writes every value
   moved off its code default as C# lines to `tweaks.dump` in the project
-  root (gitignored; also console + clipboard) — hand that file to Claude
-  to fold into the config. `--dump-tweaks` triggers the same on startup. Sliders take no keyboard
+  root (gitignored; also console + clipboard). The file is re-applied over
+  the code defaults at every launch, so dumped tweaks stick between runs —
+  delete it for the defaults, or hand it to Claude to fold into the
+  config. `--dump-tweaks` triggers the same save on startup. Sliders take no keyboard
   focus so WASD keeps driving. Scrolls when taller than the window. Which
   values exist is up to `BoatConfig` / `CombatConfig`, not this file.

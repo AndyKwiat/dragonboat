@@ -66,6 +66,8 @@ public static class Config
     // fast the offset may move on screen (a long lead swinging with the
     // heading during a turn is what this tames).
     public const float FollowLookAheadPx = 520f;
+    // The lead never brings the boat closer to a screen edge than this.
+    public const float FollowLookAheadMarginPx = 160f;
     public const float FollowLookAheadMaxPxPerSec = 250f;
     public const float FollowLookAheadRampUpSec = 6f;
     public const float FollowLookAheadRampDownSec = 2f;

@@ -16,18 +16,37 @@ public interface ICameraController
 // Follow camera: locked to a target. Stationary, the boat is screen-centred;
 // sailing straight for a while, the centre leads it along its heading ("look
 // ahead"), by a screen distance proportional to speed so it feels the same at
-// any zoom. Steering bleeds the lead back off, so turns don't swing the view. Wheel still zooms, but there's no cursor
-// anchoring — the centre is not ours to move.
+// any zoom — but never so far the boat leaves the screen (the lead is capped
+// in screen px against the view, since a full crew sails past MaxSpeed).
+// Steering bleeds the lead back off, so turns don't swing the view. Wheel
+// still zooms, but there's no cursor anchoring — the centre is not ours to
+// move.
 public sealed class FollowCameraController : ICameraController
 {
     public string Name => "follow";
     public CameraState State { get; private set; } = new(0, 0, Config.BoatFollowZoom);
     public float MinZoom;
+    public CameraRig Rig;
     private readonly Boat target;
     private Vector2 lookAhead;   // smoothed world-space offset from boat to centre
     private float straightness;  // 0..1: how long we've been sailing without steering
 
-    public FollowCameraController(Boat target) { this.target = target; }
+    public FollowCameraController(Boat target, CameraRig rig) { this.target = target; Rig = rig; }
+
+    // Scale a world-space lead back until the boat (sitting at minus the
+    // lead from centre) keeps FollowLookAheadMarginPx of screen on each
+    // side — the same focus-plane projection the edge camera uses.
+    private Vector2 CapToView(Vector2 lead, float zoom, Vector2 view)
+    {
+        float limX = Math.Max(view.X / 2 - Config.FollowLookAheadMarginPx, 0);
+        float limY = Math.Max(view.Y / 2 - Config.FollowLookAheadMarginPx, 0);
+        float sx = Math.Abs(lead.Dot(Rig.Right)) * zoom;
+        float sy = Math.Abs(lead.Dot(Rig.Forward)) * zoom * Rig.GroundYScale;
+        float scale = 1;
+        if (sx > limX) scale = Math.Min(scale, limX / sx);
+        if (sy > limY) scale = Math.Min(scale, limY / sy);
+        return lead * scale;
+    }
 
     public void Enable(CameraState state)
     {
@@ -52,14 +71,16 @@ public sealed class FollowCameraController : ICameraController
         // heading (behind when reversing, since Speed is signed).
         float speedFrac = target.GroundSpeed / BoatConfig.MaxSpeed;   // actual progress, so a boat held by the shore stays centred
         float worldPx = Config.FollowLookAheadPx * speedFrac * eased / s.Zoom;
-        var want = new Vector2(Mathf.Cos(target.Heading), Mathf.Sin(target.Heading)) * worldPx;
+        var want = CapToView(new Vector2(Mathf.Cos(target.Heading), Mathf.Sin(target.Heading)) * worldPx, s.Zoom, view);
         // Framerate-independent exponential ease toward the target offset,
         // then a slew cap so a long lead can't whip round with the heading.
         float k = 1 - Mathf.Exp(-dt / Config.FollowLookAheadSmoothSec);
         var step = (want - lookAhead) * k;
         float maxStep = Config.FollowLookAheadMaxPxPerSec / s.Zoom * dt;
         if (step.Length() > maxStep) step = step.Normalized() * maxStep;
-        lookAhead += step;
+        // Re-capped after the step: a zoom-in can shove an already-eased
+        // lead past the view, and the ease alone would bring it back slowly.
+        lookAhead = CapToView(lookAhead + step, s.Zoom, view);
         s.CenterX = target.X + lookAhead.X;
         s.CenterY = target.Y + lookAhead.Y;
         input.ConsumeFrameDeltas();
