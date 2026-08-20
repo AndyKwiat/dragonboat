@@ -25,8 +25,9 @@ public partial class Main : Node3D
     private readonly Dictionary<string, CameraRig> rigs = new();
     private FreeCameraController freeCamera = null!;
     private FollowCameraController followCamera = null!;
+    private EdgeCameraController edgeCamera = null!;
     private readonly Dictionary<string, ICameraController> controllers = new();
-    private static readonly string[] ModeCycle = { "follow", "free" };
+    private static readonly string[] ModeCycle = { "follow", "edge", "free" };
     private ICameraController active = null!;
 
     private Player player = null!;
@@ -109,8 +110,10 @@ public partial class Main : Node3D
 
         freeCamera = new FreeCameraController(rig);
         followCamera = new FollowCameraController(boat);
+        edgeCamera = new EdgeCameraController(boat, rig);
         controllers["free"] = freeCamera;
         controllers["follow"] = followCamera;
+        controllers["edge"] = edgeCamera;
         active = followCamera;
         Resize();
         // Start on the boat at the follow camera's own zoom.
@@ -164,7 +167,7 @@ public partial class Main : Node3D
     // --screenshot[=path]  save the viewport after --frames (default 90) and quit
     // --zoom=Z             starting zoom (px per world unit)
     // --rig=name           starting camera rig
-    // --mode=free          start in free camera mode
+    // --mode=follow|edge|free  starting camera mode
     // --center=x,y         focus point (free mode)
     // --city=Name          open the city popup for this city
     // --size=WxH           window size
@@ -232,6 +235,7 @@ public partial class Main : Node3D
         rig = rigs[name];
         foreach (var r in rigs.Values) r.Camera.Current = r == rig;
         if (freeCamera != null) freeCamera.Rig = rig;
+        if (edgeCamera != null) edgeCamera.Rig = rig;
     }
 
     public void SwitchMode(string name)
@@ -249,6 +253,7 @@ public partial class Main : Node3D
         float minZoom = CameraRig.MinZoomFor(view, map.WorldW, map.WorldH);
         freeCamera.MinZoom = minZoom;
         followCamera.MinZoom = minZoom;
+        edgeCamera.MinZoom = minZoom;
         var state = active.State;
         state.Zoom = Math.Max(state.Zoom, minZoom);
         CameraRig.Clamp(state, view, map.WorldW, map.WorldH);

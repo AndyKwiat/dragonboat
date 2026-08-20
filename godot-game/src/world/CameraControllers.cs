@@ -66,6 +66,53 @@ public sealed class FollowCameraController : ICameraController
     }
 }
 
+// Edge camera: the world holds still and the boat moves across the screen;
+// the camera pans only when the boat would enter the EdgeCamMarginPx band at
+// a screen edge, and then just enough to keep it out of the band — so it
+// never scrolls while you manoeuvre mid-screen. Wheel zooms about the centre
+// (the edge rule then reels the boat back in if the zoom pushed it out).
+public sealed class EdgeCameraController : ICameraController
+{
+    public string Name => "edge";
+    public CameraState State { get; private set; } = new(0, 0, Config.BoatFollowZoom);
+    public float MinZoom;
+    public CameraRig Rig;
+    private readonly Boat target;
+
+    public EdgeCameraController(Boat target, CameraRig rig) { this.target = target; Rig = rig; }
+
+    // Keep the handed-over view: if the boat is on screen nothing moves until
+    // it reaches an edge; if it is off screen the edge rule pans to it.
+    public void Enable(CameraState state) { State = state.Clone(); }
+    public void Disable() { }
+
+    public void Update(float dt, InputState input, Vector2 view)
+    {
+        var s = State;
+        if (input.WheelDelta != 0)
+            s.Zoom = Math.Clamp(s.Zoom * Mathf.Exp(-input.WheelDelta * Config.ZoomWheelSensitivity), MinZoom, Config.MaxZoom);
+
+        // The boat's offset from the focus in screen px — the same linear
+        // focus-plane math as ScreenDeltaToGround, inverted (exact for the
+        // orthographic rig, close enough near the focus for perspective).
+        var d = new Vector2(target.X - s.CenterX, target.Y - s.CenterY);
+        float px = d.Dot(Rig.Right) * s.Zoom;
+        float py = -d.Dot(Rig.Forward) * s.Zoom * Rig.GroundYScale;
+        // How far past the allowed box it is (margins can't exceed the view).
+        float limitX = Math.Max(view.X / 2 - Config.EdgeCamMarginPx, 0);
+        float limitY = Math.Max(view.Y / 2 - Config.EdgeCamMarginPx, 0);
+        float ex = Math.Abs(px) > limitX ? px - Math.Sign(px) * limitX : 0;
+        float ey = Math.Abs(py) > limitY ? py - Math.Sign(py) * limitY : 0;
+        if (ex != 0 || ey != 0)
+        {
+            var g = Rig.ScreenDeltaToGround(ex, ey, s.Zoom);
+            s.CenterX += g.X;
+            s.CenterY += g.Y;
+        }
+        input.ConsumeFrameDeltas();
+    }
+}
+
 // Free camera: WASD/arrow pan, drag pan, wheel zoom anchored at the cursor.
 public sealed class FreeCameraController : ICameraController
 {

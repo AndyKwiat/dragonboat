@@ -38,7 +38,7 @@ opens the project picker and hangs a scripted run.
 | WASD / arrows | drive the boat (follow mode) or pan (free mode) |
 | wheel | zoom; drag pans in free mode |
 | **click** | fire the best loaded cannon at the reticle under the cursor — or open a city's market if you clicked its name |
-| C | cycle camera mode (follow / free) |
+| C | cycle camera mode (follow / edge / free) |
 | V | cycle camera rig (isometric / perspective) |
 | T | toggle the live tweak panel (sliders for every `[Tweak]` value) |
 | Esc | close the city popup |
@@ -77,7 +77,7 @@ $G --path . -- --screenshot=screenshots/shot.png --frames=435 --zoom=4 --start=3
 | `--frames=N` | frames to render before the screenshot (runs are vsynced, typically 120 fps — a 3 s cannonball flight is ~360 frames) |
 | `--zoom=Z` | starting zoom, screen px per world unit |
 | `--rig=isometric\|perspective` | starting camera rig |
-| `--mode=free\|follow` | starting camera mode |
+| `--mode=follow\|edge\|free` | starting camera mode |
 | `--center=x,y` | focus point in world units (free mode) |
 | `--city=Name` | open that city's popup |
 | `--hold=W,D` | keys held down for the whole run |

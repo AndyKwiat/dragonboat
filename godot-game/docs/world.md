@@ -35,7 +35,10 @@ size = viewport height / zoom; perspective distance is derived from zoom and
 the fov. A camera **mode** (`CameraControllers.cs`, cycled with C) decides
 where the focus is: `follow` locks to the boat with a speed-scaled look-ahead
 (driven by `Boat.GroundSpeed`, the boat's actual progress, so a hull held by
-the shore stays centred); `free` pans/drags/zooms. Free-camera pan/drag and
+the shore stays centred); `edge` holds the view still and lets the boat move
+across the screen, panning only — and only just enough — when the boat would
+enter the `EdgeCamMarginPx` band at a screen edge; `free` pans/drags/zooms
+(the boat isn't drivable in free mode). Free-camera pan/drag and
 zoom anchoring go through `ScreenDeltaToGround` (yaw-rotated, vertical
 foreshortened by sin(pitch)); labels use `Camera3D.UnprojectPosition`; the
 chunk streamer casts the four screen corners onto the ground with

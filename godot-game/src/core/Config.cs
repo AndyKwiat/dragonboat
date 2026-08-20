@@ -70,6 +70,9 @@ public static class Config
     public const float FollowLookAheadRampUpSec = 6f;
     public const float FollowLookAheadRampDownSec = 2f;
     public const float FollowLookAheadSmoothSec = 1.6f;
+    // Edge camera: the view holds still until the boat comes within this many
+    // screen px of a screen edge, then pans just enough to keep it inside.
+    public const float EdgeCamMarginPx = 140f;
 
     // City labels: font size (px), weight, colour and the zoom below which
     // the label is hidden, per city size.
