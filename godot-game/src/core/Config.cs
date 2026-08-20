@@ -1,7 +1,7 @@
 using Godot;
 using System.Collections.Generic;
 
-// World, camera, trading and UI tunables, mirroring ../game/src/config.ts.
+// World, camera, trading and UI tunables.
 // Boat and combat knobs live next to their systems (BoatConfig, CombatConfig)
 // because those are live-tunable; everything here is a constant.
 public static class Config

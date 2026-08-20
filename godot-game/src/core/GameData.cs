@@ -3,8 +3,8 @@ using System;
 using System.Collections.Generic;
 using System.Text.Json;
 
-// cities.json / products.json, loaded once at startup (see ../game/AGENTS.md
-// for how they are generated). A city's name, size and location are fixed by
+// cities.json / products.json, loaded once at startup.
+// A city's name, size and location are fixed by
 // the JSON; what it trades is dealt fresh every run (DealProducts). Prices
 // are derived in Market.cs, never stored.
 public sealed class Product

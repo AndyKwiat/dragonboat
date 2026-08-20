@@ -1,12 +1,11 @@
 # dragonboat/godot-game
 
-Godot 4.7 (.NET / C#) port of `../game`, the three.js dragonboat game, plus
-the boat combat from `../combat-prototype`. An isometric (or 45° perspective)
+Godot 4.7 (.NET / C#) dragonboat game: an isometric (or 45° perspective)
 view of the world-generator map; you sail a two-masted boat between cities,
 trade, feed and pay a crew — and fire its cannons at anything you click.
-Behaviour and appearance of the world/trading half track `../game` (when one
-changes, port it to the other); the combat half is the prototype's rules,
-ported 1:1 and now the only home of that code.
+It began as a port of a three.js prototype (since deleted) plus the boat
+combat from `../combat-prototype`; this repo is now the only home of all
+the rules.
 
 **Start here, then read only the doc for the part you're changing:**
 
@@ -98,12 +97,12 @@ Each subsystem has its own folder and doc; `src/Main.cs` is the only file
 that knows about all of them.
 
 ```
-project.godot          1280×800 window, hidpi off (viewport px == window points,
-                       so "px" means the same as CSS px in ../game), clear colour
+project.godot          1280×800 window, hidpi on (Main sets the content scale
+                       factor, so "px" stays a CSS-like logical px), clear colour
 Main.tscn              one Node3D with src/Main.cs
-data/                  map.dmap, cities.json, products.json — copies of ../game's
-                       (public/map.dmap, cities.json, products.json). Regenerate
-                       there and copy over.
+data/                  map.dmap (from ../world-generator), cities.json,
+                       products.json — canonical here; city specialities are
+                       dealt at runtime (docs/trading.md).
 shaders/               terrain_plane.gdshader (map texture + tile grid),
                        terrain_chunk.gdshader (vertex-coloured columns)
 docs/                  one markdown doc per subsystem (table above)
@@ -117,7 +116,7 @@ src/boat/              BoatConfig, Boat (physics, lean, land collision, hittable
                        BoatModel (hull/masts/sails)                       → docs/boat.md
 src/combat/            CombatConfig, CombatSystem, Cannon, CannonBattery,
                        Projectiles, Effects, ICombatTarget                → docs/combat.md
-src/trading/           Player, Crew, Upkeep, Market — rules, ported 1:1 from ../game/src
+src/trading/           Player, Crew, Upkeep, Market, StoryEvents — pure rules
                                                                           → docs/trading.md
 src/ui/                Fonts, Hud, Clock, Minimap, CityLabels, CityPopup, TweakPanel
                        — Godot Controls on a CanvasLayer                  → docs/ui.md
@@ -135,7 +134,7 @@ C# with `Nullable` on, 4-space indent, one class per file, `partial` only
 where Godot needs it (Node subclasses). World/camera/trading/UI constants go
 in `core/Config.cs`; boat and combat knobs go in their own `*Config.cs` as
 `[Tweak]` statics. Keep the rules files (`GameTime`, `Crew`, `Player`,
-`Upkeep`, `Market`) free of Godot types so they stay a straight port of
-`../game/src`. New gameplay systems get their own `src/<name>/` folder and
+`Upkeep`, `Market`, `StoryEvents`) free of Godot types — pure, testable
+rules. New gameplay systems get their own `src/<name>/` folder and
 `docs/<name>.md`, and are wired in `Main.cs`; don't make the trading code
 reach into combat or vice versa — both talk to the boat/world, not each other.

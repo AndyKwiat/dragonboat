@@ -25,7 +25,7 @@ cannonball hit.
 
 ## Handling (`Boat.Update`)
 
-Ported from `../game`: W/S accelerate/brake by `Accel`, coasting loses
+W/S accelerate/brake by `Accel`, coasting loses
 `Friction` units/s², speed clamps to `[-MaxReverseSpeed, MaxSpeed ×
 MaxSpeedScale]` (the crew multiplier, set by `Main` from
 `Crew.SpeedMultiplier`). Steering authority ramps with speed up to
