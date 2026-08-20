@@ -65,11 +65,14 @@ camera with `Terrain.RaycastGround`, so the aim point sits on the water or on
 top of a hill, and parks the reticle there (`ReticlePx` screen pixels, scaled
 by 1/zoom). Yellow means a loaded cannon can bear on it *and* the point is within the
 fixed muzzle speed's reach from that cannon; grey means it can't be hit (all
-reloading, outside every firing arc, or out of range). A click that didn't land on a city label fires
-`PlayerGuns.BestCannon(aim)`; clicking inside a UI panel never reaches the
-world (`InputState` listens in `_UnhandledInput`). Firing works in both
-camera modes. The reticle is hidden until the mouse has moved at all, so
-scripted runs don't draw it in the corner.
+reloading, outside every firing arc, or out of range). A click fires `PlayerGuns.BestCannon(aim)` unless it
+landed on a hover-highlighted city label (that opens the market instead) or
+the city menu is open — while the menu is up the reticle is hidden, nothing
+fires, and the closing click is inert (`menuOpen` in `Main._Process`).
+Clicking inside a UI panel never reaches the world (`InputState` listens in
+`_UnhandledInput`). Firing works in every camera mode. The reticle is hidden
+until the mouse has moved at all, so scripted runs don't draw it in the
+corner.
 
 Combat runs on **game time** (`gameDt`, the same fast-forward factor as the
 boat), so reloads and flights stay consistent with sailing speed.

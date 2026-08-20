@@ -280,6 +280,10 @@ public partial class Main : Node3D
         // Latched here: the active controller clears the frame deltas in Update().
         bool clicked = input.Clicked;
         bool escaped = input.Pressed.Contains(Key.Escape);
+        // While the city menu is open the world is paused for input: no
+        // sailing, no camera movement or zoom, no firing. Latched before the
+        // click is handled so the click that closes the menu is inert too.
+        bool menuOpen = cityPopup.IsOpen;
 
         // Zoomed out the whole voyage runs in fast-forward: one real second
         // buys more game seconds, so the boat covers more ground AND the
@@ -289,7 +293,7 @@ public partial class Main : Node3D
 
         // The boat is drivable in every mode that follows it; in free mode
         // WASD belongs to the camera instead.
-        if (active != freeCamera)
+        if (active != freeCamera && !menuOpen)
         {
             boat.MaxSpeedScale = Crew.SpeedMultiplier(player.CrewCount, Config.Crew);
             // Fast-forward speeds the voyage, not the helm: keep the turn rate
@@ -307,7 +311,8 @@ public partial class Main : Node3D
             if (boat.Speed != 0) time.AdvanceHours(Config.HoursPerSecondSailing * gameDt);
         }
 
-        active.Update(dt, input, view);
+        if (menuOpen) input.ConsumeFrameDeltas();   // swallow wheel/drag so it doesn't replay on close
+        else active.Update(dt, input, view);
         var state = active.State;
         CameraRig.Clamp(state, view, map.WorldW, map.WorldH);
         rig.Apply(state, view);
@@ -333,11 +338,14 @@ public partial class Main : Node3D
             if (hoveredCity != null) cityPopup.Show(hoveredCity);
             else cityPopup.Hide();
         }
-        // Combat runs on game time like the boat; a click that didn't land
-        // on a city label is a shot at the reticle.
+        // Combat runs on game time like the boat; a click is a shot at the
+        // reticle only when it didn't land on a city label (hover-highlighted
+        // names open the market instead) and the menu wasn't open. With the
+        // menu open the reticle is hidden too (null cursor).
         if (fireOffset is Vector2 fo && fireFrames.Contains(frameCount))
             combat.FireAtGround(boat.X + fo.X, boat.Y + fo.Y);
-        combat.Update(gameDt, rig, state, input.HasCursor ? input.CursorPx : null, clicked && hoveredCity == null);
+        bool canAim = input.HasCursor && !menuOpen;
+        combat.Update(gameDt, rig, state, canAim ? input.CursorPx : null, clicked && hoveredCity == null && !menuOpen);
         if (escaped) cityPopup.Hide();
         cityPopup.Update(view);
 

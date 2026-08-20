@@ -49,6 +49,7 @@ price overrides. Prices are never stored — `Market` derives them.
 
 Click a city's name (`ui/CityLabels.cs` does the hit-testing) to open
 `CityPopup`: facts, the hiring hall (large cities), then one row per product
-with buy/sell ×1/×10 buttons. Esc or the ✕ closes it. See [ui.md](ui.md) for
-sizing/fonts. A click anywhere else closes it — and, since the combat port,
-also fires the cannons at that spot; that's intended.
+with buy/sell ×1/×10 buttons. Esc, the ✕, or a click outside closes it. See
+[ui.md](ui.md) for sizing/fonts. While the popup is open the world is paused
+for input: no sailing, no camera pan/zoom, no cannon fire — and the click
+that closes it is inert (see `menuOpen` in `Main._Process`).
