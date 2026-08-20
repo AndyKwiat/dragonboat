@@ -68,7 +68,7 @@ public static class Config
     public const float FollowLookAheadPx = 520f;
     // The lead never brings the boat closer to a screen edge than this.
     public const float FollowLookAheadMarginPx = 160f;
-    // Below this fraction of MaxSpeed the boat doesn't count as under way:
+    // Below this fraction of TerminalSpeed the boat doesn't count as under way:
     // straightness (and so the look-ahead) ramps down, not up.
     public const float FollowLookAheadMinSpeedFrac = 0.2f;
     public const float FollowLookAheadMaxPxPerSec = 250f;

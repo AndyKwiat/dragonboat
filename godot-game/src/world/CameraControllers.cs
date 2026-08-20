@@ -17,7 +17,7 @@ public interface ICameraController
 // sailing straight for a while, the centre leads it along its heading ("look
 // ahead"), by a screen distance proportional to speed so it feels the same at
 // any zoom — but never so far the boat leaves the screen (the lead is capped
-// in screen px against the view, since a full crew sails past MaxSpeed).
+// in screen px against the view, since a full crew sails past TerminalSpeed).
 // Steering bleeds the lead back off, so turns don't swing the view. Wheel
 // still zooms, but there's no cursor anchoring — the centre is not ours to
 // move.
@@ -66,7 +66,7 @@ public sealed class FollowCameraController : ICameraController
         // within a second of setting off. Steering or slowing below
         // FollowLookAheadMinSpeedFrac ramps it back down. It is eased
         // (smoothstep) so both ends of the ramp are gentle.
-        float speedFrac = target.GroundSpeed / BoatConfig.MaxSpeed;   // actual progress, so a boat held by the shore stays centred
+        float speedFrac = target.GroundSpeed / BoatConfig.TerminalSpeed();   // actual progress, so a boat held by the shore stays centred
         bool sailingStraight = !target.Turning && speedFrac >= Config.FollowLookAheadMinSpeedFrac;
         float rampRate = sailingStraight ? 1 / Config.FollowLookAheadRampUpSec : -1 / Config.FollowLookAheadRampDownSec;
         straightness = Math.Clamp(straightness + rampRate * dt, 0, 1);

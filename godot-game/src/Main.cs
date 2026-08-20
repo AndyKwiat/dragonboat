@@ -39,6 +39,7 @@ public partial class Main : Node3D
     private Clock clock = null!;
     private Minimap minimap = null!;
     private CityLabels cityLabels = null!;
+    private VectorOverlay vectors = null!;
     private CityPopup cityPopup = null!;
     private TweakPanel tweakPanel = null!;
 
@@ -69,7 +70,7 @@ public partial class Main : Node3D
         }
 
         var args = ParseArgs();
-        Tweaks.Register(typeof(BoatConfig), typeof(CombatConfig));
+        Tweaks.Register(typeof(BoatConfig), typeof(CombatConfig), typeof(Currents));
         // Tweaks persist: the panel's dump button writes tweaks.dump, and it
         // is applied over the code defaults at every launch (--set on top of
         // that; delete the file to get the defaults back).
@@ -88,8 +89,12 @@ public partial class Main : Node3D
         chunks = new TerrainChunks();
         chunks.Init(map);
         AddChild(chunks);
+        var currents = new Currents();
+        currents.Init(map, terrainQuery);
+        AddChild(currents);
         boat = new Boat();
         boat.Init(terrainQuery);
+        boat.Currents = currents;
         AddChild(boat);
         // The terrain is unshaded, so this light only touches the boats,
         // guns and balls — enough to make the model read.
@@ -153,6 +158,9 @@ public partial class Main : Node3D
         cityLabels = new CityLabels();
         cityLabels.Init(GameData.Cities, storyEvents, time);
         ui.AddChild(cityLabels);
+        vectors = new VectorOverlay();
+        vectors.Init(boat);
+        ui.AddChild(vectors);
         hud = new Hud();
         hud.Init(map.WorldW, map.WorldH);
         ui.AddChild(hud);
@@ -190,6 +198,7 @@ public partial class Main : Node3D
     // --screenshot[=path]  save the viewport after --frames (default 90) and quit
     // --zoom=Z             starting zoom (px per world unit)
     // --rig=name           starting camera rig
+    // --vectors            start with the velocity/force overlay on (F toggles)
     // --mode=follow|edge|free  starting camera mode
     // --center=x,y         focus point (free mode)
     // --city=Name          open the city popup for this city
@@ -214,6 +223,7 @@ public partial class Main : Node3D
             boat.SyncMesh();
             active.Enable(new CameraState(boat.X, boat.Y, active.State.Zoom));
         }
+        if (args.ContainsKey("vectors")) vectors.Toggle();
         if (args.TryGetValue("fire", out var fire))
         {
             var at = fire.IndexOf('@');
@@ -303,6 +313,8 @@ public partial class Main : Node3D
         }
         // T shows the live-tuning panel.
         if (input.Pressed.Contains(Key.T)) tweakPanel.Toggle();
+        // F shows the boat's velocity and force vectors.
+        if (input.Pressed.Contains(Key.F)) vectors.Toggle();
         // Latched here: the active controller clears the frame deltas in Update().
         bool clicked = input.Clicked;
         bool escaped = input.Pressed.Contains(Key.Escape);
@@ -326,7 +338,7 @@ public partial class Main : Node3D
         // WASD belongs to the camera instead.
         if (active != freeCamera && !menuOpen)
         {
-            boat.MaxSpeedScale = Crew.SpeedMultiplier(player.CrewCount, Config.Crew);
+            boat.ThrustScale = Crew.SpeedMultiplier(player.CrewCount, Config.Crew);
             // Fast-forward speeds the voyage, not the helm: keep the turn rate
             // constant per real second so steering feels the same at any rate.
             boat.TurnRateScale = 1 / timeScale;
@@ -339,7 +351,7 @@ public partial class Main : Node3D
                 remaining -= step;
             }
             // Being under way is what burns the day.
-            if (boat.Speed != 0) time.AdvanceHours(Config.HoursPerSecondSailing * gameDt);
+            if (boat.Velocity.LengthSquared() > 0.01f) time.AdvanceHours(Config.HoursPerSecondSailing * gameDt);
         }
 
         if (menuOpen) input.ConsumeFrameDeltas();   // swallow wheel/drag so it doesn't replay on close
@@ -394,6 +406,7 @@ public partial class Main : Node3D
         minimap.Update(state, view, rig);
         string guns = combat.PlayerGuns == null ? "" :
             $"guns {combat.PlayerGuns.LoadedCount}/{combat.PlayerGuns.Cannons.Count} loaded, shots {combat.Projectiles.Shots}, in air {combat.Projectiles.InFlight}";
+        vectors.Update(rig);
         hud.Update(state, view, rig, CameraRig.MinZoomFor(view, map.WorldW, map.WorldH), active.Name, timeScale, chunks.GetStats(), guns);
         tweakPanel.Update(view);
 

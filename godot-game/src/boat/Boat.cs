@@ -13,17 +13,24 @@ public partial class Boat : Node3D, ICombatTarget
     public float X = BoatConfig.StartX;
     public float Y = BoatConfig.StartY;
     public float Heading = BoatConfig.StartHeading;
-    public float Speed;            // world units/sec, signed (negative = reversing)
-    public float MaxSpeedScale = 1; // multiplier on top speed, driven by crew size
+    public float Vx, Vy;            // velocity, world units/sec
+    public float ThrustScale = 1;   // multiplier on MaxForce, driven by crew size
     public bool Turning;            // a steering key was held this frame
     public float TurnRateScale = 1; // multiplier on turn rate; Main sets 1/timeScale so
                                     // steering feels the same in fast-forward
     public float Roll;              // radians about the forward axis (+ = starboard down)
-    public float GroundSpeed;       // actual movement along the heading this step (≤ Speed when pushed by land)
     public int HitsTaken;
+    // Last step's force breakdown (world units/s²), for the vector overlay.
+    public Vector2 ThrustForce, DragForce, CurrentForce, WindForce;
+    public Vector2 Velocity => new(Vx, Vy);
+    public Vector2 Forward => new(Mathf.Cos(Heading), Mathf.Sin(Heading));
+    // Speed through the water along the keel, signed (negative = making sternway).
+    public float Speed => Vx * Mathf.Cos(Heading) + Vy * Mathf.Sin(Heading);
+    public float GroundSpeed => Speed;
     public float Length => BoatConfig.Length;
 
     private Terrain terrain = null!;
+    public Currents? Currents; // optional: rapids that scale top speed (world/Currents.cs)
     private BoatModel model = null!;
     private BlobShadow shadow = null!;
     private float bobPhase;
@@ -54,36 +61,42 @@ public partial class Boat : Node3D, ICombatTarget
         bool left = input.Down(Key.A, Key.Left);
         bool right = input.Down(Key.D, Key.Right);
 
-        // Accelerate / brake, then apply friction when no throttle input.
-        if (forward) Speed += BoatConfig.Accel * dt;
-        else if (back) Speed -= BoatConfig.Accel * dt;
-        else
-        {
-            float drop = BoatConfig.Friction * dt;
-            Speed = Math.Abs(Speed) <= drop ? 0 : Speed - Math.Sign(Speed) * drop;
-        }
-        // Crew only helps you go forward; backing up is backing up.
-        Speed = Math.Clamp(Speed, -BoatConfig.MaxReverseSpeed, BoatConfig.MaxSpeed * MaxSpeedScale);
+        float cosH = Mathf.Cos(Heading), sinH = Mathf.Sin(Heading);
+        // Velocity in the hull frame: along the keel and abeam (+ = to starboard).
+        float vFwd = Vx * cosH + Vy * sinH;
+        float vLat = -Vx * sinH + Vy * cosH;
 
-        // Steering authority scales with speed: a dead boat doesn't spin in place.
+        // Rudder: authority scales with water speed over the hull, so a boat
+        // merely drifting on a current can't steer. Turning also drags.
         int turn = (right ? 1 : 0) - (left ? 1 : 0);
         Turning = turn != 0;
-        if (turn != 0 && Speed != 0)
-        {
-            float authority = Math.Min(Math.Abs(Speed) / BoatConfig.TurnFullSpeed, 1f);
-            Heading += turn * BoatConfig.TurnRate * TurnRateScale * authority * Math.Sign(Speed) * dt;
-        }
+        float authority = Math.Min(Math.Abs(vFwd) / BoatConfig.TurnFullSpeed, 1f);
+        if (turn != 0 && vFwd != 0)
+            Heading += turn * BoatConfig.TurnRate * TurnRateScale * authority * Math.Sign(vFwd) * dt;
 
-        float x0 = X, y0 = Y;
-        X += Mathf.Cos(Heading) * Speed * dt;
-        Y += Mathf.Sin(Heading) * Speed * dt;
-        CollideWithLand(dt);
-        GroundSpeed = dt > 0 ? ((X - x0) * Mathf.Cos(Heading) + (Y - y0) * Mathf.Sin(Heading)) / dt : 0;
+        // Forces. Thrust is along the heading; drag is split by axis so the
+        // keel resists sideways motion far more than forward motion.
+        float thrust = forward ? BoatConfig.MaxForce * ThrustScale : back ? -BoatConfig.BrakeForce : 0;
+        ThrustForce = new Vector2(cosH, sinH) * thrust;
+        float k1 = BoatConfig.DragLinear + (turn != 0 ? BoatConfig.RudderDrag * authority : 0);
+        float k2 = BoatConfig.DragQuad;
+        float dFwd = -(k1 + k2 * Math.Abs(vFwd)) * vFwd;
+        float dLat = -(k1 + k2 * Math.Abs(vLat)) * vLat * BoatConfig.LateralDragScale;
+        DragForce = new Vector2(dFwd * cosH - dLat * sinH, dFwd * sinH + dLat * cosH);
+        CurrentForce = Currents?.ForceAt(X, Y) ?? Vector2.Zero;
+        WindForce = BoatConfig.WindVector();
 
-        // Heel outward from the turn by LeanAngle at full speed (the
-        // prototype's roll), eased; and a slow bob.
-        float speedFrac = Math.Min(1, Math.Abs(Speed) / BoatConfig.MaxSpeed);
-        float wantRoll = -turn * BoatConfig.LeanAngle * speedFrac;
+        var f = ThrustForce + DragForce + CurrentForce + WindForce;
+        // Semi-implicit: drag can't overshoot through zero within one step
+        // as long as the step is small (BoatConfig.MaxStepSeconds).
+        Vx += f.X * dt;
+        Vy += f.Y * dt;
+        X += Vx * dt;
+        Y += Vy * dt;
+        CollideWithLand();
+
+        // Heel away from the sideways push, eased; and a slow bob.
+        float wantRoll = Mathf.Clamp(vLat / BoatConfig.LeanFullSpeed, -1, 1) * BoatConfig.LeanAngle;
         float k = BoatConfig.LeanSmoothSec <= 0 ? 1 : 1 - Mathf.Exp(-dt / BoatConfig.LeanSmoothSec);
         Roll += (wantRoll - Roll) * k;
         bobPhase += BoatConfig.BobRadPerSec * dt;
@@ -97,25 +110,26 @@ public partial class Boat : Node3D, ICombatTarget
     }
 
     // The hull is three circles along its length; each is pushed out of any
-    // non-water cell it overlaps and the boat moves with it, so it slides
-    // along a shore instead of stopping dead. While in contact, speed decays
-    // at CollisionDrag scaled by how square-on the hit is.
-    private void CollideWithLand(float dt)
+    // non-water cell it overlaps and the boat moves with it. The velocity
+    // into the shore is removed (a little bounces back), the velocity along
+    // it survives, so the boat slides along a coast instead of stopping dead.
+    private void CollideWithLand()
     {
         float r = BoatConfig.Width / 2 * BoatConfig.CollisionRadiusScale;
         float cosH = Mathf.Cos(Heading), sinH = Mathf.Sin(Heading);
-        float worstInto = 0;
         foreach (float o in new[] { -BoatConfig.Length / 3, 0, BoatConfig.Length / 3 })
         {
             float cx = X + cosH * o, cy = Y + sinH * o;
             var push = terrain.ResolveCircle(ref cx, ref cy, r, out var normal);
             if (push == Vector2.Zero) continue;
             X += push.X; Y += push.Y;
-            // How squarely we were moving into the obstacle, 0..1.
-            float into = -(cosH * normal.X + sinH * normal.Y) * Math.Sign(Speed);
-            worstInto = Math.Max(worstInto, into);
+            float into = Vx * normal.X + Vy * normal.Y;   // negative = moving into the land
+            if (into < 0)
+            {
+                Vx -= normal.X * into * (1 + BoatConfig.CollisionBounce);
+                Vy -= normal.Y * into * (1 + BoatConfig.CollisionBounce);
+            }
         }
-        if (worstInto > 0) Speed *= Math.Max(0, 1 - worstInto * BoatConfig.CollisionDrag * dt);
     }
 
     public void SyncMesh()
