@@ -6,8 +6,8 @@ using Godot;
 // paste the number back here.
 public static class BoatConfig
 {
-    public const float StartX = 2556f;
-    public const float StartY = 15829f;
+    public const float StartX = 3953f;
+    public const float StartY = 15315f;
     public const float StartHeading = -Mathf.Pi / 2; // pointing "up" (world -y)
 
     // Hull size in world units; the model (BoatModel.cs) is the combat
