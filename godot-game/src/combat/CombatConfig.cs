@@ -20,15 +20,19 @@ public static class CombatConfig
     public static readonly Color CannonColor = new Color(0x222222FF);
     public static readonly Color CannonReloadingColor = new Color(0x8a6a4aFF);
 
-    // Ballistics: the launch angle is fixed and the muzzle speed is solved so
-    // the ball lands on the aim point (see Projectiles.SolveLaunch).
-    [Tweak("Cannon", 10, 85, 1)] public static float ArcAngleDeg = 45f;
+    // Ballistics: every ball leaves at MuzzleSpeed; the launch angle is
+    // solved so it lands on the aim point (see Projectiles.SolveLaunch).
+    // Farther shots arc higher and take longer, and range is capped by
+    // physics (~MuzzleSpeed²/Gravity on flat water — the reticle greys out
+    // beyond it). The angle never drops below MinAngleDeg, so a very close
+    // target gets overshot — the ball sails over it.
+    [Tweak("Cannon", 10, 200, 1)] public static float MuzzleSpeed = 70f;    // world units/s
+    [Tweak("Cannon", 0, 45, 1)] public static float MinAngleDeg = 0f;
     [Tweak("Cannon", 5, 150, 1)] public static float Gravity = 30f;        // world units/s²
     [Tweak("Cannon", 0, 6, 0.1f)] public static float ReloadTime = 2f;      // seconds, per cannon
     [Tweak("Cannon", 10, 180, 5)] public static float FiringArcDeg = 60f;   // total arc each cannon covers
     [Tweak("Cannon", 0.2f, 4, 0.1f)] public static float BallRadius = 0.9f;
     [Tweak("Cannon", 0, 3, 0.1f)] public static float HitMargin = 0.5f;     // hit box padding around a hull
-    [Tweak("Cannon", 0, 200, 1)] public static float MaxRange = 0f;        // 0 = unlimited (click anywhere)
     public static readonly Color BallColor = new Color(0x111111FF);
 
     // Effects: flat rings that grow and fade (splashes, land puffs) and

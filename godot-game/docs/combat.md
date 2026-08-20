@@ -33,9 +33,15 @@ CombatConfig     all knobs, [Tweak]-able     src/combat/CombatConfig.cs
   fired them. The player's battery is `PlayerMounts`: one bow chaser and
   three guns a side.
 - **`Projectiles`** — `Fire(cannon, target)` spawns a ball at the cannon,
-  with velocity from `SolveLaunch`: fixed launch angle `ArcAngleDeg`, muzzle
-  speed solved so it lands on the target (`v² = g d² / (2 cos²a (d tan a −
-  h))`); muzzle-flash burst; sets the cannon's reload. `Update` integrates
+  with velocity from `SolveLaunch`: every ball leaves at **`MuzzleSpeed`**;
+  the *low* launch angle that lands on the target is solved from
+  `tan θ = (v² − √(v⁴ − g(g d² + 2 h v²))) / (g d)`, so farther shots arc
+  higher and take longer. Range is capped by physics (≈ `MuzzleSpeed²/Gravity`
+  on flat water): beyond it the discriminant goes negative and the ball is
+  fired at the range-maximising angle and falls short — `WithinRange` is the
+  UI's check. The angle is floored at `MinAngleDeg`, so a very close target
+  is overshot: the ball sails over it. Muzzle-flash burst; sets the cannon's
+  reload. `Update` integrates
   under `Gravity`, then tests each ball against every target except its owner
   (`ContainsPoint` → `TakeHit`, hit burst, `Hits++`) and against the ground
   via `Terrain.HeightAt`: on water a pale **splash ring**, on land a brown
@@ -57,9 +63,9 @@ CombatConfig     all knobs, [Tweak]-able     src/combat/CombatConfig.cs
 Each frame `CombatSystem.Update` casts the cursor through the current rig's
 camera with `Terrain.RaycastGround`, so the aim point sits on the water or on
 top of a hill, and parks the reticle there (`ReticlePx` screen pixels, scaled
-by 1/zoom). Yellow means a loaded cannon can bear on it, grey means none
-can (all reloading, or outside every firing arc, or beyond `MaxRange` when
-that is > 0). A click that didn't land on a city label fires
+by 1/zoom). Yellow means a loaded cannon can bear on it *and* the point is within the
+fixed muzzle speed's reach from that cannon; grey means it can't be hit (all
+reloading, outside every firing arc, or out of range). A click that didn't land on a city label fires
 `PlayerGuns.BestCannon(aim)`; clicking inside a UI panel never reaches the
 world (`InputState` listens in `_UnhandledInput`). Firing works in both
 camera modes. The reticle is hidden until the mouse has moved at all, so
@@ -88,6 +94,9 @@ No tests; use the scripted flags (README): `--start` to place the boat,
 `--fire=dx,dy@frame` to shoot at a ground point relative to it (only a
 cannon that bears fires — `+60,+40` from a boat heading east is 34° off the
 bow, outside both the bow and broadside arcs, so nothing happens), `--set`
-to change knobs, `--frames` long enough for the flight (at `Gravity=30` a
-110-unit shot takes ~3 s ≈ 360 frames at 120 fps). The run prints shots and
-hits when it saves the screenshot.
+to change knobs, `--frames` long enough for the flight (a near-max-range shot
+at the defaults is ~2.5 s of game time ≈ 300 frames at 120 fps, fewer when
+zoomed-out fast-forward is in effect) — `--set=SplashLife=3` keeps the splash
+around long enough to see where it landed. The run prints shots and hits when
+it saves the screenshot. Useful checks: `--fire=150,0` lands on target,
+`--fire=250,0` falls short at max range, `--fire=10,0` sails over.

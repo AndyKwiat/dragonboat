@@ -72,16 +72,11 @@ public partial class CombatSystem : Node3D
         var hit = Vector3.Zero;
         AimValid = cursorPx is Vector2 c &&
             terrain.RaycastGround(cam.ProjectRayOrigin(c), cam.ProjectRayNormal(c), Config.MaxViewDistance, out hit);
-        if (AimValid)
-        {
-            AimPoint = hit;
-            if (CombatConfig.MaxRange > 0 && PlayerGuns != null)
-            {
-                var d = hit - PlayerGuns.Vessel.GlobalPosition; d.Y = 0;
-                if (d.Length() > CombatConfig.MaxRange) AimValid = false;
-            }
-        }
-        AimReady = AimValid && PlayerGuns != null && PlayerGuns.BestCannon(AimPoint) != null;
+        if (AimValid) AimPoint = hit;
+        // Ready = a loaded cannon bears on the point AND the point is inside
+        // the fixed muzzle speed's physical reach from that cannon.
+        var aimCannon = AimValid && PlayerGuns != null ? PlayerGuns.BestCannon(AimPoint) : null;
+        AimReady = aimCannon != null && Projectiles.WithinRange(aimCannon.GlobalPosition, AimPoint);
 
         reticle.Visible = AimValid;
         if (AimValid)

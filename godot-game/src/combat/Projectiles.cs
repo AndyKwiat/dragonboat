@@ -31,19 +31,33 @@ public partial class Projectiles : Node3D
         ballMaterial = new StandardMaterial3D { AlbedoColor = CombatConfig.BallColor };
     }
 
-    // Muzzle velocity for a fixed launch angle that lands exactly on target:
-    // v² = g d² / (2 cos²a (d tan a − h)). When the target is too high for
-    // the angle the denominator goes to zero and the shot just falls short.
+    // Every ball leaves at MuzzleSpeed; the LOW launch angle that lands on
+    // the target is tan θ = (v² − √(v⁴ − g(g d² + 2 h v²))) / (g d), so a
+    // farther target gets a higher angle and a longer flight. Out of range
+    // the discriminant goes negative and we fire at the range-maximising
+    // angle instead (tan θ = v²/(g d)) — the ball falls short; WithinRange
+    // lets the aim UI warn first. The angle is floored at MinAngleDeg, so a
+    // very close target is overshot: the ball sails over it.
+    private static float Discriminant(float d, float h, float v, float g) =>
+        v * v * v * v - g * (g * d * d + 2 * h * v * v);
+
+    public static bool WithinRange(Vector3 start, Vector3 target)
+    {
+        var flat = new Vector3(target.X - start.X, 0, target.Z - start.Z);
+        return Discriminant(flat.Length(), target.Y - start.Y, CombatConfig.MuzzleSpeed, CombatConfig.Gravity) >= 0;
+    }
+
     public static Vector3 SolveLaunch(Vector3 start, Vector3 target)
     {
         var flat = new Vector3(target.X - start.X, 0, target.Z - start.Z);
         float d = Math.Max(flat.Length(), 0.01f);
         float h = target.Y - start.Y;
-        float a = Mathf.DegToRad(CombatConfig.ArcAngleDeg);
-        float denom = 2 * MathF.Cos(a) * MathF.Cos(a) * (d * MathF.Tan(a) - h);
-        float v = MathF.Sqrt(CombatConfig.Gravity * d * d / Math.Max(denom, 1e-6f));
+        float v = CombatConfig.MuzzleSpeed, g = CombatConfig.Gravity;
+        float disc = Discriminant(d, h, v, g);
+        float tan = (v * v - MathF.Sqrt(Math.Max(disc, 0))) / (g * d);
+        float angle = Math.Max(MathF.Atan(tan), Mathf.DegToRad(CombatConfig.MinAngleDeg));
         flat = flat.Normalized();
-        return new Vector3(flat.X * MathF.Cos(a) * v, MathF.Sin(a) * v, flat.Z * MathF.Cos(a) * v);
+        return new Vector3(flat.X * MathF.Cos(angle) * v, MathF.Sin(angle) * v, flat.Z * MathF.Cos(angle) * v);
     }
 
     public void Fire(Cannon cannon, Vector3 target)
