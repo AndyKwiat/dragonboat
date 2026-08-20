@@ -188,6 +188,7 @@ public partial class Main : Node3D
     // --hold=W,D           keys held down for the whole run (physical key names)
     // --start=x,y[,deg]    put the boat here (world units, heading in degrees, 0 = east)
     // --set=Name=V,...     override [Tweak] values by field name (see core/Tweaks.cs)
+    // --dump-tweaks        write changed tweaks to tweaks.dump on startup (test hook)
     // --fire=dx,dy@f,...   fire at the point dx,dy from the boat on those frames
     // --tweaks             start with the tweak panel open
     private void ApplyArgs(Dictionary<string, string> args)
@@ -213,6 +214,7 @@ public partial class Main : Node3D
             else fireFrames.Add(10);
         }
         if (args.ContainsKey("tweaks")) tweakPanel.Toggle();
+        if (args.ContainsKey("dump-tweaks")) tweakPanel.Dump();
         if (args.TryGetValue("size", out var size))
         {
             var parts = size.Split('x');

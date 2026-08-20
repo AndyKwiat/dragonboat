@@ -37,12 +37,17 @@ public static class Tweaks
         public readonly float Min, Max, Step;
         private readonly FieldInfo info;
 
+        public readonly float Default;   // the value in code at Register time
+
         public Entry(FieldInfo field, TweakAttribute a)
         {
             info = field;
             Group = a.Group; Name = field.Name; Owner = field.DeclaringType!.Name;
             Min = a.Min; Max = a.Max; Step = a.Step;
+            Default = Get();
         }
+
+        public bool IsChanged => Get() != Default;
 
         public bool IsBool => info.FieldType == typeof(bool);
 
@@ -118,4 +123,7 @@ public static class Tweaks
     public static IEnumerable<string> Groups() => All.Select(e => e.Group).Distinct();
 
     public static string Dump() => string.Join("\n", All.Select(e => e.AsCode()));
+
+    // Only the values moved off their code defaults — what a dump is for.
+    public static string DumpChanged() => string.Join("\n", All.Where(e => e.IsChanged).Select(e => e.AsCode()));
 }

@@ -3,14 +3,32 @@ using System.Collections.Generic;
 
 // The combat prototype's slider panel: one row per [Tweak] field (see
 // core/Tweaks.cs), grouped, built by reflection so adding a knob is just
-// adding an attribute. T toggles it. "Dump" prints every current value as a
-// C# line to the console and the clipboard, ready to paste into the config.
+// adding an attribute. T toggles it. "Dump" saves every value moved off its
+// code default as C# lines to tweaks.dump in the project root (and the
+// console and clipboard) — hand that file to Claude to fold into the config.
 public partial class TweakPanel : PanelContainer
 {
+    public const string DumpPath = "res://tweaks.dump";
     private const int RowPx = 11;
     private readonly List<(Tweaks.Entry entry, Label value, Control input)> rows = new();
     private ScrollContainer scroll = null!;
     private int top;
+
+    // Save the values moved off their defaults to DumpPath, overwriting the
+    // last dump; also to the console and clipboard for a quick look.
+    public void Dump()
+    {
+        var code = Tweaks.DumpChanged();
+        var body = code.Length == 0 ? "// no tweaks changed from their code defaults" : code;
+        GD.Print(body);
+        DisplayServer.ClipboardSet(body);
+        using var f = FileAccess.Open(DumpPath, FileAccess.ModeFlags.Write);
+        if (f == null) { GD.PushWarning($"tweaks: could not write {DumpPath}"); return; }
+        f.StoreString("// tweaks.dump — values moved off their code defaults, written by the\n" +
+                      "// tweak panel's dump button. Ask Claude to fold these into the config.\n" +
+                      body + "\n");
+        GD.Print($"tweaks saved to {ProjectSettings.GlobalizePath(DumpPath)}");
+    }
 
     public void Init(int topPx)
     {
@@ -29,15 +47,10 @@ public partial class TweakPanel : PanelContainer
         var title = Fonts.MakeLabel("tweaks [T]", Fonts.MonoBold, RowPx + 1, new Color("#9cf"));
         title.SizeFlagsHorizontal = SizeFlags.ExpandFill;
         head.AddChild(title);
-        var dump = new Button { Text = "dump", FocusMode = FocusModeEnum.None, TooltipText = "print current values as C# (and copy to clipboard)" };
+        var dump = new Button { Text = "dump", FocusMode = FocusModeEnum.None, TooltipText = "save changed values as C# to tweaks.dump (and console/clipboard)" };
         dump.AddThemeFontOverride("font", Fonts.Mono);
         dump.AddThemeFontSizeOverride("font_size", RowPx);
-        dump.Pressed += () =>
-        {
-            var code = Tweaks.Dump();
-            GD.Print(code);
-            DisplayServer.ClipboardSet(code);
-        };
+        dump.Pressed += Dump;
         head.AddChild(dump);
         box.AddChild(head);
 

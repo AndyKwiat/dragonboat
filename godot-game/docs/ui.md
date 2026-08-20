@@ -36,7 +36,9 @@ or zooming the map.
   scrolling beyond that. Rules it drives: [trading.md](trading.md).
 - **TweakPanel** (left, under the clock; **T**) — built by reflection over
   `Tweaks.All`: a group header per `[Tweak]` group, a name / slider (or
-  checkbox) / value row per field, a *dump* button that prints the current
-  values as C# and copies them to the clipboard. Sliders take no keyboard
+  checkbox) / value row per field, a *dump* button that writes every value
+  moved off its code default as C# lines to `tweaks.dump` in the project
+  root (gitignored; also console + clipboard) — hand that file to Claude
+  to fold into the config. `--dump-tweaks` triggers the same on startup. Sliders take no keyboard
   focus so WASD keeps driving. Scrolls when taller than the window. Which
   values exist is up to `BoatConfig` / `CombatConfig`, not this file.
