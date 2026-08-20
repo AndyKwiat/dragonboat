@@ -25,6 +25,7 @@ public partial class Boat : Node3D, ICombatTarget
 
     private Terrain terrain = null!;
     private BoatModel model = null!;
+    private BlobShadow shadow = null!;
     private float bobPhase;
     private float hitFlash;
 
@@ -39,6 +40,10 @@ public partial class Boat : Node3D, ICombatTarget
     {
         model = new BoatModel(BoatConfig.Length, BoatConfig.HullColor);
         AddChild(model);
+        // The shadow is a sibling, not a child: it must stay flat on the
+        // water while the hull rolls and bobs above it.
+        shadow = new BlobShadow(BoatConfig.ShadowStrength);
+        GetParent().CallDeferred(Node.MethodName.AddChild, shadow);
         SyncMesh();
     }
 
@@ -117,6 +122,15 @@ public partial class Boat : Node3D, ICombatTarget
     {
         float bob = Mathf.Sin(bobPhase) * BoatConfig.BobAmplitude;
         Position = CameraRig.WorldToGodot(X, Y, bob);
+        if (shadow != null && shadow.IsInsideTree())
+        {
+            // A hull-shaped ellipse on the water; raised land cells at the
+            // shoreline simply occlude whatever overhangs them.
+            shadow.Position = new Vector3(X, 0.03f, Y);
+            shadow.Rotation = new Vector3(0, -Heading, 0);
+            shadow.Scale = new Vector3(BoatConfig.Length / 2, 1, BoatConfig.Width / 2) * BoatConfig.ShadowScale;
+            shadow.SetStrength(BoatConfig.ShadowStrength);
+        }
         // Euler order YXZ: yaw about +Y first (a rotation about +Y turns +X
         // towards -Z; world headings turn +X towards +Z, hence the sign),
         // then roll about the boat's own forward axis.

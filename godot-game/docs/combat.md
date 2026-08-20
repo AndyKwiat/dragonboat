@@ -40,6 +40,11 @@ CombatConfig     all knobs, [Tweak]-able     src/combat/CombatConfig.cs
   (`ContainsPoint` → `TakeHit`, hit burst, `Hits++`) and against the ground
   via `Terrain.HeightAt`: on water a pale **splash ring**, on land a brown
   **dirt ring** at the column top — every shot marks where it landed.
+- Every ball also drags a **blob shadow** (`world/BlobShadow.cs`): a dark
+  disc on the ground straight below it (water plane or column top), shrinking
+  to `BallShadowMin` and fading out as the ball climbs to
+  `ShadowShrinkHeight` — the height cue the flat terrain doesn't give you.
+  All in the "Shadows" tweak group.
 - **`Effects`** — transient unshaded meshes with a life: rings grow to
   `RingGrow ×` and fade (splash, dirt), spheres fade (muzzle, hit). Also
   owns the shared ring/sphere meshes and the unshaded-material helper.

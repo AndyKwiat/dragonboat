@@ -37,6 +37,10 @@ public static class BoatConfig
     [Tweak("Boat lean", 0, 1, 0.01f)] public static float BobAmplitude = 0.15f;   // world units
     [Tweak("Boat lean", 0, 10, 0.1f)] public static float BobRadPerSec = 2f;
 
+    // Blob shadow: a dark ellipse on the water under the hull.
+    [Tweak("Shadows", 0, 1, 0.05f)] public static float ShadowStrength = 0.4f;
+    [Tweak("Shadows", 0.5f, 2, 0.05f)] public static float ShadowScale = 1.55f;   // × the hull footprint (must peek past the hull at the iso angle)
+
     // Land collision: the hull is three circles along its length pushed out
     // of any non-water cell (world/Terrain.cs), which removes the motion into
     // the shore and keeps the motion along it — the slide. While touching,

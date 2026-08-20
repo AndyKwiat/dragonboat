@@ -11,6 +11,7 @@ public partial class Projectiles : Node3D
     public sealed class Ball
     {
         public MeshInstance3D Mesh = null!;
+        public BlobShadow Shadow = null!;
         public Vector3 Velocity;
         public Node3D? Owner;
     }
@@ -57,7 +58,9 @@ public partial class Projectiles : Node3D
             Scale = Vector3.One * CombatConfig.BallRadius,
         };
         AddChild(mi);
-        balls.Add(new Ball { Mesh = mi, Velocity = SolveLaunch(start, target), Owner = owner });
+        var shadow = new BlobShadow(CombatConfig.BallShadowStrength);
+        AddChild(shadow);
+        balls.Add(new Ball { Mesh = mi, Shadow = shadow, Velocity = SolveLaunch(start, target), Owner = owner });
         effects.SpawnBurst(start, CombatConfig.MuzzleFlashColor, CombatConfig.MuzzleFlashLife, CombatConfig.MuzzleFlashSize);
         cannon.Reload = CombatConfig.ReloadTime;
         Shots++;
@@ -71,6 +74,15 @@ public partial class Projectiles : Node3D
             b.Velocity.Y -= CombatConfig.Gravity * dt;
             var p = b.Mesh.Position + b.Velocity * dt;
             b.Mesh.Position = p;
+
+            // Blob shadow on the ground straight below, smaller and fainter
+            // the higher the ball is.
+            float groundY = terrain.HeightAt(p.X, p.Z);
+            float heightT = BlobShadow.HeightT(p.Y - groundY, CombatConfig.ShadowShrinkHeight);
+            b.Shadow.Position = new Vector3(p.X, groundY + 0.04f, p.Z);
+            b.Shadow.Scale = Vector3.One * (CombatConfig.BallRadius * CombatConfig.BallShadowScale
+                                            * Mathf.Lerp(1, CombatConfig.BallShadowMin, heightT));
+            b.Shadow.SetStrength(CombatConfig.BallShadowStrength * (1 - heightT));
 
             bool done = false;
             foreach (var t in targets)
@@ -98,6 +110,7 @@ public partial class Projectiles : Node3D
             if (done)
             {
                 b.Mesh.QueueFree();
+                b.Shadow.QueueFree();
                 balls.RemoveAt(i);
             }
         }

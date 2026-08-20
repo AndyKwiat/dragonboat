@@ -56,6 +56,14 @@ A data-only wrapper over `DMap` for gameplay:
   band of column heights). Aiming uses it so clicking on a hill targets the
   hilltop, not the water plane underneath.
 
+## Blob shadows (`world/BlobShadow.cs`)
+
+There are no real shadows (the terrain is unshaded); anything that needs one
+uses `BlobShadow`, a flat dark translucent disc the caller positions on the
+ground each frame (unit disc mesh; set Position/Scale/Rotation, `SetStrength`
+to fade). The boat parks an ellipse on the water under its hull; cannonballs
+carry a disc that shrinks and fades with height (`BlobShadow.HeightT`).
+
 ## Rendering notes
 
 - Colours: the config hex colours are stored raw (map texture bytes, chunk

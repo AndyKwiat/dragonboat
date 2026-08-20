@@ -44,6 +44,16 @@ instant) towards `-turn × LeanAngle × speedFrac`, i.e. the boat heels
 `BobAmplitude × sin(BobRadPerSec × t)` vertically. All four are `[Tweak]`s in
 the "Boat lean" group.
 
+## Shadow
+
+A fake blob shadow (`world/BlobShadow.cs`): a dark ellipse of the hull's
+footprint × `ShadowScale`, flat on the water at the boat's world position —
+a *sibling* node, not a child, so it stays flat while the hull rolls and
+bobs. `ShadowScale` must stay comfortably above 1: at the isometric angle
+the hull covers a same-sized ellipse completely. Raised shoreline cells
+simply occlude whatever overhangs them. `ShadowStrength`/`ShadowScale` are
+`[Tweak]`s ("Shadows" group).
+
 ## Land collision
 
 The boat cannot enter non-water cells (anything but ocean/river/canal —

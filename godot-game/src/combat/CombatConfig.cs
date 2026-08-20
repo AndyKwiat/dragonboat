@@ -49,6 +49,14 @@ public static class CombatConfig
     public static readonly Color HitFlashColor = new Color(0xff5522FF);
     public static readonly Color HullHitColor = new Color(0xff2200FF);
 
+    // Blob shadows under cannonballs: a dark disc on the ground straight
+    // below the ball, shrinking and fading as it climbs (gone at
+    // ShadowShrinkHeight and above).
+    [Tweak("Shadows", 0, 1, 0.05f)] public static float BallShadowStrength = 0.35f;
+    [Tweak("Shadows", 0.5f, 4, 0.1f)] public static float BallShadowScale = 1.5f;   // × BallRadius at ground level
+    [Tweak("Shadows", 0, 0.9f, 0.05f)] public static float BallShadowMin = 0.35f;    // fraction left at full height
+    [Tweak("Shadows", 5, 200, 1)] public static float ShadowShrinkHeight = 60f;
+
     // Aim reticle: a ring under the cursor, a constant size on screen.
     [Tweak("Aim", 4, 40, 1)] public static float ReticlePx = 14f;
     public static readonly Color ReticleReadyColor = new Color(0xffdd55FF);
