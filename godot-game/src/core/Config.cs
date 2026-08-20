@@ -89,11 +89,15 @@ public static class Config
     public const float CityHitPadPx = 10f;
 
     // Market.
-    public static readonly Dictionary<string, double> MarketSizeMultiplier = new()
-    {
-        ["small"] = 1, ["medium"] = 2, ["large"] = 3,
-    };
-    public const double MarketBuyMarkup = 1.2;
+    public const double MarketBuyMarkup = 1.1;
+    public const double MarketSmallStapleDiscount = 0.6;   // a small city's one non-rice staple
+    public const double MarketMediumLuxuryDiscount = 0.75; // a medium city's one luxury
+    public static readonly HashSet<string> LuxuryProductIds = new() { "CLOTHES", "FURNITURE", "JEWELRY" };
+
+    // Story events.
+    public const int StoryEventCount = 20;
+    public const int StoryEventMinDays = 7, StoryEventMaxDays = 21;
+    public const double StoryEventLowMultiplier = 0.5, StoryEventHighMultiplier = 1.5;
     public static readonly Color MarketDearColor = new Color("#ff6b6b");
     public static readonly Color MarketCheapColor = new Color("#6bd97a");
     public static readonly Color MarketNormalColor = new Color("#ffffff");

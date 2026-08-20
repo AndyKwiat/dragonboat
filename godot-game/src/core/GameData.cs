@@ -18,7 +18,6 @@ public sealed class City
     public float X, Y;                        // world units, y-down from the top-left
     public string Size = "small";             // small | medium | large
     public List<string> Products = new();
-    public Dictionary<string, double> PriceOverrides = new();
 }
 
 public static class GameData
@@ -62,8 +61,6 @@ public static class GameData
                 };
                 if (c.TryGetProperty("products", out var prods))
                     foreach (var id in prods.EnumerateArray()) city.Products.Add(id.GetString() ?? "");
-                if (c.TryGetProperty("priceOverrides", out var overrides))
-                    foreach (var kv in overrides.EnumerateObject()) city.PriceOverrides[kv.Name] = kv.Value.GetDouble();
                 Cities.Add(city);
             }
         }

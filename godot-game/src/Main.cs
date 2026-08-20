@@ -34,6 +34,7 @@ public partial class Main : Node3D
     private GameTime time = null!;
     private Rations rations = null!;
     private Wages wages = null!;
+    private StoryEvents storyEvents = null!;
     private Hud hud = null!;
     private Clock clock = null!;
     private Minimap minimap = null!;
@@ -123,6 +124,7 @@ public partial class Main : Node3D
         time = new GameTime();
         rations = new Rations(player, time);
         wages = new Wages(player, time);
+        storyEvents = new StoryEvents(time);
 
         // UI overlays, in draw order (labels under the panels, popup on top).
         var ui = new CanvasLayer();
@@ -140,7 +142,7 @@ public partial class Main : Node3D
         minimap.Init(map);
         ui.AddChild(minimap);
         cityPopup = new CityPopup();
-        cityPopup.Init(player, time);
+        cityPopup.Init(player, time, storyEvents);
         ui.AddChild(cityPopup);
         tweakPanel = new TweakPanel();
         tweakPanel.Init(topPx: 130);   // under the clock
@@ -353,6 +355,9 @@ public partial class Main : Node3D
         // or it shows a stale hold and purse.
         int charged = rations.Update() + wages.Update();
         if (charged > 0 && cityPopup.IsOpen) cityPopup.Refresh();
+        // Story events roll over at midnight; an open market menu has prices
+        // and days-left tags baked into its rows, so rebuild them.
+        if (storyEvents.Update()) cityPopup.Rebuild();
         clock.Update();
         minimap.Update(state, view, rig);
         string guns = combat.PlayerGuns == null ? "" :

@@ -12,6 +12,7 @@ public partial class CityPopup : PanelContainer
 
     private Player player = null!;
     private GameTime time = null!;
+    private StoryEvents storyEvents = null!;
     private ScrollContainer scroll = null!;
     private VBoxContainer content = null!;
     private Label title = null!, facts = null!, crewCount = null!, purse = null!;
@@ -25,9 +26,9 @@ public partial class CityPopup : PanelContainer
 
     public bool IsOpen => Visible;
 
-    public void Init(Player player, GameTime time)
+    public void Init(Player player, GameTime time, StoryEvents storyEvents)
     {
-        this.player = player; this.time = time;
+        this.player = player; this.time = time; this.storyEvents = storyEvents;
         int px = Config.PopupFontPx;
         Visible = false;
         MouseFilter = MouseFilterEnum.Stop;
@@ -160,14 +161,19 @@ public partial class CityPopup : PanelContainer
         refreshers.Clear();
         int px = Config.PopupFontPx;
 
-        foreach (var quote in Market.MarketFor(city))
+        foreach (var quote in Market.MarketFor(city, storyEvents))
         {
             var product = quote.Product;
-            // A local price quirk colours the whole row: red = this city
-            // charges over the odds, green = a bargain.
-            bool dear = quote.PriceMultiplier > 1;
-            bool quirky = quote.PriceMultiplier != 1;
+            // Colour the row by how the quoted sell price compares to the
+            // product's base price: red = over the odds, green = a bargain.
+            double ratio = quote.SellPrice / product.BasePrice;
+            bool dear = quote.SellPrice > product.BasePrice;
+            bool quirky = quote.SellPrice != product.BasePrice;
             var tint = !quirky ? Config.MarketNormalColor : dear ? Config.MarketDearColor : Config.MarketCheapColor;
+            // A price driven by a story event carries its shelf life; the
+            // structural small/medium discounts are permanent, so no tag.
+            int daysLeft = quote.Event == null ? 0
+                : (int)Math.Ceiling((quote.Event.ExpiresAtMinutes - time.TotalMinutes) / (double)GameTime.MinutesPerDay);
 
             var row = new HBoxContainer();
             row.AddThemeConstantOverride("separation", 14);
@@ -175,10 +181,12 @@ public partial class CityPopup : PanelContainer
             var info = new VBoxContainer { SizeFlagsHorizontal = SizeFlags.ExpandFill };
             info.AddThemeConstantOverride("separation", 0);
             var name = Fonts.MakeLabel(quirky
-                ? $"{product.Name}  {(dear ? "▲" : "▼")} {Math.Round(quote.PriceMultiplier * 100)}%"
+                ? $"{product.Name}  {(dear ? "▲" : "▼")} {Math.Round(ratio * 100)}%{(quote.Event != null ? $"  ({daysLeft}d)" : "")}"
                 : product.Name, Fonts.UiSemiBold, px, tint);
             name.MouseFilter = MouseFilterEnum.Stop;
-            name.TooltipText = quirky ? $"{city.Name} trades {product.Name} at {quote.PriceMultiplier}x the usual price" : "";
+            name.TooltipText =
+                quote.Event != null ? $"{city.Name} trades {product.Name} at {Math.Round(ratio * 100)}% of the base price for another {daysLeft} day{(daysLeft == 1 ? "" : "s")}" :
+                quirky ? $"{city.Name} trades {product.Name} at {Math.Round(ratio * 100)}% of the base price" : "";
             var desc = Fonts.MakeLabel(product.Description, Fonts.Ui, px - 3, new Color("#999999"));
             desc.AutowrapMode = TextServer.AutowrapMode.Word;
             desc.SizeFlagsHorizontal = SizeFlags.ExpandFill;
@@ -262,6 +270,16 @@ public partial class CityPopup : PanelContainer
         }
         Refresh();
         Visible = true;
+        layoutFrames = 3;
+    }
+
+    // Prices and days-left tags are baked into the market rows, so a story
+    // event rollover (midnight) needs the rows rebuilt, not just refreshed.
+    public void Rebuild()
+    {
+        if (current == null || !Visible) return;
+        BuildMarket(current);
+        Refresh();
         layoutFrames = 3;
     }
 

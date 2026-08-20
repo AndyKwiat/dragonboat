@@ -41,6 +41,10 @@ public sealed class GameTime
 
     public Stamp Now => StampFor(minutes);
 
+    // Day boundaries, for things that tick over at midnight (story events).
+    public static long StartOfDay(long totalMinutes) => totalMinutes / MinutesPerDay * MinutesPerDay;
+    public static long MidnightAfter(long totalMinutes) => StartOfDay(totalMinutes) + MinutesPerDay;
+
     // Night wraps past midnight, so the test is an OR, not a range.
     public bool IsNight => IsNightHour(Now.Hour, Config.NightStartHour, Config.NightEndHour);
     public static bool IsNightHour(int hour, int start, int end) => hour >= start || hour < end;
