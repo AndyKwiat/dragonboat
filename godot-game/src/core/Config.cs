@@ -103,6 +103,8 @@ public static class Config
     public const double StoryEventLowMultiplier = 0.5, StoryEventHighMultiplier = 1.5;
     // High-price events are this many times likelier than low-price ones.
     public const int StoryEventHighOddsToOne = 2;
+    // Nearest other-city events shown (and discovered) in a city's popup.
+    public const int RumourCount = 3;
     public static readonly Color MarketDearColor = new Color("#ff6b6b");
     public static readonly Color MarketCheapColor = new Color("#6bd97a");
     public static readonly Color MarketNormalColor = new Color("#ffffff");

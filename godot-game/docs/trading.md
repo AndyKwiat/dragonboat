@@ -14,14 +14,15 @@ Combat never touches any of this; the only shared objects are the `Boat`
 ## Data
 
 `data/cities.json` and `data/products.json` are copies of `../game`'s,
-generated there (`npm run cities` etc.; see `../game/AGENTS.md` for how
-cities are placed and products dealt). Regenerate there and copy over.
-`GameData.Load()` reads them once; `City` has a world position (y-down),
-`Size` (small/medium/large) and the product ids it trades: large cities all
-nine products, medium six staples + one luxury, small rice + one other
-staple. (Any `priceOverrides` still in the JSON are ignored — that system
-was replaced by story events.) Prices are never stored — `Market` derives
-them.
+generated there (`npm run cities`; see `../game/AGENTS.md` for how cities
+are placed). Regenerate there and copy over. `GameData.Load()` reads them
+once; `City` has a world position (y-down) and `Size` (small/medium/large)
+from the JSON, but what it trades is dealt fresh every run
+(`GameData.DealProducts`): large cities all nine products, medium every
+staple + one random luxury, small rice + one other random staple. (The
+`products` and `priceOverrides` still in cities.json are both ignored —
+specialities are rolled at startup and overrides were replaced by story
+events.) Prices are never stored — `Market` derives them.
 
 ## Rules
 
@@ -48,10 +49,17 @@ them.
   pass drops lapsed events and rolls replacements at random cities. When
   the pass runs, `Main` rebuilds the open city popup, whose prices and
   days-left tags are baked into its rows, and the map labels' price intel.
+- **Rumours**: a city's popup opens with the `RumourCount` (3)
+  geographically nearest events that are NOT the city's own
+  (`StoryEvents.RumoursFor`), one line each from the event's
+  `Description` ("Fish prices are very high in Sword Hill"). Seeing a
+  rumour marks that event discovered, so neighbouring markets spread the
+  news — the player needn't visit every city.
 - **Discovery**: opening a city's popup marks the city discovered forever
   (`City.Discovered`) and marks every event live there discovered
   (`StoryEvent.Discovered`; via `StoryEvents.DiscoverAt`, also called when
-  the popup rebuilds at midnight while open). On the map, under a city's
+  the popup rebuilds at midnight while open). Rumours discover events
+  remotely, so an event can be discovered while its city is not. On the map, under a city's
   name label (`CityLabels.RefreshIntel`): a discovered event shows its
   product, price and days left even if the city itself is undiscovered; a
   discovered city additionally shows every product whose permanent
@@ -81,8 +89,8 @@ them.
 ## UI
 
 Click a city's name (`ui/CityLabels.cs` does the hit-testing) to open
-`CityPopup`: facts, the hiring hall (large cities), then one row per product
-with buy/sell ×1/×10 buttons. A row whose sell price differs from the
+`CityPopup`: facts, rumours, the hiring hall (large cities), then one row
+per product with buy/sell ×1/×10 buttons. A row whose sell price differs from the
 product's base price is tinted (red = dear, green = cheap) with a ▲/▼
 percentage of base; if the swing is a story event the row also shows how
 many days it has left, e.g. `(12d)`. Esc, the ✕, or a click outside closes it. See

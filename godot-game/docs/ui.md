@@ -26,7 +26,9 @@ or zooming the map.
   off base price, with days left for story events — rebuilt only when the
   popup opens or the midnight pass runs, never per frame. Discovery rules:
   [trading.md](trading.md).
-- **CityPopup** — the market panel; measures its content for a few frames
+- **CityPopup** — the market panel: facts, rumours (nearest other-city
+  story events, red/green by high/low), the hiring hall (large cities),
+  then the market rows; measures its content for a few frames
   after opening / resizing (wrapped labels only know their height after
   layout) and sizes itself to 62vw clamped to 520–900 px, at most 80vh,
   scrolling beyond that. Rules it drives: [trading.md](trading.md).

@@ -17,6 +17,8 @@ public partial class CityPopup : PanelContainer
     private VBoxContainer content = null!;
     private Label title = null!, facts = null!, crewCount = null!, purse = null!;
     private Control crewHeading = null!, crewSection = null!;
+    private Control rumoursHeading = null!;
+    private VBoxContainer rumours = null!;
     private VBoxContainer market = null!;
     private Button addCrew = null!, removeCrew = null!;
     private City? current;
@@ -58,6 +60,14 @@ public partial class CityPopup : PanelContainer
 
         facts = Fonts.MakeLabel("", Fonts.Mono, px - 2, new Color("#bbbbbb"));
         content.AddChild(facts);
+
+        // Rumours: word from the nearest markets, at the top so the player
+        // hears the news the moment they step ashore.
+        rumoursHeading = Heading("Rumours");
+        content.AddChild(rumoursHeading);
+        rumours = new VBoxContainer();
+        rumours.AddThemeConstantOverride("separation", 4);
+        content.AddChild(rumours);
 
         // Crew: hiring hall, large cities only (hidden everywhere else).
         crewHeading = Heading("Crew");
@@ -153,6 +163,26 @@ public partial class CityPopup : PanelContainer
             ? "Not enough hold space without them — sell some cargo first" : "";
         purse.Text = $"money {player.Money}    cargo {player.TotalUnits()}/{player.CargoCapacity()} units";
         Fonts.SetColor(purse, player.Money < 0 ? new Color("#ff8b7a") : new Color("#ffd166"));
+    }
+
+    // The nearest other-city events, as one line each; hearing a rumour is
+    // what discovers the event, so it shows on the map from now on — even
+    // when its own city was never visited.
+    private void BuildRumours(City city)
+    {
+        foreach (var child in rumours.GetChildren()) child.QueueFree();
+        var heard = storyEvents.RumoursFor(city, Config.RumourCount);
+        rumoursHeading.Visible = rumours.Visible = heard.Count > 0;
+        foreach (var ev in heard)
+        {
+            ev.Discovered = true;
+            bool dear = ev is ProductPriceStoryEvent p && p.PriceMultiplier > 1;
+            var line = Fonts.MakeLabel($"“{ev.Description}”", Fonts.Ui, Config.PopupFontPx - 1,
+                dear ? Config.MarketDearColor : Config.MarketCheapColor);
+            line.AutowrapMode = TextServer.AutowrapMode.Word;
+            line.SizeFlagsHorizontal = SizeFlags.ExpandFill;
+            rumours.AddChild(line);
+        }
     }
 
     private void BuildMarket(City city)
@@ -268,6 +298,7 @@ public partial class CityPopup : PanelContainer
         if (city != current)
         {
             current = city;
+            BuildRumours(city);
             BuildMarket(city);
         }
         Refresh();
@@ -281,6 +312,7 @@ public partial class CityPopup : PanelContainer
     {
         if (current == null || !Visible) return;
         storyEvents.DiscoverAt(current);   // events that just rolled in while watching
+        BuildRumours(current);
         BuildMarket(current);
         Refresh();
         layoutFrames = 3;

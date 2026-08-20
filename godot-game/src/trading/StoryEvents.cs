@@ -18,12 +18,18 @@ public abstract class StoryEvent
 
     public int DaysLeftAt(long nowMinutes) =>
         (int)Math.Ceiling((ExpiresAtMinutes - nowMinutes) / (double)GameTime.MinutesPerDay);
+
+    // How the event reads as a rumour in another city's market.
+    public abstract string Description { get; }
 }
 
 public sealed class ProductPriceStoryEvent : StoryEvent
 {
     public Product Product = null!;
     public double PriceMultiplier;   // of base price: low or high, never 1
+
+    public override string Description =>
+        $"{Product.Name} prices are very {(PriceMultiplier > 1 ? "high" : "low")} in {City.Name}";
 }
 
 public sealed class StoryEvents
@@ -56,6 +62,25 @@ public sealed class StoryEvents
     {
         foreach (var e in events)
             if (e.City == city) e.Discovered = true;
+    }
+
+    // What's whispered in this city's market: the count nearest events that
+    // are NOT the city's own. Hearing a rumour is up to the caller (the
+    // popup marks them discovered).
+    public List<StoryEvent> RumoursFor(City city, int count)
+    {
+        var others = new List<StoryEvent>();
+        foreach (var e in events)
+            if (e.City != city) others.Add(e);
+        others.Sort((a, b) => DistanceSq(city, a.City).CompareTo(DistanceSq(city, b.City)));
+        if (others.Count > count) others.RemoveRange(count, others.Count - count);
+        return others;
+    }
+
+    private static float DistanceSq(City a, City b)
+    {
+        float dx = a.X - b.X, dy = a.Y - b.Y;
+        return dx * dx + dy * dy;
     }
 
     // The active price event for this product at this city, if any.
