@@ -42,6 +42,8 @@ public partial class Main : Node3D
     private CityPopup cityPopup = null!;
     private TweakPanel tweakPanel = null!;
 
+    private float fastForwardSec;   // how long Shift has been held, for the fast-forward ramp
+
     // Test hooks.
     private string? screenshotPath;
     private int screenshotFrames = 90;
@@ -309,10 +311,15 @@ public partial class Main : Node3D
         // click is handled so the click that closes the menu is inert too.
         bool menuOpen = cityPopup.IsOpen;
 
-        // Zoomed out the whole voyage runs in fast-forward: one real second
-        // buys more game seconds, so the boat covers more ground AND the
-        // clock moves on by the same factor.
-        float timeScale = GameTime.TimeScaleForZoom(active.State.Zoom);
+        // Hold either Shift to fast-forward: one real second buys more game
+        // seconds, so the boat covers more ground AND the clock moves on by
+        // the same factor. The rate ramps up over FastForwardRampUpSec of
+        // holding and drains back over FastForwardRampDownSec on release so
+        // the return to normal time isn't jarring.
+        fastForwardSec = input.Down(Key.Shift) && !menuOpen
+            ? Math.Min(fastForwardSec + dt, Config.FastForwardRampUpSec)
+            : Math.Max(0, fastForwardSec - dt * Config.FastForwardRampUpSec / Config.FastForwardRampDownSec);
+        float timeScale = GameTime.TimeScaleForFastForward(fastForwardSec);
         float gameDt = dt * timeScale;
 
         // The boat is drivable in every mode that follows it; in free mode
@@ -321,7 +328,7 @@ public partial class Main : Node3D
         {
             boat.MaxSpeedScale = Crew.SpeedMultiplier(player.CrewCount, Config.Crew);
             // Fast-forward speeds the voyage, not the helm: keep the turn rate
-            // constant per real second so steering feels the same at any zoom.
+            // constant per real second so steering feels the same at any rate.
             boat.TurnRateScale = 1 / timeScale;
             // Sub-stepped so a big time scale doesn't cut corners on turns.
             float remaining = gameDt;

@@ -86,10 +86,12 @@ events.) Prices are never stored — `Market` derives them.
   charged.
 - **Game time** (`GameTime.cs`): 30-day months, 24 h clock, only moves when
   the player acts: sailing advances `HoursPerSecondSailing` per (fast-forwarded)
-  second under way (trading itself costs no time). Zoomed out
-  the voyage runs in fast-forward (`TimeScaleForZoom`: `ZoomTimeNearRate` at
-  `ZoomTimeNearZoom` up to `ZoomTimeFarRate` at `ZoomTimeFarZoom`) — the boat
-  covers more ground and the clock moves by the same factor. Night is
+  second under way (trading itself costs no time). Holding either Shift
+  fast-forwards the voyage (`TimeScaleForFastForward`): the rate ramps
+  from 1× to `FastForwardMaxRate` (5×) over `FastForwardRampUpSec` (1.5)
+  of holding, and drains back over `FastForwardRampDownSec` (1) on
+  release so the return to normal isn't jarring. The boat covers more
+  ground and the clock moves by the same factor. Night is
   `NightStartHour`..`NightEndHour` (the clock tints).
 
 ## UI

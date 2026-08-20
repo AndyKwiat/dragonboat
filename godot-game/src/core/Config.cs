@@ -56,7 +56,7 @@ public static class Config
 
     // Boat handling, size and lean live in boat/BoatConfig.cs; combat in
     // combat/CombatConfig.cs. Both are live-tunable (core/Tweaks.cs).
-    public const float BoatFollowZoom = 2.5f;
+    public const float BoatFollowZoom = 3.95f;
     // Follow camera look-ahead: at top speed, sailing straight, the boat sits
     // this many screen px behind centre (scaled by speed, so world offset =
     // px * speedFrac / zoom); stationary = centred. The lead only builds up
@@ -68,6 +68,9 @@ public static class Config
     public const float FollowLookAheadPx = 520f;
     // The lead never brings the boat closer to a screen edge than this.
     public const float FollowLookAheadMarginPx = 160f;
+    // Below this fraction of MaxSpeed the boat doesn't count as under way:
+    // straightness (and so the look-ahead) ramps down, not up.
+    public const float FollowLookAheadMinSpeedFrac = 0.2f;
     public const float FollowLookAheadMaxPxPerSec = 250f;
     public const float FollowLookAheadRampUpSec = 6f;
     public const float FollowLookAheadRampDownSec = 2f;
@@ -118,7 +121,13 @@ public static class Config
     // Game time.
     public const int StartMonth = 1, StartDay = 1, StartHour = 8, StartMinute = 0;
     public const float HoursPerSecondSailing = 1f;
-    public const float ZoomTimeNearZoom = 3.5f, ZoomTimeFarZoom = 0.37f, ZoomTimeNearRate = 1f, ZoomTimeFarRate = 2.5f;
+    // Fast-forward: hold either Shift to speed the clock. The rate ramps
+    // from 1x to FastForwardMaxRate over FastForwardRampUpSec of holding,
+    // and drains back over FastForwardRampDownSec on release so the return
+    // to normal time isn't jarring.
+    public const float FastForwardMaxRate = 5f;
+    public const float FastForwardRampUpSec = 1.5f;
+    public const float FastForwardRampDownSec = 1f;
     public const int NightStartHour = 20, NightEndHour = 5;
     public static readonly Color DayColor = new Color("#f2e9d8");
     public static readonly Color NightColor = new Color("#4a5568");

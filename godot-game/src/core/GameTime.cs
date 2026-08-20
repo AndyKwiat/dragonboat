@@ -55,12 +55,11 @@ public sealed class GameTime
         return $"Month {s.Month}, Day {s.Day}   {s.Hour:D2}:{s.Minute:D2}";
     }
 
-    // How fast sailing burns the clock at a given zoom: linear between the
-    // two anchors, flat outside them.
-    public static float TimeScaleForZoom(float zoom)
+    // Fast-forward, driven by holding Shift (see Main): the rate ramps from
+    // 1x to FastForwardMaxRate as heldSeconds climbs to FastForwardRampUpSec.
+    public static float TimeScaleForFastForward(float heldSeconds)
     {
-        float span = Config.ZoomTimeNearZoom - Config.ZoomTimeFarZoom;
-        float t = span <= 0 ? 0 : Math.Clamp((Config.ZoomTimeNearZoom - zoom) / span, 0f, 1f);
-        return Config.ZoomTimeNearRate + (Config.ZoomTimeFarRate - Config.ZoomTimeNearRate) * t;
+        float t = Math.Clamp(heldSeconds / Config.FastForwardRampUpSec, 0, 1);
+        return 1 + t * (Config.FastForwardMaxRate - 1);
     }
 }

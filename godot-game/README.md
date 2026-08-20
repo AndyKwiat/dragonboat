@@ -38,6 +38,7 @@ opens the project picker and hangs a scripted run.
 | WASD / arrows | drive the boat (follow mode) or pan (free mode) |
 | wheel | zoom; drag pans in free mode |
 | **click** | fire the best loaded cannon at the reticle under the cursor — or open a city's market if you clicked its name |
+| Shift (hold) | fast-forward game time — ramps up while held, eases back on release |
 | C | cycle camera mode (follow / edge / free) |
 | V | cycle camera rig (isometric / perspective) |
 | T | toggle the live tweak panel (sliders for every `[Tweak]` value) |
@@ -49,11 +50,13 @@ Boat handling, lean, land collision, cannon ballistics and effect sizes are
 `public static` fields on `BoatConfig` / `CombatConfig` tagged
 `[Tweak(group, min, max, step)]` (see `src/core/Tweaks.cs`). The values in
 code are the defaults and the source of truth; **T** opens a slider panel to
-move them while playing, **dump** on that panel prints the current values as
-C# lines (and copies them to the clipboard) so a good setting can be pasted
-straight back into the config file. `--set=Name=Value` does the same from the
-command line for scripted runs. Adding a knob = adding an attribute; keep
-names unique across config classes.
+move them while playing, **dump** on that panel saves every value moved off
+its default to `tweaks.dump` (gitignored; also console + clipboard) as C#
+lines. That file is re-applied over the defaults at every launch, so dumped
+tweaks persist between runs — delete it to get the defaults back, or fold
+its lines into the config for keeps. `--set=Name=Value` overrides from the
+command line for scripted runs (it wins over tweaks.dump). Adding a knob =
+adding an attribute; keep names unique across config classes.
 
 ### Scripted runs / screenshots
 

@@ -61,15 +61,19 @@ public sealed class FollowCameraController : ICameraController
         var s = State;
         if (input.WheelDelta != 0)
             s.Zoom = Math.Clamp(s.Zoom * Mathf.Exp(-input.WheelDelta * Config.ZoomWheelSensitivity), MinZoom, Config.MaxZoom);
-        // Straightness ramps up while not steering, down while steering, and is
-        // eased (smoothstep) so both ends of the ramp are gentle.
-        float rampRate = target.Turning ? -1 / Config.FollowLookAheadRampDownSec : 1 / Config.FollowLookAheadRampUpSec;
+        // Straightness ramps up only while under way and not steering — at
+        // anchor it must not pre-charge, or the look-ahead would spring out
+        // within a second of setting off. Steering or slowing below
+        // FollowLookAheadMinSpeedFrac ramps it back down. It is eased
+        // (smoothstep) so both ends of the ramp are gentle.
+        float speedFrac = target.GroundSpeed / BoatConfig.MaxSpeed;   // actual progress, so a boat held by the shore stays centred
+        bool sailingStraight = !target.Turning && speedFrac >= Config.FollowLookAheadMinSpeedFrac;
+        float rampRate = sailingStraight ? 1 / Config.FollowLookAheadRampUpSec : -1 / Config.FollowLookAheadRampDownSec;
         straightness = Math.Clamp(straightness + rampRate * dt, 0, 1);
         float eased = straightness * straightness * (3 - 2 * straightness);
         // Target offset: screen px scaled by speed fraction and straightness,
         // converted to world units at the current zoom, pointing along the
         // heading (behind when reversing, since Speed is signed).
-        float speedFrac = target.GroundSpeed / BoatConfig.MaxSpeed;   // actual progress, so a boat held by the shore stays centred
         float worldPx = Config.FollowLookAheadPx * speedFrac * eased / s.Zoom;
         var want = CapToView(new Vector2(Mathf.Cos(target.Heading), Mathf.Sin(target.Heading)) * worldPx, s.Zoom, view);
         // Framerate-independent exponential ease toward the target offset,
