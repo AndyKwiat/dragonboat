@@ -101,7 +101,7 @@ public static class Config
 
     // Story events.
     public const int StoryEventCount = 40;
-    public const int StoryEventMinDays = 7, StoryEventMaxDays = 21;
+    public const int StoryEventMinDays = 5, StoryEventMaxDays = 10;
     public const double StoryEventLowMultiplier = 0.5, StoryEventHighMultiplier = 1.5;
     // High-price events are this many times likelier than low-price ones.
     public const int StoryEventHighOddsToOne = 2;

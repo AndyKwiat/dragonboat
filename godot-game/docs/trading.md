@@ -43,7 +43,7 @@ events.) Prices are never stored — `Market` derives them.
   at `StoryEventLowMultiplier` (50%) or `StoryEventHighMultiplier` (150%)
   of its base price, high `StoryEventHighOddsToOne` (2) times as likely
   as low, never two on the same (city, product). Each expires at a midnight
-  `StoryEventMinDays`–`StoryEventMaxDays` (7–21) days out; expiries only
+  `StoryEventMinDays`–`StoryEventMaxDays` (5–10) days out; expiries only
   happen at midnight, so `StoryEvents.Update()` (run every frame from
   `Main`) is a single compare until the clock crosses one, then a single
   pass drops lapsed events and rolls replacements at random cities. When
