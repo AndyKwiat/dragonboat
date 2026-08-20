@@ -28,7 +28,9 @@ or zooming the map.
   [trading.md](trading.md).
 - **CityPopup** — the market panel: facts, rumours (nearest other-city
   story events, red/green by high/low), the hiring hall (large cities),
-  then the market rows; measures its content for a few frames
+  then the market rows, each with a centre-zero trade slider (left =
+  sell, right = buy; rules in [trading.md](trading.md)); measures its
+  content for a few frames
   after opening / resizing (wrapped labels only know their height after
   layout) and sizes itself to 62vw clamped to 520–900 px, at most 80vh,
   scrolling beyond that. Rules it drives: [trading.md](trading.md).

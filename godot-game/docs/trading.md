@@ -66,9 +66,13 @@ events.) Prices are never stored — `Market` derives them.
   structural price is off base. An undiscovered event on a discovered city
   shows nothing for that product — the player hasn't seen that market
   since the event began.
-- **Player** (`Player.cs`): purse (may go negative), crew count, inventory.
-  `Buy`/`Sell`/`Consume` clamp to what's held and what the hold can carry;
-  `ChangeCrew` goes through `Crew.ChangeAllowed`.
+- **Player** (`Player.cs`): purse (never below 0), crew count, inventory.
+  `Buy` clamps to hold space AND the purse, `Sell`/`Consume` to what's
+  held; `ChangeCrew` goes through `Crew.ChangeAllowed`. `Restage` moves a
+  staged market position between unit counts, undoing the old leg at the
+  exact price it was struck — sliding a deal back to zero refunds it in
+  full, so removing a buy is not a sell (that's the popup slider's
+  contract).
 - **Crew** (`Crew.cs`): head count drives top speed (`SpeedAtMin` →
   `SpeedAtMax` linearly up to `SpeedFullCrew` hands), hold space
   (`CargoPerCrew`), and you can't put hands ashore if the hold would then
@@ -76,11 +80,13 @@ events.) Prices are never stored — `Market` derives them.
 - **Upkeep** (`Upkeep.cs`): `Due` counts periods of game time elapsed since
   the last check (catching up over big jumps). `Rations`: one unit of
   `RationsProductId` (rice) per crew member per `RationsHoursPerUnit`;
-  `Wages`: `WagesMoneyPerDay` per head per day. Both run in `Main` every
-  frame and tell the open popup to refresh when something was charged.
+  `Wages`: `WagesMoneyPerDay` per head per day, stopping at an empty purse
+  (the crew goes unpaid, money never goes negative). Both run in `Main`
+  every frame and tell the open popup to refresh when something was
+  charged.
 - **Game time** (`GameTime.cs`): 30-day months, 24 h clock, only moves when
   the player acts: sailing advances `HoursPerSecondSailing` per (fast-forwarded)
-  second under way, a transaction costs `MinutesPerTransaction`. Zoomed out
+  second under way (trading itself costs no time). Zoomed out
   the voyage runs in fast-forward (`TimeScaleForZoom`: `ZoomTimeNearRate` at
   `ZoomTimeNearZoom` up to `ZoomTimeFarRate` at `ZoomTimeFarZoom`) — the boat
   covers more ground and the clock moves by the same factor. Night is
@@ -90,7 +96,13 @@ events.) Prices are never stored — `Market` derives them.
 
 Click a city's name (`ui/CityLabels.cs` does the hit-testing) to open
 `CityPopup`: facts, rumours, the hiring hall (large cities), then one row
-per product with buy/sell ×1/×10 buttons. A row whose sell price differs from the
+per product with a trade slider: centre = no deal, left sells a fraction
+of the stock aboard (full left = all of it), right buys a fraction of the
+most that fits in the hold AND that the purse can pay for, given every
+other product's staged deal. Deals apply to the player as the knob moves
+and update the row's net units/money readout; sliding back to centre
+undoes a deal at the price it was struck (see `Player.Restage`), so
+changing your mind is always free. A row whose sell price differs from the
 product's base price is tinted (red = dear, green = cheap) with a ▲/▼
 percentage of base; if the swing is a story event the row also shows how
 many days it has left, e.g. `(12d)`. Esc, the ✕, or a click outside closes it. See

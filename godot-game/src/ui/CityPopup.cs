@@ -8,8 +8,6 @@ using System.Collections.Generic;
 // within min/max bounds, scrolling when the content is taller than 80vh.
 public partial class CityPopup : PanelContainer
 {
-    private static readonly int[] Steps = { 1, 10 };
-
     private Player player = null!;
     private GameTime time = null!;
     private StoryEvents storyEvents = null!;
@@ -78,9 +76,8 @@ public partial class CityPopup : PanelContainer
         crewCount.SizeFlagsHorizontal = SizeFlags.ExpandFill;
         var crewActions = new HBoxContainer();
         crewActions.AddThemeConstantOverride("separation", 6);
-        // Free, and no haggling involved, so these don't cost the player any time.
-        addCrew = MakeButton("Add", () => player.ChangeCrew(1), costsTime: false);
-        removeCrew = MakeButton("Remove", () => player.ChangeCrew(-1), costsTime: false);
+        addCrew = MakeButton("Add", () => player.ChangeCrew(1));
+        removeCrew = MakeButton("Remove", () => player.ChangeCrew(-1));
         crewActions.AddChild(addCrew);
         crewActions.AddChild(removeCrew);
         crewSection.AddChild(crewCount);
@@ -114,7 +111,7 @@ public partial class CityPopup : PanelContainer
         return box;
     }
 
-    private Button MakeButton(string label, Action onClick, bool costsTime = true)
+    private Button MakeButton(string label, Action onClick)
     {
         var b = new Button { Text = label, CustomMinimumSize = new Vector2(58, 0) };
         var normal = Fonts.Panel(new Color("#23262c"), 4, 10, 4, new Color("#666666"));
@@ -133,9 +130,6 @@ public partial class CityPopup : PanelContainer
         b.Pressed += () =>
         {
             onClick();
-            // Haggling takes time: every market button that actually does
-            // something costs the player ten minutes of the day.
-            if (costsTime) time.Advance(Config.MinutesPerTransaction);
             Refresh();
         };
         return b;
@@ -229,27 +223,55 @@ public partial class CityPopup : PanelContainer
             held.CustomMinimumSize = new Vector2(72, 0);
             held.HorizontalAlignment = HorizontalAlignment.Right;
 
-            var actions = new HBoxContainer();
-            actions.AddThemeConstantOverride("separation", 6);
-            var buyButtons = new List<Button>();
-            var sellButtons = new List<Button>();
-            foreach (int n in Steps)
+            // The trade slider: centre = no deal, left = sell a fraction of
+            // the stock aboard, right = buy a fraction of the most the hold
+            // and the purse allow. Deltas hit the player immediately, and a
+            // leg is undone at the price it was struck (Player.Restage), so
+            // sliding back to centre always refunds in full.
+            int baseline = player.Held(product.Id);
+            int delta = 0;
+            var slider = new HSlider
             {
-                var b = MakeButton($"Buy {n}", () => player.Buy(product.Id, n, quote.BuyPrice));
-                buyButtons.Add(b);
-                actions.AddChild(b);
-            }
-            foreach (int n in Steps)
+                MinValue = -1, MaxValue = 1, Step = 0.001, Value = 0,
+                TickCount = 3,
+                CustomMinimumSize = new Vector2(170, 0),
+                SizeFlagsVertical = SizeFlags.ShrinkCenter,
+            };
+            var net = Fonts.MakeLabel("", Fonts.Mono, px - 2, new Color("#666666"));
+            net.CustomMinimumSize = new Vector2(96, 0);
+            net.HorizontalAlignment = HorizontalAlignment.Right;
+
+            // The most that fits AND can be paid for, as if this product's own
+            // staged deal were first undone (other products' deals stand).
+            int MaxBuy()
             {
-                var b = MakeButton($"Sell {n}", () => player.Sell(product.Id, n, quote.SellPrice));
-                sellButtons.Add(b);
-                actions.AddChild(b);
+                int space = player.CargoSpace() + delta;
+                int money = player.Money + delta * (delta > 0 ? quote.BuyPrice : quote.SellPrice);
+                return Math.Min(space, quote.BuyPrice > 0 ? money / quote.BuyPrice : space);
             }
+            slider.ValueChanged += v =>
+            {
+                int target = v >= 0 ? (int)Math.Round(v * MaxBuy()) : -(int)Math.Round(-v * baseline);
+                if (target == delta) return;
+                player.Restage(product.Id, delta, target, quote.BuyPrice, quote.SellPrice);
+                delta = target;
+                Refresh();
+            };
+            // Snap the knob to what was actually dealt (the max may be 0, or
+            // have shifted while other products were being slid around).
+            slider.DragEnded += _ =>
+            {
+                int maxBuy = MaxBuy();
+                slider.SetValueNoSignal(delta >= 0
+                    ? (maxBuy > 0 ? (double)delta / maxBuy : 0)
+                    : (baseline > 0 ? (double)delta / baseline : 0));
+            };
 
             row.AddChild(info);
             row.AddChild(prices);
             row.AddChild(held);
-            row.AddChild(actions);
+            row.AddChild(slider);
+            row.AddChild(net);
             var wrap = new VBoxContainer();
             wrap.AddThemeConstantOverride("separation", 0);
             wrap.AddChild(Spacer(8));
@@ -263,15 +285,10 @@ public partial class CityPopup : PanelContainer
                 int have = player.Held(product.Id);
                 held.Text = $"have {have}";
                 Fonts.SetColor(held, have > 0 ? new Color("#9fe8a0") : new Color("#666666"));
-                // Selling is capped by what's aboard, buying by the free space;
-                // the purse never blocks a trade. A partial buy is fine, so the
-                // button only greys out when the hold is completely full.
-                int space = player.CargoSpace();
-                for (int i = 0; i < Steps.Length; i++)
-                {
-                    SetEnabled(sellButtons[i], have >= Steps[i]);
-                    SetEnabled(buyButtons[i], space > 0);
-                }
+                net.Text = delta == 0 ? ""
+                    : delta > 0 ? $"buy {delta}\n-{delta * quote.BuyPrice}"
+                    : $"sell {-delta}\n+{-delta * quote.SellPrice}";
+                Fonts.SetColor(net, delta > 0 ? Config.MarketDearColor : Config.MarketCheapColor);
             });
         }
 

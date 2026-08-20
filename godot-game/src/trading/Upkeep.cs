@@ -46,7 +46,8 @@ public sealed class Rations
     public int Remaining => player.Held(Config.RationsProductId);
 }
 
-// The crew gets paid daily; money may go negative.
+// The crew gets paid daily; the purse stops at zero (the crew goes unpaid
+// rather than the player going into debt).
 public sealed class Wages
 {
     private readonly Player player;
@@ -61,7 +62,8 @@ public sealed class Wages
         int days = due.Take();
         if (days == 0) return 0;
         int owed = days * Config.WagesMoneyPerDay * player.CrewCount;
-        player.Money -= owed;
-        return owed;
+        int paid = Math.Min(owed, player.Money);
+        player.Money -= paid;
+        return paid;
     }
 }

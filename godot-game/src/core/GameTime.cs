@@ -1,8 +1,8 @@
 using System;
 
 // Game time: 30-day months that keep counting up, a 24-hour clock. Time only
-// moves when the player does something (sailing, trading) — nothing advances
-// it per frame on its own.
+// moves while the player is under way — nothing advances it per frame on its
+// own, and trading is instantaneous.
 public sealed class GameTime
 {
     public const int MinutesPerHour = 60;

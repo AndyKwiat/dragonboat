@@ -116,7 +116,6 @@ public static class Config
     // Game time.
     public const int StartMonth = 1, StartDay = 1, StartHour = 8, StartMinute = 0;
     public const float HoursPerSecondSailing = 1f;
-    public const float MinutesPerTransaction = 10f;
     public const float ZoomTimeNearZoom = 3.5f, ZoomTimeFarZoom = 0.37f, ZoomTimeNearRate = 1f, ZoomTimeFarRate = 2.5f;
     public const int NightStartHour = 20, NightEndHour = 5;
     public static readonly Color DayColor = new Color("#f2e9d8");
