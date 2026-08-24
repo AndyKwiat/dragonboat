@@ -87,11 +87,13 @@ public sealed class Player
     }
 
     // Donate everything held of a product: no money back, one honour point
-    // per unit given.
+    // per ten units given (rounded down, but never less than 1).
+    public static int GiveAwayHonour(int units) => units <= 0 ? 0 : Math.Max(1, units / 10);
+
     public int GiveAway(string id)
     {
         int n = Consume(id, Held(id));
-        Honour += n;
+        Honour += GiveAwayHonour(n);
         return n;
     }
 

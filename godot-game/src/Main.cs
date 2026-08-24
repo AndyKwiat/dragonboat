@@ -131,7 +131,8 @@ public partial class Main : Node3D
         // tweaks as the player (see src/enemies/EnemyShips.cs).
         enemies = new EnemyShips();
         AddChild(enemies);
-        enemies.Init(map, terrainQuery, combat, boat, new Random());
+        enemies.Init(map, terrainQuery, combat, boat, new Random(),
+            () => player.Honour += EnemyShips.KillHonour);
 
         input = new InputState();
         AddChild(input);
@@ -382,7 +383,8 @@ public partial class Main : Node3D
             minX = Math.Min(minX, g.X); maxX = Math.Max(maxX, g.X);
             minY = Math.Min(minY, g.Y); maxY = Math.Max(maxY, g.Y);
         }
-        chunks.Update(new Rect2(minX, minY, maxX - minX, maxY - minY), state.CenterX, state.CenterY);
+        var groundView = new Rect2(minX, minY, maxX - minX, maxY - minY);
+        chunks.Update(groundView, state.CenterX, state.CenterY);
 
         // City labels: hit-testing is ours, recomputed after the camera settled.
         var hoveredCity = cityLabels.Update(state, view, input.CursorPx, rig);
@@ -405,7 +407,7 @@ public partial class Main : Node3D
         if (fireOffset is Vector2 fo && fireFrames.Contains(frameCount))
             combat.FireAtGround(boat.X + fo.X, boat.Y + fo.Y);
         // Enemy logic pauses with the menu, out of range, or past LOD 1.
-        enemies.Update(menuOpen ? 0 : gameDt, chunks.GetStats().Step, boat);
+        enemies.Update(menuOpen ? 0 : gameDt, chunks.GetStats().Step, boat, groundView);
 
         // Combat camera: fighting reads better from the edge cam. The first
         // shot fired with an enemy in cannon range flips follow → edge, and

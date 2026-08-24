@@ -355,7 +355,7 @@ public partial class CityPopup : PanelContainer
                 if (give != null)
                 {
                     SetEnabled(give, have > 0);
-                    give.TooltipText = have > 0 ? $"Give all {have} away: +{have} honour, no money" : "Nothing aboard to give";
+                    give.TooltipText = have > 0 ? $"Give all {have} away: +{Player.GiveAwayHonour(have)} honour, no money" : "Nothing aboard to give";
                 }
             });
         }

@@ -15,12 +15,17 @@ using System.Collections.Generic;
 // UpdateRangeFactor × the cannons' physical range of the player boat, and
 // not at all while the terrain is drawn past the first LOD (zoomed far
 // out) or the world is paused (dt = 0, e.g. the city menu).
+//
+// Sinking one pays KillHonour and the wreck respawns fresh somewhere else
+// off screen — the fleet never shrinks below Count.
 public partial class EnemyShip : Node3D, ICombatTarget
 {
     public float X, Y, Heading;
     public int HitsTaken;
     public CannonBattery Guns = null!;
     public bool Sunk { get; private set; }
+    // Set by the manager: called the moment the ship goes down (honour).
+    public Action OnSunk = () => { };
 
     private CombatSystem combat = null!;
     private BoatModel model = null!;
@@ -43,12 +48,31 @@ public partial class EnemyShip : Node3D, ICombatTarget
 
     public override void _Ready()
     {
-        // Flat on the water like the boat's; stationary, so placed once.
+        // Flat on the water like the boat's; stationary, so placed per spawn.
         shadow = new BlobShadow(BoatConfig.ShadowStrength);
         GetParent().AddChild(shadow);
+        PlaceShadow();
+    }
+
+    private void PlaceShadow()
+    {
         shadow.Position = new Vector3(X, 0.03f, Y);
         shadow.Rotation = new Vector3(0, -Heading, 0);
         shadow.Scale = new Vector3(BoatConfig.Length / 2, 1, BoatConfig.Width / 2) * BoatConfig.ShadowScale;
+    }
+
+    // Back from the deep: fresh hull at a new spot (the manager picks it).
+    public void Respawn(float x, float y, float heading)
+    {
+        X = x; Y = y; Heading = heading;
+        HitsTaken = 0;
+        Sunk = false;
+        Position = CameraRig.WorldToGodot(X, Y, 0);
+        Rotation = new Vector3(0, -Heading, 0);
+        PlaceShadow();
+        Visible = true;
+        shadow.Visible = true;
+        combat.AddTarget(this);
     }
 
     public void Tick(float dt, Vector3 target)
@@ -82,21 +106,24 @@ public partial class EnemyShip : Node3D, ICombatTarget
         hitFlash = CombatConfig.HullFlashSec;
         model.SetHitFlash(1, CombatConfig.HullHitColor);
         if (HitsTaken < EnemyShips.HitsToSink) return;
-        // Sunk: a splash where she went down, then gone.
+        // Sunk: a splash where she went down, then hidden until the manager
+        // respawns her somewhere else off screen.
         Sunk = true;
         combat.RemoveTarget(this);
         combat.Effects.SpawnRing(new Vector3(X, 0.05f, Y), CombatConfig.SplashColor,
             CombatConfig.SplashLife * 2, BoatConfig.Length);
-        shadow.QueueFree();
-        QueueFree();
+        Visible = false;
+        shadow.Visible = false;
+        OnSunk();
     }
 }
 
 // Spawns the fleet on random water and gates the per-frame logic.
 public partial class EnemyShips : Node3D
 {
-    public const int Count = 50;
+    public const int Count = 100;
     public const int HitsToSink = 3;
+    public const int KillHonour = 50;   // paid the moment a ship goes down
     // A ship's logic runs only within this factor of the cannons' physical
     // range (MuzzleSpeed²/Gravity) of the player boat.
     public const float UpdateRangeFactor = 1.5f;
@@ -110,22 +137,45 @@ public partial class EnemyShips : Node3D
 
     private readonly List<EnemyShip> ships = new();
 
-    public void Init(DMap map, Terrain terrain, CombatSystem combat, Boat player, Random rng)
+    private DMap map = null!;
+    private Terrain terrain = null!;
+    private Random rng = null!;
+    private Boat player = null!;
+
+    public void Init(DMap map, Terrain terrain, CombatSystem combat, Boat player, Random rng, Action onKill)
     {
         Name = "EnemyShips";
-        int tries = 0;
-        while (ships.Count < Count && tries++ < Count * 200)
+        this.map = map; this.terrain = terrain; this.rng = rng; this.player = player;
+        while (ships.Count < Count)
         {
-            float x = (float)rng.NextDouble() * map.WorldW;
-            float y = (float)rng.NextDouble() * map.WorldH;
-            if (!terrain.IsWater(x, y) || !NearLand(map, x, y)) continue;
-            float dx = x - player.X, dy = y - player.Y;
-            if (dx * dx + dy * dy < MinSpawnDistance * MinSpawnDistance) continue;
-            var ship = new EnemyShip();
+            if (FindSpawn(new Rect2()) is not (float x, float y)) break;
+            var ship = new EnemyShip { OnSunk = onKill };
             AddChild(ship);
             ship.Init(x, y, (float)(rng.NextDouble() * Math.Tau), combat);
             ships.Add(ship);
         }
+    }
+
+    // A valid spawn point: water with land nearby, clear of the player's
+    // start-distance bubble, and outside `avoid` (the current view) — the
+    // view constraint is dropped if it can't be satisfied (whole map on
+    // screen). Null only if the map has no valid water at all.
+    private (float, float)? FindSpawn(Rect2 avoid)
+    {
+        for (int pass = 0; pass < 2; pass++)
+        {
+            for (int tries = 0; tries < 400; tries++)
+            {
+                float x = (float)rng.NextDouble() * map.WorldW;
+                float y = (float)rng.NextDouble() * map.WorldH;
+                if (!terrain.IsWater(x, y) || !NearLand(map, x, y)) continue;
+                float dx = x - player.X, dy = y - player.Y;
+                if (dx * dx + dy * dy < MinSpawnDistance * MinSpawnDistance) continue;
+                if (pass == 0 && avoid.HasPoint(new Vector2(x, y))) continue;
+                return (x, y);
+            }
+        }
+        return null;
     }
 
     // Any live ship within dist of (x, y)? Drives the combat camera.
@@ -152,14 +202,20 @@ public partial class EnemyShips : Node3D
     }
 
     // dt is game time and 0 while the world is paused; lodStep is the
-    // terrain streamer's current LOD (1 = full detail).
-    public void Update(float dt, int lodStep, Boat player)
+    // terrain streamer's current LOD (1 = full detail); view is the ground
+    // rect the camera can see (respawns land outside it).
+    public void Update(float dt, int lodStep, Boat player, Rect2 view)
     {
+        // Wrecks respawn even while the fight logic is gated — off screen,
+        // so the player never sees the ship pop in.
+        foreach (var s in ships)
+            if (s.Sunk && FindSpawn(view) is (float x, float y))
+                s.Respawn(x, y, (float)(rng.NextDouble() * Math.Tau));
+
         if (dt <= 0 || lodStep > 1) return;
         float range = CombatConfig.MuzzleSpeed * CombatConfig.MuzzleSpeed / CombatConfig.Gravity;
         float gate = range * UpdateRangeFactor;
         var target = new Vector3(player.X, 0, player.Y);
-        ships.RemoveAll(s => s.Sunk);
         foreach (var s in ships)
         {
             float dx = s.X - player.X, dy = s.Y - player.Y;

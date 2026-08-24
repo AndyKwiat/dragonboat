@@ -5,7 +5,7 @@ only. See `docs/combat.md` for the cannon/projectile layer it drives.
 
 ## Rules
 
-- **Fleet**: `EnemyShips.Count` (50) ships, spawned at launch on random
+- **Fleet**: `EnemyShips.Count` (100) ships, spawned at launch on random
   water cells that have land within `MaxLandDistanceCells` (1) — so they
   lurk in rivers, canals and coastal water, never the open ocean — and
   never within `MinSpawnDistance` (400) of the player's start, each with
@@ -28,9 +28,12 @@ only. See `docs/combat.md` for the cannon/projectile layer it drives.
   i.e. zoomed far out) or while the world is paused (city menu open).
 - **Damage**: ships are `ICombatTarget`s — the player's balls hit them
   (red hull flash, same `HitMargin`), and `HitsToSink` (3) hits sinks one:
-  a wide splash ring, then ship, shadow and target are gone for the rest
-  of the run. Enemy balls can also hit *other* enemy ships that stray into
-  a line of fire.
+  a wide splash ring and `KillHonour` (50) honour for the player, paid the
+  moment she goes down. The wreck then respawns fresh (full health, new
+  random heading) at a new valid spawn point outside the camera's current
+  ground view, so the fleet never shrinks — the off-screen constraint is
+  dropped only when the whole map is on screen. Enemy balls can also hit
+  *other* enemy ships that stray into a line of fire.
 
 - **Combat camera**: the player's first shot in follow mode with a ship
   in cannon range flips the camera to the edge cam; leaving range flips

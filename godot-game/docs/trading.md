@@ -39,8 +39,8 @@ events.) Prices are never stored — `Market` derives them.
   lists a `Quote` per product; the quote carries the event, if any, so the
   UI can show its expiry. A product quoted over its base price (only a high
   story event does that) grows a Give button in the popup: donate every
-  unit held for no money and one honour point per unit
-  (`Player.GiveAway`).
+  unit held for no money and one honour point per ten units, rounded down
+  but never less than 1 (`Player.GiveAway`).
 - **Story events** (`StoryEvents.cs`): the world always holds
   `StoryEventCount` (40) price events plus `VipEventCount` (10) VIP
   delivery offers, each tied to a city — a city can hold several (but at
