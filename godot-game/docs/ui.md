@@ -32,7 +32,7 @@ or zooming the map.
   sell, right = buy; rules in [trading.md](trading.md)); measures its
   content for a few frames
   after opening / resizing (wrapped labels only know their height after
-  layout) and sizes itself to 62vw clamped to 520–900 px, at most 80vh,
+  layout) and sizes itself to 62vw clamped to 520–900 px, growing to fill the whole screen height before it scrolls,
   scrolling beyond that. Rules it drives: [trading.md](trading.md).
 - **TweakPanel** (left, under the clock; **T**) — built by reflection over
   `Tweaks.All`: a group header per `[Tweak]` group, a name / slider (or

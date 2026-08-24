@@ -5,7 +5,7 @@ using System.Collections.Generic;
 // Closable, screen-centred panel describing the clicked city: a few facts,
 // the hiring hall (large cities only), then the city's market — one row per
 // product it trades, with buy/sell buttons. Sized as a fraction of the window
-// within min/max bounds, scrolling when the content is taller than 80vh.
+// within min/max bounds, scrolling only once the content is taller than the whole screen.
 public partial class CityPopup : PanelContainer
 {
     private Player player = null!;

@@ -150,7 +150,7 @@ public static class Config
     public const float PopupWidthVw = 62f;
     public const float PopupMinWidthPx = 520f;
     public const float PopupMaxWidthPx = 900f;
-    public const float PopupMaxHeightVh = 80f;
+    public const float PopupMaxHeightVh = 100f;
     public const int PopupFontPx = 16;
     public const int PopupTitleFontPx = 28;
 
