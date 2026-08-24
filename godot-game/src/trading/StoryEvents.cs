@@ -116,7 +116,8 @@ public sealed class StoryEvents
     // A random city, one of the products it actually trades (rarity-weighted),
     // high StoryEventHighOddsToOne times as often as low — but never a second
     // price event on the same product in the same city, so a quote always has
-    // one unambiguous multiplier.
+    // one unambiguous multiplier, and never on a city's speciality, whose
+    // discount is promised to be permanent.
     private ProductPriceStoryEvent? RollPriceEvent()
     {
         for (int tries = 0; tries < 100; tries++)
@@ -124,7 +125,8 @@ public sealed class StoryEvents
             var city = GameData.Cities[rng.Next(GameData.Cities.Count)];
             if (city.Products.Count == 0) continue;
             var product = GameData.ProductById(PickByRarity(city.Products));
-            if (product == null || PriceEventFor(city, product.Id) != null) continue;
+            if (product == null || city.Specialities.Contains(product.Id)) continue;
+            if (PriceEventFor(city, product.Id) != null) continue;
             int days = rng.Next(Config.StoryEventMinDays, Config.StoryEventMaxDays + 1);
             return new ProductPriceStoryEvent
             {

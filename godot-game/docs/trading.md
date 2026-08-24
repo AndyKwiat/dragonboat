@@ -43,7 +43,9 @@ events.) Prices are never stored — `Market` derives them.
   goods headline more events but ubiquitous rice keeps a small chance —
   at `StoryEventLowMultiplier` (50%) or `StoryEventHighMultiplier` (150%)
   of its base price, high `StoryEventHighOddsToOne` (2) times as likely
-  as low, never two on the same (city, product). Each expires at a midnight
+  as low, never two on the same (city, product), and never on a city's
+  speciality — its discount is promised to be permanent, and an event's
+  multiplier would replace it. Each expires at a midnight
   `StoryEventMinDays`–`StoryEventMaxDays` (5–10) days out; expiries only
   happen at midnight, so `StoryEvents.Update()` (run every frame from
   `Main`) is a single compare until the clock crosses one, then a single
