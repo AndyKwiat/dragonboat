@@ -102,6 +102,10 @@ public partial class EnemyShips : Node3D
     public const float UpdateRangeFactor = 1.5f;
     // Nobody spawns closer to the player's start than this.
     public const float MinSpawnDistance = 400f;
+    // Ships lurk near shore: a spawn cell must have land within this many
+    // cells, which keeps them in rivers, canals and coastal water rather
+    // than the open ocean.
+    public const int MaxLandDistanceCells = 1;
     public static readonly Color HullColor = new Color("#8a2626");
 
     private readonly List<EnemyShip> ships = new();
@@ -114,7 +118,7 @@ public partial class EnemyShips : Node3D
         {
             float x = (float)rng.NextDouble() * map.WorldW;
             float y = (float)rng.NextDouble() * map.WorldH;
-            if (!terrain.IsWater(x, y)) continue;
+            if (!terrain.IsWater(x, y) || !NearLand(map, x, y)) continue;
             float dx = x - player.X, dy = y - player.Y;
             if (dx * dx + dy * dy < MinSpawnDistance * MinSpawnDistance) continue;
             var ship = new EnemyShip();
@@ -122,6 +126,17 @@ public partial class EnemyShips : Node3D
             ship.Init(x, y, (float)(rng.NextDouble() * Math.Tau), combat);
             ships.Add(ship);
         }
+    }
+
+    // Any land cell within MaxLandDistanceCells of the cell under (x, y)?
+    private static bool NearLand(DMap map, float x, float y)
+    {
+        int cx = (int)(x / Config.TileScale), cy = (int)(y / Config.TileScale);
+        int r = MaxLandDistanceCells;
+        for (int j = -r; j <= r; j++)
+            for (int i = -r; i <= r; i++)
+                if (!Terrain.IsWaterIndex(map.TerrainAt(cx + i, cy + j))) return true;
+        return false;
     }
 
     // dt is game time and 0 while the world is paused; lodStep is the
