@@ -37,7 +37,10 @@ events.) Prices are never stored — `Market` derives them.
   a medium/large city's at `MarketSpecialityDiscount` (75%) — and
   everything else at base price. `MarketFor(city, storyEvents)`
   lists a `Quote` per product; the quote carries the event, if any, so the
-  UI can show its expiry.
+  UI can show its expiry. A product quoted over its base price (only a high
+  story event does that) grows a Give button in the popup: donate every
+  unit held for no money and one honour point per unit
+  (`Player.GiveAway`).
 - **Story events** (`StoryEvents.cs`): the world always holds
   `StoryEventCount` (40) of them, each tied to a city — a city can hold
   several. The only kind so far is `ProductPriceStoryEvent`: one product
@@ -71,7 +74,9 @@ events.) Prices are never stored — `Market` derives them.
   structural price is off base. An undiscovered event on a discovered city
   shows nothing for that product — the player hasn't seen that market
   since the event began.
-- **Player** (`Player.cs`): purse (never below 0), crew count, inventory.
+- **Player** (`Player.cs`): purse (never below 0), honour (starts 0, may
+  go negative; shown beside money in the clock overlay and the popup's
+  purse line), crew count, inventory.
   `Buy` clamps to hold space AND the purse, `Sell`/`Consume` to what's
   held; `ChangeCrew` goes through `Crew.ChangeAllowed`. `Restage` moves a
   staged market position between unit counts, undoing the old leg at the

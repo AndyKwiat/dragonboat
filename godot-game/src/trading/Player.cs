@@ -7,6 +7,9 @@ using System.Collections.Generic;
 public sealed class Player
 {
     public int Money;
+    // Goodwill earned by giving goods away (GiveAway). Starts at 0 and,
+    // unlike money, may go negative.
+    public int Honour;
     public int CrewCount;
     public readonly Dictionary<string, int> Inventory = new();
 
@@ -67,6 +70,15 @@ public sealed class Player
         if (n == 0) return 0;
         int left = Held(id) - n;
         if (left == 0) Inventory.Remove(id); else Inventory[id] = left;
+        return n;
+    }
+
+    // Donate everything held of a product: no money back, one honour point
+    // per unit given.
+    public int GiveAway(string id)
+    {
+        int n = Consume(id, Held(id));
+        Honour += n;
         return n;
     }
 

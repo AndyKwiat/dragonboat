@@ -1,15 +1,15 @@
 using Godot;
 
 // Top-left overlay: the game date and time, then what drains as it passes —
-// rice, purse, crew, cargo. Dims at night; rice goes red when low, money
-// when in debt.
+// rice, purse, honour, crew, cargo. Dims at night; rice goes red when low,
+// money when in debt, honour when negative.
 public partial class Clock : PanelContainer
 {
-    private Label stamp = null!, rice = null!, money = null!, crew = null!, cargo = null!;
+    private Label stamp = null!, rice = null!, money = null!, honour = null!, crew = null!, cargo = null!;
     private GameTime time = null!;
     private Rations rations = null!;
     private Player player = null!;
-    private bool? lastNight, lastLowRice, lastInDebt;
+    private bool? lastNight, lastLowRice, lastInDebt, lastDishonoured;
 
     public void Init(GameTime time, Rations rations, Player player)
     {
@@ -22,9 +22,10 @@ public partial class Clock : PanelContainer
         stamp = Fonts.MakeLabel("", Fonts.MonoBold, px, Config.DayColor);
         rice = Fonts.MakeLabel("", Fonts.MonoBold, px - 4, Config.DayColor);
         money = Fonts.MakeLabel("", Fonts.MonoBold, px - 4, Config.DayColor);
+        honour = Fonts.MakeLabel("", Fonts.MonoBold, px - 4, Config.DayColor);
         crew = Fonts.MakeLabel("", Fonts.MonoBold, px - 4, Config.DayColor);
         cargo = Fonts.MakeLabel("", Fonts.MonoBold, px - 4, Config.DayColor);
-        foreach (var l in new[] { stamp, rice, money, crew, cargo }) box.AddChild(l);
+        foreach (var l in new[] { stamp, rice, money, honour, crew, cargo }) box.AddChild(l);
         AddChild(box);
         Position = new Vector2(8, 8);
     }
@@ -35,14 +36,16 @@ public partial class Clock : PanelContainer
         int units = rations.Remaining;
         bool lowRice = units < Config.RationsLowUnits;
         bool inDebt = player.Money < 0;
+        bool dishonoured = player.Honour < 0;
 
         SetText(stamp, time.Format());
         SetText(rice, $"rice  {units}");
         SetText(money, $"money {player.Money}");
+        SetText(honour, $"honour {player.Honour}");
         SetText(crew, $"crew  {player.CrewCount}");
         SetText(cargo, $"cargo {player.TotalUnits()}/{player.CargoCapacity()}");
 
-        if (night != lastNight || lowRice != lastLowRice || inDebt != lastInDebt)
+        if (night != lastNight || lowRice != lastLowRice || inDebt != lastInDebt || dishonoured != lastDishonoured)
         {
             var normal = night ? Config.NightColor : Config.DayColor;
             Fonts.SetColor(stamp, normal);
@@ -51,7 +54,8 @@ public partial class Clock : PanelContainer
             // A warning outranks the night dimming.
             Fonts.SetColor(rice, lowRice ? Config.LowColor : normal);
             Fonts.SetColor(money, inDebt ? Config.LowColor : normal);
-            lastNight = night; lastLowRice = lowRice; lastInDebt = inDebt;
+            Fonts.SetColor(honour, dishonoured ? Config.LowColor : normal);
+            lastNight = night; lastLowRice = lowRice; lastInDebt = inDebt; lastDishonoured = dishonoured;
         }
     }
 

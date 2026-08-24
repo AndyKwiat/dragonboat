@@ -155,7 +155,7 @@ public partial class CityPopup : PanelContainer
         SetEnabled(removeCrew, player.CanChangeCrew(-1));
         removeCrew.TooltipText = player.CrewCount > c.Min && !player.CanChangeCrew(-1)
             ? "Not enough hold space without them — sell some cargo first" : "";
-        purse.Text = $"money {player.Money}    cargo {player.TotalUnits()}/{player.CargoCapacity()} units";
+        purse.Text = $"money {player.Money}    honour {player.Honour}    cargo {player.TotalUnits()}/{player.CargoCapacity()} units";
         Fonts.SetColor(purse, player.Money < 0 ? new Color("#ff8b7a") : new Color("#ffd166"));
     }
 
@@ -272,6 +272,19 @@ public partial class CityPopup : PanelContainer
             row.AddChild(held);
             row.AddChild(slider);
             row.AddChild(net);
+            // Give: only where the city pays over the odds — donate every
+            // unit held for no money, one honour point apiece. Rebuild the
+            // rows after, so the sliders' baselines match the new holdings.
+            Button? give = null;
+            if (quote.SellPrice > product.BasePrice)
+            {
+                give = MakeButton("Give", () =>
+                {
+                    player.GiveAway(product.Id);
+                    Rebuild();
+                });
+                row.AddChild(give);
+            }
             var wrap = new VBoxContainer();
             wrap.AddThemeConstantOverride("separation", 0);
             wrap.AddChild(Spacer(8));
@@ -289,6 +302,11 @@ public partial class CityPopup : PanelContainer
                     : delta > 0 ? $"buy {delta}\n-{delta * quote.BuyPrice}"
                     : $"sell {-delta}\n+{-delta * quote.SellPrice}";
                 Fonts.SetColor(net, delta > 0 ? Config.MarketDearColor : Config.MarketCheapColor);
+                if (give != null)
+                {
+                    SetEnabled(give, have > 0);
+                    give.TooltipText = have > 0 ? $"Give all {have} away: +{have} honour, no money" : "Nothing aboard to give";
+                }
             });
         }
 
