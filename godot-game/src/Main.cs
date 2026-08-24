@@ -80,6 +80,9 @@ public partial class Main : Node3D
                     GD.PushWarning($"tweaks.dump: could not apply '{line.Trim()}'");
         GameData.Load();
         map = DMap.Load(Config.MapPath);
+        // TEMPORARY HACK (see CityHacks.cs): reshape city footprints and
+        // guarantee water access — delete with the new terrain generator.
+        CityHacks.Apply(map, GameData.Cities);
         terrainQuery = new Terrain(map);
 
         // The world: terrain plane (ground/water) + streamed raised chunks + boat.
