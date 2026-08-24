@@ -16,6 +16,10 @@ public partial class CombatSystem : Node3D
     public readonly Projectiles Projectiles = new();
     public CannonBattery? PlayerGuns;
 
+    // True from the moment the player's battery fires until the next
+    // Update — Main's combat-camera logic keys off it.
+    public bool PlayerFiredThisFrame { get; private set; }
+
     public Vector3 AimPoint { get; private set; }
     public bool AimValid { get; private set; }
     public bool AimReady { get; private set; }   // a loaded cannon can bear on AimPoint
@@ -53,6 +57,7 @@ public partial class CombatSystem : Node3D
         var c = battery.BestCannon(target);
         if (c == null) return false;
         Projectiles.Fire(c, target);
+        if (battery == PlayerGuns) PlayerFiredThisFrame = true;
         return true;
     }
 
@@ -63,6 +68,7 @@ public partial class CombatSystem : Node3D
 
     public void Update(float dt, CameraRig rig, CameraState state, Vector2? cursorPx, bool clicked)
     {
+        PlayerFiredThisFrame = false;
         PlayerGuns?.Tick(dt);
         Projectiles.Update(dt, targets);
         Effects.Update(dt);

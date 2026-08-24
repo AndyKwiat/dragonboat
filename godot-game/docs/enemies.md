@@ -32,6 +32,10 @@ only. See `docs/combat.md` for the cannon/projectile layer it drives.
   of the run. Enemy balls can also hit *other* enemy ships that stray into
   a line of fire.
 
+- **Combat camera**: the player's first shot in follow mode with a ship
+  in cannon range flips the camera to the edge cam; leaving range flips
+  it back (see docs/world.md, "combat camera").
+
 ## Verifying
 
 Scripted runs: `--start=x,y` next to a known ship position makes it open

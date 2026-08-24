@@ -128,6 +128,18 @@ public partial class EnemyShips : Node3D
         }
     }
 
+    // Any live ship within dist of (x, y)? Drives the combat camera.
+    public bool AnyWithin(float x, float y, float dist)
+    {
+        foreach (var s in ships)
+        {
+            if (s.Sunk) continue;
+            float dx = s.X - x, dy = s.Y - y;
+            if (dx * dx + dy * dy <= dist * dist) return true;
+        }
+        return false;
+    }
+
     // Any land cell within MaxLandDistanceCells of the cell under (x, y)?
     private static bool NearLand(DMap map, float x, float y)
     {

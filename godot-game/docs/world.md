@@ -40,7 +40,12 @@ the shore stays centred), capped in screen px so the boat always keeps
 `MaxSpeed`, which used to push the boat clean off screen; `edge` holds the view still and lets the boat move
 across the screen, panning only — and only just enough — when the boat would
 enter the `EdgeCamMarginPx` band at a screen edge; `free` pans/drags/zooms
-(the boat isn't drivable in free mode). Free-camera pan/drag and
+(the boat isn't drivable in free mode). The **combat camera** (in
+`Main._Process`): firing a shot in follow mode with an enemy ship inside
+cannon range auto-switches to `edge` — the better cam for a fight — and
+drifting out of range (with 1.2x slack against flapping) switches back to
+`follow`. Free cam is never touched, and a manual mode change (C) cancels
+the auto-return. Free-camera pan/drag and
 zoom anchoring go through `ScreenDeltaToGround` (yaw-rotated, vertical
 foreshortened by sin(pitch)); labels use `Camera3D.UnprojectPosition`; the
 chunk streamer casts the four screen corners onto the ground with

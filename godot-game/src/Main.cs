@@ -45,6 +45,7 @@ public partial class Main : Node3D
     private TweakPanel tweakPanel = null!;
 
     private float fastForwardSec;   // how long Shift has been held, for the fast-forward ramp
+    private bool combatCam;         // the edge cam was entered automatically by combat
 
     // Test hooks.
     private string? screenshotPath;
@@ -397,12 +398,29 @@ public partial class Main : Node3D
         // reticle only when it didn't land on a city label (hover-highlighted
         // names open the market instead) and the menu wasn't open. With the
         // menu open the reticle is hidden too (null cursor).
-        if (fireOffset is Vector2 fo && fireFrames.Contains(frameCount))
-            combat.FireAtGround(boat.X + fo.X, boat.Y + fo.Y);
         bool canAim = input.HasCursor && !menuOpen;
         combat.Update(gameDt, rig, state, canAim ? input.CursorPx : null, clicked && hoveredCity == null && !menuOpen);
+        // (After combat.Update, which clears PlayerFiredThisFrame — so a
+        // scripted shot is seen by the combat camera below, like a click.)
+        if (fireOffset is Vector2 fo && fireFrames.Contains(frameCount))
+            combat.FireAtGround(boat.X + fo.X, boat.Y + fo.Y);
         // Enemy logic pauses with the menu, out of range, or past LOD 1.
         enemies.Update(menuOpen ? 0 : gameDt, chunks.GetStats().Step, boat);
+
+        // Combat camera: fighting reads better from the edge cam. The first
+        // shot fired with an enemy in cannon range flips follow → edge, and
+        // drifting out of range (with a little slack, so the boundary
+        // doesn't flap) flips it back. Free cam is never touched, and any
+        // manual mode change cancels the auto-return.
+        float combatRange = CombatConfig.MuzzleSpeed * CombatConfig.MuzzleSpeed / CombatConfig.Gravity;
+        if (active == followCamera && combat.PlayerFiredThisFrame && enemies.AnyWithin(boat.X, boat.Y, combatRange))
+        {
+            SwitchMode("edge");
+            combatCam = true;
+        }
+        else if (combatCam && active == edgeCamera && !enemies.AnyWithin(boat.X, boat.Y, combatRange * 1.2f))
+            SwitchMode("follow");
+        if (active != edgeCamera) combatCam = false;
         if (escaped) cityPopup.Hide();
         cityPopup.Update(view);
 
