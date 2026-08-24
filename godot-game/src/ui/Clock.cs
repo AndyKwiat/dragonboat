@@ -5,7 +5,7 @@ using Godot;
 // money when in debt, honour when negative.
 public partial class Clock : PanelContainer
 {
-    private Label stamp = null!, rice = null!, money = null!, honour = null!, crew = null!, cargo = null!;
+    private Label stamp = null!, rice = null!, money = null!, honour = null!, crew = null!, cargo = null!, vips = null!;
     private GameTime time = null!;
     private Rations rations = null!;
     private Player player = null!;
@@ -25,7 +25,10 @@ public partial class Clock : PanelContainer
         honour = Fonts.MakeLabel("", Fonts.MonoBold, px - 4, Config.DayColor);
         crew = Fonts.MakeLabel("", Fonts.MonoBold, px - 4, Config.DayColor);
         cargo = Fonts.MakeLabel("", Fonts.MonoBold, px - 4, Config.DayColor);
-        foreach (var l in new[] { stamp, rice, money, honour, crew, cargo }) box.AddChild(l);
+        // One line per VIP aboard: "VIP delivery - <city>".
+        vips = Fonts.MakeLabel("", Fonts.MonoBold, px - 4, new Color("#7fe3ff"));
+        vips.Visible = false;
+        foreach (var l in new[] { stamp, rice, money, honour, crew, cargo, vips }) box.AddChild(l);
         AddChild(box);
         Position = new Vector2(8, 8);
     }
@@ -44,6 +47,11 @@ public partial class Clock : PanelContainer
         SetText(honour, $"honour {player.Honour}");
         SetText(crew, $"crew  {player.CrewCount}");
         SetText(cargo, $"cargo {player.TotalUnits()}/{player.CargoCapacity()}");
+        var lines = "";
+        foreach (var dest in player.VipPassengers)
+            lines += (lines == "" ? "" : "\n") + $"VIP delivery - {dest.Name}";
+        SetText(vips, lines);
+        vips.Visible = lines != "";
 
         if (night != lastNight || lowRice != lastLowRice || inDebt != lastInDebt || dishonoured != lastDishonoured)
         {

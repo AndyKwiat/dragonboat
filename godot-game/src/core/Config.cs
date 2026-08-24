@@ -108,6 +108,11 @@ public static class Config
     public const double StoryEventLowMultiplier = 0.5, StoryEventHighMultiplier = 1.5;
     // High-price events are this many times likelier than low-price ones.
     public const int StoryEventHighOddsToOne = 2;
+    // VIP delivery events: a city hosts a passenger bound for another city
+    // ranked 6th..10th nearest (never the 5 closest, never beyond the 10th).
+    public const int VipEventCount = 10;
+    public const int VipMinRank = 6, VipMaxRank = 10;
+    public const int VipDeliveryMoney = 200, VipDeliveryHonour = 10;
     // Nearest other-city events shown (and discovered) in a city's popup.
     public const int RumourCount = 3;
     public static readonly Color MarketDearColor = new Color("#ff6b6b");

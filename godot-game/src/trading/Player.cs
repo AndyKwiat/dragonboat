@@ -12,6 +12,9 @@ public sealed class Player
     public int Honour;
     public int CrewCount;
     public readonly Dictionary<string, int> Inventory = new();
+    // VIP passengers aboard, each bound for a city. Take no cargo space and
+    // never expire once accepted.
+    public readonly List<City> VipPassengers = new();
 
     public Player()
     {
@@ -70,6 +73,16 @@ public sealed class Player
         if (n == 0) return 0;
         int left = Held(id) - n;
         if (left == 0) Inventory.Remove(id); else Inventory[id] = left;
+        return n;
+    }
+
+    // Everyone aboard bound for this city steps ashore: money and honour
+    // per head. Returns how many were delivered.
+    public int DeliverVips(City city)
+    {
+        int n = VipPassengers.RemoveAll(c => c == city);
+        Money += n * Config.VipDeliveryMoney;
+        Honour += n * Config.VipDeliveryHonour;
         return n;
     }
 

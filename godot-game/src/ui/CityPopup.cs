@@ -17,6 +17,8 @@ public partial class CityPopup : PanelContainer
     private Control crewHeading = null!, crewSection = null!;
     private Control rumoursHeading = null!;
     private VBoxContainer rumours = null!;
+    private VBoxContainer vipSection = null!;
+    private string vipDeliveredNote = "";
     private VBoxContainer market = null!;
     private Button addCrew = null!, removeCrew = null!;
     private City? current;
@@ -58,6 +60,12 @@ public partial class CityPopup : PanelContainer
 
         facts = Fonts.MakeLabel("", Fonts.Mono, px - 2, new Color("#bbbbbb"));
         content.AddChild(facts);
+
+        // VIP deliveries: the just-delivered reward note and/or the city's
+        // live offer with its Accept button, rebuilt per open (BuildVip).
+        vipSection = new VBoxContainer();
+        vipSection.AddThemeConstantOverride("separation", 4);
+        content.AddChild(vipSection);
 
         // Rumours: word from the nearest markets, at the top so the player
         // hears the news the moment they step ashore.
@@ -172,10 +180,52 @@ public partial class CityPopup : PanelContainer
             ev.Discovered = true;
             bool dear = ev is ProductPriceStoryEvent p && p.PriceMultiplier > 1;
             var line = Fonts.MakeLabel($"“{ev.Description}”", Fonts.Ui, Config.PopupFontPx - 1,
-                dear ? Config.MarketDearColor : Config.MarketCheapColor);
+                ev is VipDeliveryStoryEvent ? new Color("#7fe3ff") : dear ? Config.MarketDearColor : Config.MarketCheapColor);
             line.AutowrapMode = TextServer.AutowrapMode.Word;
             line.SizeFlagsHorizontal = SizeFlags.ExpandFill;
             rumours.AddChild(line);
+        }
+    }
+
+    // The city's VIP offer (description + Accept) and, on arrival, the
+    // reward note for passengers just delivered here.
+    private void BuildVip(City city)
+    {
+        foreach (var child in vipSection.GetChildren()) child.QueueFree();
+        var kids = new List<Control>();
+        if (vipDeliveredNote != "")
+        {
+            var note = Fonts.MakeLabel(vipDeliveredNote, Fonts.UiSemiBold, Config.PopupFontPx, new Color("#ffd166"));
+            note.AutowrapMode = TextServer.AutowrapMode.Word;
+            note.SizeFlagsHorizontal = SizeFlags.ExpandFill;
+            kids.Add(note);
+        }
+        if (storyEvents.VipEventFor(city) is VipDeliveryStoryEvent offer)
+        {
+            var row = new HBoxContainer();
+            row.AddThemeConstantOverride("separation", 14);
+            var desc = Fonts.MakeLabel(
+                $"An important passenger seeks passage to {offer.Destination.Name} " +
+                $"({Config.VipDeliveryMoney} money, {Config.VipDeliveryHonour} honour on arrival)",
+                Fonts.Ui, Config.PopupFontPx - 1, new Color("#7fe3ff"));
+            desc.AutowrapMode = TextServer.AutowrapMode.Word;
+            desc.SizeFlagsHorizontal = SizeFlags.ExpandFill;
+            var accept = MakeButton("Accept", () =>
+            {
+                player.VipPassengers.Add(offer.Destination);
+                storyEvents.Accept(offer);
+                Rebuild();
+            });
+            accept.TooltipText = $"Take the passenger aboard, bound for {offer.Destination.Name}";
+            row.AddChild(desc);
+            row.AddChild(accept);
+            kids.Add(row);
+        }
+        vipSection.Visible = kids.Count > 0;
+        if (kids.Count > 0)
+        {
+            vipSection.AddChild(Spacer(10));
+            foreach (var k in kids) vipSection.AddChild(k);
         }
     }
 
@@ -330,6 +380,13 @@ public partial class CityPopup : PanelContainer
         bool hiring = city.Size == "large";
         crewHeading.Visible = hiring;
         crewSection.Visible = hiring;
+        // Arriving is what completes a VIP delivery: passengers bound here
+        // step ashore, and the popup opens on the reward note.
+        int delivered = player.DeliverVips(city);
+        vipDeliveredNote = delivered == 0 ? "" :
+            $"Delivered {(delivered == 1 ? "an important passenger" : $"{delivered} important passengers")} — " +
+            $"+{delivered * Config.VipDeliveryMoney} money, +{delivered * Config.VipDeliveryHonour} honour";
+        BuildVip(city);
         if (city != current)
         {
             current = city;
@@ -347,6 +404,7 @@ public partial class CityPopup : PanelContainer
     {
         if (current == null || !Visible) return;
         storyEvents.DiscoverAt(current);   // events that just rolled in while watching
+        BuildVip(current);
         BuildRumours(current);
         BuildMarket(current);
         Refresh();

@@ -42,8 +42,9 @@ events.) Prices are never stored — `Market` derives them.
   unit held for no money and one honour point per unit
   (`Player.GiveAway`).
 - **Story events** (`StoryEvents.cs`): the world always holds
-  `StoryEventCount` (40) of them, each tied to a city — a city can hold
-  several. The only kind so far is `ProductPriceStoryEvent`: one product
+  `StoryEventCount` (40) price events plus `VipEventCount` (10) VIP
+  delivery offers, each tied to a city — a city can hold several (but at
+  most one VIP offer). `ProductPriceStoryEvent`: one product
   the city trades — picked with weight 1/(cities trading it), so rare
   goods headline more events but ubiquitous rice keeps a small chance —
   at `StoryEventLowMultiplier` (50%) or `StoryEventHighMultiplier` (150%)
@@ -57,6 +58,18 @@ events.) Prices are never stored — `Market` derives them.
   pass drops lapsed events and rolls replacements at random cities. When
   the pass runs, `Main` rebuilds the open city popup, whose prices and
   days-left tags are baked into its rows, and the map labels' price intel.
+- **VIP deliveries** (`VipDeliveryStoryEvent`): a city hosts a passenger
+  bound for another city ranked `VipMinRank`..`VipMaxRank` (6th..10th) by
+  distance — never one of the 5 closest, never beyond the 10th. The offer
+  expires like any event (a fresh one rolls elsewhere); its city's popup
+  shows it at the top with an Accept button. Accepting retires the offer
+  (`StoryEvents.Accept` immediately rolls a replacement, holding the count
+  at 10) and adds the destination to `Player.VipPassengers` — passengers
+  take no cargo space, never expire, and stack (several may ride at once);
+  the clock overlay shows one "VIP delivery - <city>" line each. Opening
+  the destination's popup is what delivers (`Player.DeliverVips`):
+  `VipDeliveryMoney` (200) and `VipDeliveryHonour` (10) per head, with the
+  reward summarised in a note at the top of that popup.
 - **Rumours**: a city's popup opens with the `RumourCount` (3)
   geographically nearest events that are NOT the city's own
   (`StoryEvents.RumoursFor`), one line each from the event's
