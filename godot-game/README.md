@@ -116,6 +116,7 @@ src/boat/              BoatConfig, Boat (physics, lean, land collision, hittable
                        BoatModel (hull/masts/sails)                       → docs/boat.md
 src/combat/            CombatConfig, CombatSystem, Cannon, CannonBattery,
                        Projectiles, Effects, ICombatTarget                → docs/combat.md
+src/enemies/           EnemyShips — the stationary hostile fleet (docs/enemies.md)
 src/trading/           Player, Crew, Upkeep, Market, StoryEvents — pure rules
                                                                           → docs/trading.md
 src/ui/                Fonts, Hud, Clock, Minimap, CityLabels, CityPopup, TweakPanel

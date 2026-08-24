@@ -20,6 +20,7 @@ public partial class Main : Node3D
     private Terrain terrainQuery = null!;
     private Boat boat = null!;
     private CombatSystem combat = null!;
+    private EnemyShips enemies = null!;
     private InputState input = null!;
     private CameraRig rig = null!;
     private readonly Dictionary<string, CameraRig> rigs = new();
@@ -124,6 +125,12 @@ public partial class Main : Node3D
         AddChild(combat);
         combat.PlayerGuns = combat.Arm(boat, CombatConfig.PlayerMounts, BoatConfig.Length);
         combat.AddTarget(boat);
+
+        // Enemy fleet: stationary red ships on random water, same guns and
+        // tweaks as the player (see src/enemies/EnemyShips.cs).
+        enemies = new EnemyShips();
+        AddChild(enemies);
+        enemies.Init(map, terrainQuery, combat, boat, new Random());
 
         input = new InputState();
         AddChild(input);
@@ -394,6 +401,8 @@ public partial class Main : Node3D
             combat.FireAtGround(boat.X + fo.X, boat.Y + fo.Y);
         bool canAim = input.HasCursor && !menuOpen;
         combat.Update(gameDt, rig, state, canAim ? input.CursorPx : null, clicked && hoveredCity == null && !menuOpen);
+        // Enemy logic pauses with the menu, out of range, or past LOD 1.
+        enemies.Update(menuOpen ? 0 : gameDt, chunks.GetStats().Step, boat);
         if (escaped) cityPopup.Hide();
         cityPopup.Update(view);
 
