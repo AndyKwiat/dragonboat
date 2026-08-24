@@ -21,6 +21,8 @@ public sealed class City
     public float X, Y;                        // world units, y-down from the top-left
     public string Size = "small";             // small | medium | large
     public List<string> Products = new();
+    // The city's always-cheaper goods, dealt with the products each run.
+    public List<string> Specialities = new();
     // Runtime state, not from JSON: set forever once the player opens the
     // city's popup; gates the price intel shown under its map label.
     public bool Discovered;
@@ -71,31 +73,38 @@ public static class GameData
         DealProducts(new Random());
     }
 
-    // Each run deals the specialities fresh (any products in cities.json are
-    // ignored): large cities trade everything, a medium city every staple
-    // plus one random luxury, a small city rice plus one other random staple.
+    // Each run deals the markets fresh (any products in cities.json are
+    // ignored): medium and large cities trade everything, a small city rice
+    // plus one other random staple. Specialities — always-cheaper goods
+    // (Market.MultiplierFor) — are dealt too: a small city's other staple,
+    // one random product for a medium city, two for a large.
     public static void DealProducts(Random rng)
     {
         var staples = new List<string>();
-        var luxuries = new List<string>();
         foreach (var p in Products)
-            (Config.LuxuryProductIds.Contains(p.Id) ? luxuries : staples).Add(p.Id);
+            if (!Config.LuxuryProductIds.Contains(p.Id)) staples.Add(p.Id);
         var otherStaples = staples.FindAll(id => id != "RICE");
         foreach (var city in Cities)
         {
             city.Products.Clear();
+            city.Specialities.Clear();
             switch (city.Size)
             {
                 case "large":
-                    foreach (var p in Products) city.Products.Add(p.Id);
-                    break;
                 case "medium":
-                    city.Products.AddRange(staples);
-                    city.Products.Add(luxuries[rng.Next(luxuries.Count)]);
+                    foreach (var p in Products) city.Products.Add(p.Id);
+                    int count = city.Size == "large" ? 2 : 1;
+                    while (city.Specialities.Count < count)
+                    {
+                        var pick = Products[rng.Next(Products.Count)].Id;
+                        if (!city.Specialities.Contains(pick)) city.Specialities.Add(pick);
+                    }
                     break;
                 default:
+                    var staple = otherStaples[rng.Next(otherStaples.Count)];
                     city.Products.Add("RICE");
-                    city.Products.Add(otherStaples[rng.Next(otherStaples.Count)]);
+                    city.Products.Add(staple);
+                    city.Specialities.Add(staple);
                     break;
             }
         }

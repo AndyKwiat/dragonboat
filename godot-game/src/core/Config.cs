@@ -98,8 +98,8 @@ public static class Config
 
     // Market.
     public const double MarketBuyMarkup = 1.1;
-    public const double MarketSmallStapleDiscount = 0.6;   // a small city's one non-rice staple
-    public const double MarketMediumLuxuryDiscount = 0.75; // a medium city's one luxury
+    public const double MarketSmallStapleDiscount = 0.6;   // a small city's speciality (its non-rice staple)
+    public const double MarketSpecialityDiscount = 0.75;   // a medium/large city's specialities
     public static readonly HashSet<string> LuxuryProductIds = new() { "CLOTHES", "FURNITURE", "JEWELRY" };
 
     // Story events.

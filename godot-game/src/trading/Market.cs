@@ -9,12 +9,12 @@ public sealed record Quote(Product Product, int SellPrice, int BuyPrice, Product
 
 public static class Market
 {
-    // Small cities discount their one non-rice staple; medium cities discount
-    // their one luxury. Everything else trades at base price.
+    // A city's dealt specialities are always cheaper (a small city's steeper
+    // than a medium/large one's); everything else trades at base price.
     public static double MultiplierFor(City city, Product p) =>
-        city.Size == "small" && p.Id != "RICE" ? Config.MarketSmallStapleDiscount :
-        city.Size == "medium" && Config.LuxuryProductIds.Contains(p.Id) ? Config.MarketMediumLuxuryDiscount :
-        1.0;
+        !city.Specialities.Contains(p.Id) ? 1.0 :
+        city.Size == "small" ? Config.MarketSmallStapleDiscount :
+        Config.MarketSpecialityDiscount;
 
     public static int SellPriceFor(Product p, double multiplier = 1.0) =>
         (int)Math.Ceiling(p.BasePrice * multiplier);
