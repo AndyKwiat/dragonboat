@@ -4,8 +4,9 @@ using System.Collections.Generic;
 using System.Text.Json;
 
 // cities.json / products.json, loaded once at startup.
-// A city's name, size and location are fixed by
-// the JSON; what it trades is dealt fresh every run (DealProducts). Prices
+// A city's name and location are fixed by the JSON; the sizes are shuffled
+// between the cities every run (DealSizes — same counts, different spots)
+// and what each trades is dealt fresh from its size (DealProducts). Prices
 // are derived in Market.cs, never stored.
 public sealed class Product
 {
@@ -70,7 +71,23 @@ public static class GameData
                 Cities.Add(city);
             }
         }
-        DealProducts(new Random());
+        var rng = new Random();
+        DealSizes(rng);
+        DealProducts(rng);
+    }
+
+    // Shuffle the JSON sizes between the cities, so each run the large,
+    // medium and small cities land in different spots but the mix of the
+    // world stays the same.
+    public static void DealSizes(Random rng)
+    {
+        var sizes = Cities.ConvertAll(c => c.Size);
+        for (int i = sizes.Count - 1; i > 0; i--)
+        {
+            int j = rng.Next(i + 1);
+            (sizes[i], sizes[j]) = (sizes[j], sizes[i]);
+        }
+        for (int i = 0; i < Cities.Count; i++) Cities[i].Size = sizes[i];
     }
 
     // Each run deals the markets fresh (any products in cities.json are

@@ -17,7 +17,6 @@ public partial class Currents : Node3D
     public const float ZoneWidth = 60f;
     [Tweak("Currents", 0, 150, 1)] public static float Strength = 40f;   // force (units/s²) at the zone's core
     [Tweak("Currents", 0, 0.5f, 0.05f)] public static float EdgeFade = 0.10f; // fraction of width/length over which it fades
-    public const int Seed = 12345;
     private static readonly Color ZoneColor = new Color(0.3f, 0.9f, 1f, 0.28f);
     private static readonly Color ArrowColor = new Color(1f, 1f, 1f, 0.85f);
 
@@ -34,7 +33,7 @@ public partial class Currents : Node3D
     public void Init(DMap map, Terrain terrain)
     {
         this.map = map;
-        var rng = new Random(Seed);
+        var rng = new Random();   // fresh layout every run
         float cx = map.WorldW / 2, cy = map.WorldH / 2;
         int tries = 0;
         while (currents.Count < Count && tries++ < Count * 50)
