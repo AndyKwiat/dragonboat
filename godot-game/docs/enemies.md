@@ -7,9 +7,12 @@ only. See `docs/combat.md` for the cannon/projectile layer it drives.
 
 - **Fleet**: `EnemyShips.Count` (20 — 1/5 of the old 100, matching the
   world's 20 cities) ships, spawned at launch on random water cells that
-  have land within `MaxLandDistanceCells` (20 cells, i.e. ~20 m) — so they
-  lurk in rivers and coastal water, never the open ocean — and
-  never within `MinSpawnDistance` (400) of the player's start, each with
+  have land within `MaxLandDistanceCells` (250 cells, sampled every
+  `LandSampleStep` (8) cells — the land masses are far bigger than the
+  step). That keeps them out of the open ocean (the big water in the south
+  of most maps) while leaving them free to sit well off the beach; in
+  practice most end up in rivers, which are narrow. They also never spawn
+  within `MinSpawnDistance` (400) of the player's start, and each takes
   a random fixed heading. They never move and never turn.
 - **Same hardware as the player**: hull dimensions and hit box from
   `BoatConfig`, guns from `CombatConfig.PlayerMounts`, ballistics/reload
@@ -24,9 +27,13 @@ only. See `docs/combat.md` for the cannon/projectile layer it drives.
   moves into an arc.
 - **Logic gating**: a ship's logic (reload ticking, firing) runs only
   while it is within `UpdateRangeFactor` (1.5) × the cannons' physical
-  range (`MuzzleSpeed²/Gravity`) of the player boat. Nothing updates while
-  the terrain streamer is past its first LOD (`TerrainChunks` step > 1,
-  i.e. zoomed far out) or while the world is paused (city menu open).
+  range (`MuzzleSpeed²/Gravity`) of the player boat, and never while the
+  world is paused (city menu open). That range test is the whole budget —
+  one distance check per ship per frame. There used to be a second gate on
+  the terrain streamer's LOD (`step > 1` = zoomed far out); it was removed
+  when a map cell became one world unit, because the streamer is past step
+  1 even when zoomed right in, so the gate silently stopped the whole fleet
+  from ever firing.
 - **Damage**: ships are `ICombatTarget`s — the player's balls hit them
   (red hull flash, same `HitMargin`), and `HitsToSink` (3) hits sinks one:
   a wide splash ring and `KillHonour` (50) honour for the player, paid the
@@ -42,7 +49,9 @@ only. See `docs/combat.md` for the cannon/projectile layer it drives.
 
 ## Verifying
 
-Scripted runs: `--start=x,y` next to a known ship position makes it open
-fire (the run's final line counts its shots); `--fire=dx,dy@frame` three
+Scripted runs: `--start=x,y` about 60 units from a known ship position makes
+it open fire (the run's final line counts every shot fired, the fleet's
+included — park on top of a ship instead and nothing happens, since no
+cannon can solve a shot at zero range); `--fire=dx,dy@frame` three
 times at a ship's offset sinks it. Positions are random per run — pass `--seed=N` for a
 world (cities and fleet alike) that comes back the same every time.

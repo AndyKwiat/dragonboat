@@ -463,7 +463,7 @@ public partial class Main : Node3D
         if (fireOffset is Vector2 fo && fireFrames.Contains(frameCount))
             combat.FireAtGround(boat.X + fo.X, boat.Y + fo.Y);
         // Enemy logic pauses with the menu, out of range, or past LOD 1.
-        enemies.Update(menuOpen ? 0 : gameDt, chunks.GetStats().Step, boat, groundView);
+        enemies.Update(menuOpen ? 0 : gameDt, boat, groundView);
 
         // Combat camera: fighting reads better from the edge cam. The first
         // shot fired with an enemy in cannon range flips follow → edge, and

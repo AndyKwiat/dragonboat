@@ -12,9 +12,9 @@ using System.Collections.Generic;
 // the boat's position. Cannons that can't bear simply stay silent.
 //
 // Logic gating: a ship only updates (reloads, fires) while it sits within
-// UpdateRangeFactor × the cannons' physical range of the player boat, and
-// not at all while the terrain is drawn past the first LOD (zoomed far
-// out) or the world is paused (dt = 0, e.g. the city menu).
+// UpdateRangeFactor × the cannons' physical range of the player boat, or
+// while the world is paused (dt = 0, e.g. the city menu). That range check
+// is the whole budget — everything else is one distance test per ship.
 //
 // Sinking one pays KillHonour and the wreck respawns fresh somewhere else
 // off screen — the fleet never shrinks below Count.
@@ -129,10 +129,13 @@ public partial class EnemyShips : Node3D
     public const float UpdateRangeFactor = 1.5f;
     // Nobody spawns closer to the player's start than this.
     public const float MinSpawnDistance = 400f;
-    // Ships lurk near shore: a spawn cell must have land within this many
-    // cells, which keeps them in rivers, canals and coastal water rather
-    // than the open ocean.
-    public const int MaxLandDistanceCells = 20;
+    // Ships keep out of the open ocean (the big water in the south) but are
+    // free to sit well off the beach: a spawn cell must have land somewhere
+    // within this many cells, which covers rivers and coastal water and
+    // excludes the deep sea. Sampled every LandSampleStep cells — the land
+    // masses are far bigger than the step.
+    public const int MaxLandDistanceCells = 250;
+    public const int LandSampleStep = 8;
     public static readonly Color HullColor = new Color("#8a2626");
 
     private readonly List<EnemyShip> ships = new();
@@ -195,16 +198,15 @@ public partial class EnemyShips : Node3D
     {
         int cx = (int)x, cy = (int)y;
         int r = MaxLandDistanceCells;
-        for (int j = -r; j <= r; j++)
-            for (int i = -r; i <= r; i++)
+        for (int j = -r; j <= r; j += LandSampleStep)
+            for (int i = -r; i <= r; i += LandSampleStep)
                 if (!Terrain.IsWaterIndex(map.TerrainAt(cx + i, cy + j))) return true;
         return false;
     }
 
-    // dt is game time and 0 while the world is paused; lodStep is the
-    // terrain streamer's current LOD (1 = full detail); view is the ground
+    // dt is game time and 0 while the world is paused; view is the ground
     // rect the camera can see (respawns land outside it).
-    public void Update(float dt, int lodStep, Boat player, Rect2 view)
+    public void Update(float dt, Boat player, Rect2 view)
     {
         // Wrecks respawn even while the fight logic is gated — off screen,
         // so the player never sees the ship pop in.
@@ -212,7 +214,7 @@ public partial class EnemyShips : Node3D
             if (s.Sunk && FindSpawn(view) is (float x, float y))
                 s.Respawn(x, y, (float)(rng.NextDouble() * Math.Tau));
 
-        if (dt <= 0 || lodStep > 1) return;
+        if (dt <= 0) return;
         float range = CombatConfig.MuzzleSpeed * CombatConfig.MuzzleSpeed / CombatConfig.Gravity;
         float gate = range * UpdateRangeFactor;
         var target = new Vector3(player.X, 0, player.Y);
