@@ -164,6 +164,22 @@ public static class Config
     public const int EventLogMaxLines = 6;
     public const int EventLogFontPx = 15;
 
+    // Religion (src/religion/Monasteries.cs): houses of monks in one small
+    // city in five, where alms buy piety and monks ask for passage.
+    public static readonly ReligionTerms Religion = new()
+    {
+        SmallCitiesPerMonastery = 5,
+        GiveMin = 100, GiveMax = 2000, GiveStep = 100,
+        GivePietyDivisor = 10,       // 200 money given = 20 piety
+        GiveCooldownDays = 7,        // per house
+        MonkTermDays = 30,
+        MonkPiety = 1000,            // landed in time
+        MonkPenalty = 1000,          // he gives up and walks away
+        MonkWarnDays = 3,
+        MonkOfferOddsToOne = 10,     // appear/lapse odds — ~half the houses have an errand
+    };
+    public static readonly Color PietyColor = new Color("#c9a7ff");
+
     // Player.
     public const int StartingMoney = 500;
     public static readonly Dictionary<string, int> StartingInventory = new() { ["RICE"] = 20 };

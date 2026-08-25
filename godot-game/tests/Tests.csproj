@@ -17,6 +17,7 @@
     <Compile Include="../src/trading/Docking.cs" />
     <Compile Include="../src/banking/Loans.cs" />
     <Compile Include="../src/trading/Vips.cs" />
+    <Compile Include="../src/religion/Monasteries.cs" />
   </ItemGroup>
   <ItemGroup>
     <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.11.1" />

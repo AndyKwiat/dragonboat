@@ -12,8 +12,11 @@ public partial class CityPopup : PanelContainer
     private GameTime time = null!;
     private StoryEvents storyEvents = null!;
     private Loans loans = null!;
-    // Set by Main: opens the bank window over this panel (medium/large cities).
+    private Monasteries religion = null!;
+    // Set by Main: opens the bank window over this panel (medium/large
+    // cities), or the monastery's (the small cities that have a house).
     public Action<City>? OpenBank;
+    public Action<City>? OpenMonastery;
     private ScrollContainer scroll = null!;
     private VBoxContainer content = null!;
     private Label title = null!, facts = null!, crewCount = null!, purse = null!;
@@ -21,6 +24,10 @@ public partial class CityPopup : PanelContainer
     private Control bankHeading = null!, bankSection = null!;
     private Label bankStatus = null!;
     private Button bankButton = null!;
+    private Control monasteryHeading = null!, monasterySection = null!;
+    private Label monasteryStatus = null!;
+    private Button monasteryButton = null!;
+    private string monkDeliveredNote = "";
     private Control rumoursHeading = null!;
     private VBoxContainer rumours = null!;
     private VBoxContainer vipSection = null!;
@@ -34,9 +41,10 @@ public partial class CityPopup : PanelContainer
 
     public bool IsOpen => Visible;
 
-    public void Init(Player player, GameTime time, StoryEvents storyEvents, Loans loans)
+    public void Init(Player player, GameTime time, StoryEvents storyEvents, Loans loans, Monasteries religion)
     {
         this.player = player; this.time = time; this.storyEvents = storyEvents; this.loans = loans;
+        this.religion = religion;
         int px = Config.PopupFontPx;
         Visible = false;
         MouseFilter = MouseFilterEnum.Stop;
@@ -111,6 +119,19 @@ public partial class CityPopup : PanelContainer
         bankSection.AddChild(bankButton);
         content.AddChild(bankSection);
 
+        // Monastery: the small cities that have a house. Its window is a
+        // second popup over this one — see ui/MonasteryPopup.cs.
+        monasteryHeading = Heading("Monastery");
+        content.AddChild(monasteryHeading);
+        monasterySection = new HBoxContainer();
+        ((HBoxContainer)monasterySection).AddThemeConstantOverride("separation", 14);
+        monasteryStatus = Fonts.MakeLabel("", Fonts.Mono, px, new Color("#dddddd"));
+        monasteryStatus.SizeFlagsHorizontal = SizeFlags.ExpandFill;
+        monasteryButton = Fonts.MakeButton("Monastery", () => { if (current != null) OpenMonastery?.Invoke(current); }, 100);
+        monasterySection.AddChild(monasteryStatus);
+        monasterySection.AddChild(monasteryButton);
+        content.AddChild(monasterySection);
+
         content.AddChild(Heading("Market"));
         market = new VBoxContainer();
         market.AddThemeConstantOverride("separation", 0);
@@ -150,6 +171,7 @@ public partial class CityPopup : PanelContainer
         removeCrew.TooltipText = player.CrewCount > c.Min && !player.CanChangeCrew(-1)
             ? "Not enough hold space without them — sell some cargo first" : "";
         RefreshBank();
+        RefreshMonastery();
         purse.Text = $"money {player.Money}    honour {player.Honour}    cargo {player.TotalUnits()}/{player.CargoCapacity()} units";
         Fonts.SetColor(purse, player.Money < 0 ? new Color("#ff8b7a") : new Color("#ffd166"));
     }
@@ -174,6 +196,21 @@ public partial class CityPopup : PanelContainer
             bankStatus.Text = limit > 0 ? $"will lend up to {limit} against your honour" : "will lend you nothing";
             Fonts.SetColor(bankStatus, limit > 0 ? new Color("#dddddd") : new Color("#888888"));
         }
+    }
+
+    // The monastery row: whether the poor will take a gift today, and
+    // whether the brothers have an errand waiting.
+    public void RefreshMonastery()
+    {
+        if (current == null || !monasterySection.Visible) return;
+        var house = religion.At(current);
+        if (house == null) return;
+        int today = Days.Of(time.TotalMinutes);
+        int wait = house.DaysUntilGiveAllowed(today, Config.Religion);
+        var bits = wait == 0 ? "alms welcome today" : $"alms again in {wait} day{(wait == 1 ? "" : "s")}";
+        if (house.Errand != null) bits += "   a monk seeks passage";
+        monasteryStatus.Text = bits;
+        Fonts.SetColor(monasteryStatus, house.Errand != null || wait == 0 ? Config.PietyColor : new Color("#888888"));
     }
 
     // The nearest other-city events, as one line each; hearing a rumour is
@@ -202,9 +239,10 @@ public partial class CityPopup : PanelContainer
     {
         foreach (var child in vipSection.GetChildren()) child.QueueFree();
         var kids = new List<Control>();
-        if (vipDeliveredNote != "")
+        foreach (var (text, color) in new[] { (vipDeliveredNote, new Color("#ffd166")), (monkDeliveredNote, Config.PietyColor) })
         {
-            var note = Fonts.MakeLabel(vipDeliveredNote, Fonts.UiSemiBold, Config.PopupFontPx, new Color("#ffd166"));
+            if (text == "") continue;
+            var note = Fonts.MakeLabel(text, Fonts.UiSemiBold, Config.PopupFontPx, color);
             note.AutowrapMode = TextServer.AutowrapMode.Word;
             note.SizeFlagsHorizontal = SizeFlags.ExpandFill;
             kids.Add(note);
@@ -398,8 +436,16 @@ public partial class CityPopup : PanelContainer
         bool banking = Loans.HasBank(city);
         bankHeading.Visible = banking;
         bankSection.Visible = banking;
+        bool monastic = religion.HasMonastery(city);
+        monasteryHeading.Visible = monastic;
+        monasterySection.Visible = monastic;
         // Arriving is what completes a VIP delivery: passengers bound here
         // step ashore, and the popup opens on the reward note.
+        // Landing a monk pays like a VIP delivery, in piety.
+        var monks = religion.DeliverMonks(city);
+        player.Piety += monks.Piety;
+        monkDeliveredNote = monks.Count == 0 ? "" :
+            $"Landed {(monks.Count == 1 ? "a monk" : $"{monks.Count} monks")} safely — +{monks.Piety} piety";
         var delivered = player.DeliverVips(city, Days.Of(time.TotalMinutes));
         vipDeliveredNote = delivered.Count == 0 ? "" :
             $"Delivered {(delivered.Count == 1 ? "an important passenger" : $"{delivered.Count} important passengers")} — " +

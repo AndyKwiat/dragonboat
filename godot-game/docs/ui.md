@@ -2,7 +2,7 @@
 
 Files: `src/ui/*` — Godot `Control`s on one `CanvasLayer` added in `Main`,
 in draw order: city labels (under everything), HUD, clock, minimap, city
-popup, bank window, event log, tweak panel. The popup and tweak panel have `MouseFilter.Stop`, so
+popup, bank/monastery windows, event log, tweak panel. The popup and tweak panel have `MouseFilter.Stop`, so
 clicks and wheel events inside them never reach `InputState` (which listens
 in `_UnhandledInput`) — that is what keeps a slider drag from firing a cannon
 or zooming the map.
@@ -17,10 +17,13 @@ or zooming the map.
   the popups share (the city market panel and the bank window).
 - **Hud** (top right) — fps, view corners, zoom, camera mode/rig, sail-time
   factor, chunk stats, and a `guns N/M loaded, shots, in air` line from combat.
-- **Clock** (top left) — date/time, rations, money, honour, crew, cargo, one
+- **Clock** (top left) — date/time, rations, money, honour, piety (red when
+  negative — [religion.md](religion.md)), crew, cargo, one
   line per VIP aboard (`VIP delivery - Ravenport (+170, 12d left)`: what
   landing them today pays and how long before they jump ship —
-  [trading.md](trading.md)) and then one per outstanding bank loan
+  [trading.md](trading.md)), one per monk aboard
+  (`MONK delivery - Redcliff (due in 12d)`) and then one per outstanding
+  bank loan
   (`BANK LOAN $12K - CINDERFALL (due in 11d)`, red once overdue — rebuilt
   only when a loan changes or the day turns). Tints at night and when
   rations run low.
@@ -37,8 +40,12 @@ or zooming the map.
   hidden below each size's min zoom, hover highlight; returns the hovered
   city to `Main` for the click. Under the name, discovered price intel
   (`RefreshIntel`): one red/green line per product the player knows trades
-  off base price, with days left for story events, and under those a
-  `◆ OWE $12K (11d)` tag when that city's bank is owed money — rebuilt only when the
+  off base price, with days left for story events, and under those the
+  tags: `◆ OWE $12K (11d)` when that city's bank is owed money,
+  `▲ VIP TO LAND HERE` / `✦ MONK TO LAND HERE (12d)` when someone aboard is
+  bound for it, and `✦ MONASTERY` for a city with a house — that last one
+  shows even on an undiscovered city, since a monastery is a landmark you
+  can see from the water ([religion.md](religion.md)) — rebuilt only when the
   popup opens or the midnight pass runs, never per frame. Discovery rules:
   [trading.md](trading.md).
 - **CityPopup** — the market panel: facts, rumours (nearest other-city
@@ -49,8 +56,13 @@ or zooming the map.
   after opening / resizing (wrapped labels only know their height after
   layout) and sizes itself to 62vw clamped to 520–900 px, growing to fill the whole screen height before it scrolls,
   scrolling beyond that. Between the crew and the market it carries a
-  **Bank** row (medium and large cities) whose button opens the bank window.
+  **Bank** row (medium and large cities) whose button opens the bank
+  window, and a **Monastery** row (the small cities with a house).
   Rules it drives: [trading.md](trading.md).
+- **MonasteryPopup** — the monastery window, built like the bank's: the
+  house's terms, alms (a slider + Give, or the days left in its week) and
+  the brothers' errand with an Accept button.
+  Rules: [religion.md](religion.md).
 - **BankPopup** — the bank window, a second panel centred over the market
   panel that opened it: the city's terms, your account there, a slider +
   Borrow button or a Repay button. Esc / a click outside closes it and

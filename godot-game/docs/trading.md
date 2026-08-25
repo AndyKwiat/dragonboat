@@ -95,7 +95,8 @@ run needs a name from *that* run's startup output.
   came aboard — in `Player.VipPassengers`. Passengers take no cargo space
   and stack (several may ride at once); the clock overlay shows one line
   each with what landing them right now is worth and how long is left
-  before they give up. Opening the destination's popup is what delivers
+  before they give up, and the destination's map label carries a
+  `▲ VIP TO LAND HERE` tag. Opening the destination's popup is what delivers
   (`Player.DeliverVips`, summarised in a note at the top of that popup):
   `VipDeliveryMoney` (200) and `VipDeliveryHonour` (10) per head, plus the
   speed bonus below.

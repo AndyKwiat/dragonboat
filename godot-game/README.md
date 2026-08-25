@@ -16,6 +16,7 @@ the rules.
 | [docs/combat.md](docs/combat.md) | cannons, cannonballs, impact effects, targets (enemy-ready), aiming |
 | [docs/trading.md](docs/trading.md) | cities, markets, crew, rations/wages, the game clock, the city popup |
 | [docs/banking.md](docs/banking.md) | city banks: borrowing against honour, interest, due dates, on-time rewards and late penalties |
+| [docs/religion.md](docs/religion.md) | piety, monasteries, alms, monk errands |
 | [docs/ui.md](docs/ui.md) | fonts, HUD, clock, minimap, city labels, the event log, the tweak panel |
 
 ## Running
@@ -48,7 +49,7 @@ opens the project picker and hangs a scripted run.
 | C | cycle camera mode (follow / edge / free) |
 | V | cycle camera rig (isometric / perspective) |
 | T | toggle the live tweak panel (sliders for every `[Tweak]` value) |
-| Esc | close the bank window, then the city popup |
+| Esc | close the bank or monastery window, then the city popup |
 
 ### Live tuning
 
@@ -68,7 +69,8 @@ adding an attribute; keep names unique across config classes.
 
 User args after `--` drive a run without a human, which is how changes are
 verified (`dotnet test tests` covers the Godot-free core — the config,
-the .terrain parser, city placement, docking and the loan rules;
+the .terrain parser, city placement, docking, the loan, passenger and
+monastery rules;
 everything else is checked by scripted runs — look at the screenshots, and at the line
 the run prints: boat position/heading/speed, shots and hits):
 
@@ -86,6 +88,8 @@ $G --path . -- --screenshot=screenshots/bank.png --seed=7 --honour=800 --bank   
 $G --path . -- --screenshot=screenshots/late.png --seed=7 --honour=800 --loan=1000@4     # a loan four days overdue
 $G --path . -- --screenshot=screenshots/vip.png --seed=7 --vip=3 --deliver               # land a VIP after three days
 $G --path . -- --screenshot=screenshots/jump.png --seed=7 --vip=15                       # a VIP giving up and jumping ship
+$G --path . -- --screenshot=screenshots/mon.png --seed=7 --monastery                     # a monastery's window
+$G --path . -- --screenshot=screenshots/monk.png --seed=7 --monk=5 --deliver             # land a monk: +1000 piety
 ```
 
 | flag | effect |
@@ -107,7 +111,10 @@ $G --path . -- --screenshot=screenshots/jump.png --seed=7 --vip=15              
 | `--loan=N[@D]` | borrow N from that city's bank at launch, its due date moved D days earlier (`@4` = four days late, `@-2` = due in two days) |
 | `--bank` | open that city's bank window over its market |
 | `--vip[=days]` | take a VIP offer aboard, picked up that many days ago (the reward decays daily; at 15 they jump ship) |
-| `--deliver` | with `--vip`, open the destination's market so they land |
+| `--deliver` | with `--vip` or `--monk`, open the destination's market so they land |
+| `--monastery[=Name]` | open a monastery's window over its city's market |
+| `--monk[=days]` | take a monk aboard, accepted that many days ago (30 days to land him) |
+| `--alms=daysAgo` | pretend that monastery last took alms then, to see the weekly cooldown |
 | `--tweaks` | start with the tweak panel open |
 | `--size=WxH` | window size |
 
@@ -152,8 +159,10 @@ src/trading/           Player, Crew, Upkeep, Market, StoryEvents, Vips — pure 
                                                                           → docs/trading.md
 src/banking/           Loans — city banks, interest, due dates, late
                        penalties; pure rules                              → docs/banking.md
+src/religion/          Monasteries — piety, alms, monk errands; pure rules
+                                                                          → docs/religion.md
 src/ui/                Fonts, Hud, Clock, Minimap, CityLabels, CityPopup,
-                       BankPopup, EventLog, TweakPanel
+                       BankPopup, MonasteryPopup, EventLog, TweakPanel
                        — Godot Controls on a CanvasLayer                  → docs/ui.md
 ```
 
@@ -161,7 +170,7 @@ Per-frame order in `Main._Process`: key toggles (C/V/T) → boat physics in
 game time (sub-stepped; skipped in free mode) → camera controller → clamp →
 rig apply → terrain chunk streaming → city labels (hover/click) → combat
 (aim, fire, projectiles, effects) → popups → upkeep → the daily pass (loans,
-VIP passengers) → clock/event log/minimap/HUD → screenshot hook.
+VIP passengers, monasteries) → clock/event log/minimap/HUD → screenshot hook.
 
 ## Conventions
 

@@ -37,6 +37,7 @@ public partial class Main : Node3D
     private Wages wages = null!;
     private StoryEvents storyEvents = null!;
     private Loans loans = null!;
+    private Monasteries religion = null!;
     private Hud hud = null!;
     private Clock clock = null!;
     private Minimap minimap = null!;
@@ -44,11 +45,13 @@ public partial class Main : Node3D
     private VectorOverlay vectors = null!;
     private CityPopup cityPopup = null!;
     private BankPopup bankPopup = null!;
+    private MonasteryPopup monasteryPopup = null!;
     private EventLog eventLog = null!;
     private TweakPanel tweakPanel = null!;
 
     private Docking docking = null!;   // auto-docking: hull against a city opens its market
     private readonly DayTurn midnight = new();   // VIP passengers' daily pass
+    private int lastRoster = int.MinValue;       // passengers/errands aboard, for the map tags
     private float fastForwardSec;   // how long Shift has been held, for the fast-forward ramp
     private bool combatCam;         // the edge cam was entered automatically by combat
 
@@ -187,13 +190,19 @@ public partial class Main : Node3D
         wages = new Wages(player, time);
         storyEvents = new StoryEvents(time);
         loans = new Loans(Config.Bank);
+        // Monasteries are placed off the world RNG, so --seed fixes which
+        // small cities have one (and the errands they start with).
+        religion = new Monasteries(GameData.Cities, Config.Religion, worldRng);
+        var monasteryNames = new List<string>();
+        foreach (var h in religion.Houses) monasteryNames.Add($"{h.City.Name} ({h.City.X:0},{h.City.Y:0})");
+        GD.Print($"Monasteries in {string.Join(", ", monasteryNames)}");
         docking = new Docking(Config.CityDockCooldownSec);
 
         // UI overlays, in draw order (labels under the panels, popup on top).
         var ui = new CanvasLayer();
         AddChild(ui);
         cityLabels = new CityLabels();
-        cityLabels.Init(GameData.Cities, storyEvents, time, loans);
+        cityLabels.Init(GameData.Cities, storyEvents, time, loans, religion, player);
         ui.AddChild(cityLabels);
         vectors = new VectorOverlay();
         vectors.Init(boat);
@@ -202,13 +211,13 @@ public partial class Main : Node3D
         hud.Init(map.WorldW, map.WorldH);
         ui.AddChild(hud);
         clock = new Clock();
-        clock.Init(time, rations, player, loans);
+        clock.Init(time, rations, player, loans, religion);
         ui.AddChild(clock);
         minimap = new Minimap();
         minimap.Init(map, terrain.Texture);
         ui.AddChild(minimap);
         cityPopup = new CityPopup();
-        cityPopup.Init(player, time, storyEvents, loans);
+        cityPopup.Init(player, time, storyEvents, loans, religion);
         ui.AddChild(cityPopup);
         // The bank window sits on top of the market panel it was opened from;
         // the event log is the world talking back while you sail (banking.md).
@@ -218,6 +227,12 @@ public partial class Main : Node3D
         bankPopup.Changed = () => { cityPopup.Refresh(); cityLabels.RefreshIntel(); };
         cityPopup.OpenBank = city => bankPopup.Show(city);
         ui.AddChild(bankPopup);
+        monasteryPopup = new MonasteryPopup();
+        monasteryPopup.Init(player, time, religion);
+        monasteryPopup.Announce = text => eventLog.Add(text);
+        monasteryPopup.Changed = () => { cityPopup.Refresh(); cityLabels.RefreshIntel(); };
+        cityPopup.OpenMonastery = city => monasteryPopup.Show(city);
+        ui.AddChild(monasteryPopup);
         eventLog = new EventLog();
         eventLog.Init();
         ui.AddChild(eventLog);
@@ -275,6 +290,9 @@ public partial class Main : Node3D
     // --bank               open that city's bank window over its market
     // --vip[=daysAboard]   take a VIP offer aboard, picked up that many days ago
     // --deliver            then open the destination's market, landing them
+    // --monastery[=Name]   open a monastery's window over its city's market
+    // --monk[=daysAboard]  take a monk aboard, accepted that many days ago
+    // --alms=daysAgo       pretend that monastery took alms that many days ago
     // --honour=N           set the player's honour (bank credit is 10x it)
     // --loan=N[@late]      borrow N from that city's bank at startup, its due
     //                      date already `late` days in the past
@@ -394,6 +412,42 @@ public partial class Main : Node3D
             if (city != null) { cityPopup.Show(city); cityLabels.RefreshIntel(); }
             else GD.PushWarning($"--city: no city named '{cityName}' this run");
         }
+        // Religion test hooks: take a monk aboard (optionally accepted some
+        // days back, so the warnings and the walk-away can be seen), and/or
+        // open a monastery's window.
+        Monastery? house = null;
+        if (args.TryGetValue("monastery", out var houseName) && houseName != "true")
+        {
+            var named2 = GameData.Cities.Find(c => c.Name == houseName);
+            house = named2 == null ? null : religion.At(named2);
+            if (house == null) GD.PushWarning($"--monastery: no monastery in '{houseName}' this run");
+        }
+        if (house == null && religion.Houses.Count > 0) house = religion.Houses[0];
+        if (args.TryGetValue("monk", out var monkArg) && house != null)
+        {
+            int daysAboard = monkArg == "true" ? 0 : int.Parse(monkArg);
+            int today = Days.Of(time.TotalMinutes);
+            religion.PlaceErrand(house);
+            var monk = religion.Accept(house, today);
+            if (monk == null) GD.PushWarning($"--monk: {house.City.Name} has no monk to send");
+            else
+            {
+                monk.DueDay -= daysAboard;
+                GD.Print($"Monk of {monk.From.Name} aboard for {monk.Destination.Name}, {monk.DaysLeft(today)} days left");
+                // Anchor both daily gates a day back, so the pass runs on the
+                // first frame and the warning or the walk-away lands at once.
+                if (daysAboard > 0) { midnight.Turned(today - 1); religion.Update(today - 1, _ => { }); }
+                if (args.ContainsKey("deliver")) { cityPopup.Show(monk.Destination); cityLabels.RefreshIntel(); }
+            }
+        }
+        if (args.TryGetValue("alms", out var almsArg) && house != null)
+            house.LastGiftDay = Days.Of(time.TotalMinutes) - int.Parse(almsArg);
+        if (args.ContainsKey("monastery") && house != null)
+        {
+            cityPopup.Show(house.City);
+            cityLabels.RefreshIntel();
+            monasteryPopup.Show(house.City);
+        }
         if (args.TryGetValue("press", out var press))
             foreach (var spec in press.Split(','))
             {
@@ -469,7 +523,7 @@ public partial class Main : Node3D
         // While the city menu is open the world is paused for input: no
         // sailing, no camera movement or zoom, no firing. Latched before the
         // click is handled so the click that closes the menu is inert too.
-        bool menuOpen = cityPopup.IsOpen || bankPopup.IsOpen;
+        bool menuOpen = cityPopup.IsOpen || bankPopup.IsOpen || monasteryPopup.IsOpen;
 
         // Hold either Shift to fast-forward: one real second buys more game
         // seconds, so the boat covers more ground AND the clock moves on by
@@ -527,9 +581,10 @@ public partial class Main : Node3D
         Input.SetDefaultCursorShape(hoveredCity != null ? Input.CursorShape.PointingHand : Input.CursorShape.Arrow);
         if (clicked)
         {
-            // With the bank window up, a click off it closes only the bank —
-            // the market panel underneath stays open.
+            // With the bank or monastery window up, a click off it closes
+            // only that — the market panel underneath stays open.
             if (bankPopup.IsOpen) bankPopup.Hide();
+            else if (monasteryPopup.IsOpen) monasteryPopup.Hide();
             // Opening the popup discovers the city and its live events, so
             // the map labels may have new price intel to show.
             else if (hoveredCity != null) { cityPopup.Show(hoveredCity); cityLabels.RefreshIntel(); }
@@ -562,8 +617,13 @@ public partial class Main : Node3D
         else if (combatCam && active == edgeCamera && !enemies.AnyWithin(boat.X, boat.Y, combatRange * 1.2f))
             SwitchMode("follow");
         if (active != edgeCamera) combatCam = false;
-        // Esc closes the bank window first, then the market panel under it.
-        if (escaped) { if (bankPopup.IsOpen) bankPopup.Hide(); else cityPopup.Hide(); }
+        // Esc closes the window on top first, then the market panel under it.
+        if (escaped)
+        {
+            if (bankPopup.IsOpen) bankPopup.Hide();
+            else if (monasteryPopup.IsOpen) monasteryPopup.Hide();
+            else cityPopup.Hide();
+        }
 
         // Auto-docking: running the hull into a city opens its market, the
         // same as clicking its label (rules in trading/Docking.cs).
@@ -576,6 +636,7 @@ public partial class Main : Node3D
 
         cityPopup.Update(view);
         bankPopup.Update(view);
+        monasteryPopup.Update(view);
 
         // Bank loans turn over at midnight like story events: warnings as the
         // due date nears, honour lost while one runs late (src/banking). VIP
@@ -585,13 +646,22 @@ public partial class Main : Node3D
         var news = loans.Update(today, lost => player.Honour -= lost);
         if (midnight.Turned(today))
             news.AddRange(Vips.Update(player.VipPassengers, today, Config.Vips, lost => player.Honour -= lost));
+        // Monasteries run on the same beat: monks out of time walk away, and
+        // the houses' errands come and go (src/religion).
+        news.AddRange(religion.Update(today, lost => player.Piety -= lost));
         if (news.Count > 0)
         {
             eventLog.Add(news);
             cityLabels.RefreshIntel();
             if (cityPopup.IsOpen) cityPopup.Refresh();
             if (bankPopup.IsOpen) bankPopup.Refresh();
+            if (monasteryPopup.IsOpen) monasteryPopup.Refresh();
         }
+        // Taking a passenger or an errand aboard, or landing one, changes the
+        // drop-off tags under the map labels; both happen inside an open
+        // panel, so watch the roster rather than every caller telling us.
+        int roster = player.VipPassengers.Count * 1000003 + religion.Version;
+        if (roster != lastRoster) { lastRoster = roster; cityLabels.RefreshIntel(); }
 
         // Crew upkeep runs on game time. An open market panel has to be told,
         // or it shows a stale hold and purse.

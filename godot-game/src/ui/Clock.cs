@@ -5,17 +5,20 @@ using Godot;
 // money when in debt, honour when negative.
 public partial class Clock : PanelContainer
 {
-    private Label stamp = null!, rice = null!, money = null!, honour = null!, crew = null!, cargo = null!, vips = null!, debts = null!;
+    private Label stamp = null!, rice = null!, money = null!, honour = null!, piety = null!, crew = null!, cargo = null!,
+        vips = null!, monks = null!, debts = null!;
     private GameTime time = null!;
     private Rations rations = null!;
     private Player player = null!;
     private Loans loans = null!;
+    private Monasteries religion = null!;
     private int lastLoanVersion = -1, lastLoanDay = int.MinValue;
-    private bool? lastNight, lastLowRice, lastInDebt, lastDishonoured;
+    private bool? lastNight, lastLowRice, lastInDebt, lastDishonoured, lastImpious;
 
-    public void Init(GameTime time, Rations rations, Player player, Loans loans)
+    public void Init(GameTime time, Rations rations, Player player, Loans loans, Monasteries religion)
     {
         this.time = time; this.rations = rations; this.player = player; this.loans = loans;
+        this.religion = religion;
         MouseFilter = MouseFilterEnum.Ignore;
         AddThemeStyleboxOverride("panel", Fonts.Panel(new Color(0, 0, 0, 0.55f), 3, 10, 6));
         var box = new VBoxContainer { MouseFilter = MouseFilterEnum.Ignore };
@@ -25,6 +28,7 @@ public partial class Clock : PanelContainer
         rice = Fonts.MakeLabel("", Fonts.MonoBold, px - 4, Config.DayColor);
         money = Fonts.MakeLabel("", Fonts.MonoBold, px - 4, Config.DayColor);
         honour = Fonts.MakeLabel("", Fonts.MonoBold, px - 4, Config.DayColor);
+        piety = Fonts.MakeLabel("", Fonts.MonoBold, px - 4, Config.DayColor);
         crew = Fonts.MakeLabel("", Fonts.MonoBold, px - 4, Config.DayColor);
         cargo = Fonts.MakeLabel("", Fonts.MonoBold, px - 4, Config.DayColor);
         // One line per VIP aboard: where they are bound, what landing them
@@ -35,7 +39,11 @@ public partial class Clock : PanelContainer
         // (interest included), where, and how long is left.
         debts = Fonts.MakeLabel("", Fonts.MonoBold, px - 4, Config.BankDebtColor);
         debts.Visible = false;
-        foreach (var l in new[] { stamp, rice, money, honour, crew, cargo, vips, debts }) box.AddChild(l);
+        // One line per monk aboard, under the VIPs: where he must be landed
+        // and how long is left.
+        monks = Fonts.MakeLabel("", Fonts.MonoBold, px - 4, Config.PietyColor);
+        monks.Visible = false;
+        foreach (var l in new[] { stamp, rice, money, honour, piety, crew, cargo, vips, monks, debts }) box.AddChild(l);
         AddChild(box);
         Position = new Vector2(8, 8);
     }
@@ -47,11 +55,13 @@ public partial class Clock : PanelContainer
         bool lowRice = units < Config.RationsLowUnits;
         bool inDebt = player.Money < 0;
         bool dishonoured = player.Honour < 0;
+        bool impious = player.Piety < 0;
 
         SetText(stamp, time.Format());
         SetText(rice, $"rice  {units}");
         SetText(money, $"money {player.Money}");
         SetText(honour, $"honour {player.Honour}");
+        SetText(piety, $"piety {player.Piety}");
         SetText(crew, $"crew  {player.CrewCount}");
         SetText(cargo, $"cargo {player.TotalUnits()}/{player.CargoCapacity()}");
         var lines = "";
@@ -64,6 +74,13 @@ public partial class Clock : PanelContainer
         }
         SetText(vips, lines);
         vips.Visible = lines != "";
+
+        var monkLines = "";
+        foreach (var monk in religion.Aboard)
+            monkLines += (monkLines == "" ? "" : "\n") +
+                $"MONK delivery - {monk.Destination.Name} (due in {monk.DaysLeft(Days.Of(time.TotalMinutes))}d)";
+        SetText(monks, monkLines);
+        monks.Visible = monkLines != "";
 
         // Loans only change at a repayment, a new loan or a midnight, so the
         // lines are rebuilt on those, not every frame.
@@ -86,7 +103,8 @@ public partial class Clock : PanelContainer
             Fonts.SetColor(debts, overdue ? Config.LowColor : Config.BankDebtColor);
         }
 
-        if (night != lastNight || lowRice != lastLowRice || inDebt != lastInDebt || dishonoured != lastDishonoured)
+        if (night != lastNight || lowRice != lastLowRice || inDebt != lastInDebt
+            || dishonoured != lastDishonoured || impious != lastImpious)
         {
             var normal = night ? Config.NightColor : Config.DayColor;
             Fonts.SetColor(stamp, normal);
@@ -96,7 +114,9 @@ public partial class Clock : PanelContainer
             Fonts.SetColor(rice, lowRice ? Config.LowColor : normal);
             Fonts.SetColor(money, inDebt ? Config.LowColor : normal);
             Fonts.SetColor(honour, dishonoured ? Config.LowColor : normal);
-            lastNight = night; lastLowRice = lowRice; lastInDebt = inDebt; lastDishonoured = dishonoured;
+            Fonts.SetColor(piety, impious ? Config.LowColor : normal);
+            lastNight = night; lastLowRice = lowRice; lastInDebt = inDebt;
+            lastDishonoured = dishonoured; lastImpious = impious;
         }
     }
 

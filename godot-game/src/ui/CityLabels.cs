@@ -24,10 +24,14 @@ public partial class CityLabels : Control
     private StoryEvents storyEvents = null!;
     private GameTime time = null!;
     private Loans loans = null!;
+    private Monasteries religion = null!;
+    private Player player = null!;
 
-    public void Init(List<City> cities, StoryEvents storyEvents, GameTime time, Loans loans)
+    public void Init(List<City> cities, StoryEvents storyEvents, GameTime time, Loans loans,
+        Monasteries religion, Player player)
     {
         this.storyEvents = storyEvents; this.time = time; this.loans = loans;
+        this.religion = religion; this.player = player;
         MouseFilter = MouseFilterEnum.Ignore;
         SetAnchorsPreset(LayoutPreset.FullRect);
         foreach (var city in cities)
@@ -108,11 +112,28 @@ public partial class CityLabels : Control
                 lines.Add($"[center][color=#{debtColor.ToHtml(false)}]◆ OWE {Loans.ShortAmount(loan.Owed)} " +
                           (left >= 0 ? $"({left}d)" : $"({-left}d LATE)") + "[/color][/center]");
             }
+            // Passengers aboard bound for this city, so sailing past is a
+            // reminder to put in and land them.
+            int today = Days.Of(time.TotalMinutes);
+            int vips = 0;
+            foreach (var vip in player.VipPassengers) if (vip.Destination == e.City) vips++;
+            if (vips > 0)
+                lines.Add(Tag("#7fe3ff", vips == 1 ? "▲ VIP TO LAND HERE" : $"▲ {vips} VIPs TO LAND HERE"));
+            if (religion.MonkFor(e.City) is MonkMission monk)
+                lines.Add(Tag($"#{Config.PietyColor.ToHtml(false)}",
+                    $"✦ MONK TO LAND HERE ({monk.DaysLeft(today)}d)"));
+            // A monastery is a landmark: it shows even on a city the player
+            // has never called at, so it can be spotted from the deck.
+            if (religion.HasMonastery(e.City))
+                lines.Add(Tag($"#{Config.PietyColor.ToHtml(false)}", "✦ MONASTERY"));
             e.HasIntel = lines.Count > 0;
             e.Intel.Text = string.Join("\n", lines);
             if (!e.HasIntel) e.Intel.Visible = false;
         }
     }
+
+    private static string Tag(string colorHtml, string text) =>
+        $"[center][color={colorHtml}]{text}[/color][/center]";
 
     private void SetHovered(Entry e, bool hovered)
     {

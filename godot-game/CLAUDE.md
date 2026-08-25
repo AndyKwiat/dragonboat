@@ -15,7 +15,8 @@ rules change.
   other test hooks (`--city`, `--start=x,y,deg`, `--hold=W`,
   `--press=Key@frame`, `--seed=N` for a reproducible world, `--set`,
   `--mode`, `--center`, `--zoom`, `--dump-tweaks`, `--honour`, `--loan`,
-  `--bank`, `--vip`, `--deliver`; see `ParseArgs` in `src/Main.cs`). The run's final printed line (boat position/heading/speed,
+  `--bank`, `--vip`, `--deliver`, `--monastery`, `--monk`, `--alms`; see
+  `ParseArgs` in `src/Main.cs`). The run's final printed line (boat position/heading/speed,
   shots/hits) is useful for asserting movement without pixels.
 - The window is hidpi: screenshots come out at 2× the logical size. A plain
   `./run.sh` fills the screen; `--screenshot`/`--size` keep the small
@@ -39,7 +40,8 @@ rules change.
   maps are `.terrain` files painted in `../terrain-gen`. One map cell = one
   world unit.
 - `dotnet test tests` runs the xunit suite over the Godot-free core
-  (config, terrain parsing, city placement, docking, bank loans); it
+  (config, terrain parsing, city placement, docking, bank loans, VIP and
+  monk missions); it
   compiles those files straight from `src/`, so keep them free of Godot
   types — and add a new rules file to `tests/Tests.csproj` when you write
   one.

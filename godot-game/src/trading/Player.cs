@@ -10,6 +10,9 @@ public sealed class Player
     // Goodwill earned by giving goods away (GiveAway). Starts at 0 and,
     // unlike money, may go negative.
     public int Honour;
+    // Standing with the monasteries: alms and monk errands earn it, a monk
+    // left too long loses it (src/religion). Starts at 0, may go negative.
+    public int Piety;
     public int CrewCount;
     public readonly Dictionary<string, int> Inventory = new();
     // VIP passengers aboard, each bound for a city and stamped with the day
