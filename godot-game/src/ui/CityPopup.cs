@@ -11,10 +11,16 @@ public partial class CityPopup : PanelContainer
     private Player player = null!;
     private GameTime time = null!;
     private StoryEvents storyEvents = null!;
+    private Loans loans = null!;
+    // Set by Main: opens the bank window over this panel (medium/large cities).
+    public Action<City>? OpenBank;
     private ScrollContainer scroll = null!;
     private VBoxContainer content = null!;
     private Label title = null!, facts = null!, crewCount = null!, purse = null!;
     private Control crewHeading = null!, crewSection = null!;
+    private Control bankHeading = null!, bankSection = null!;
+    private Label bankStatus = null!;
+    private Button bankButton = null!;
     private Control rumoursHeading = null!;
     private VBoxContainer rumours = null!;
     private VBoxContainer vipSection = null!;
@@ -28,9 +34,9 @@ public partial class CityPopup : PanelContainer
 
     public bool IsOpen => Visible;
 
-    public void Init(Player player, GameTime time, StoryEvents storyEvents)
+    public void Init(Player player, GameTime time, StoryEvents storyEvents, Loans loans)
     {
-        this.player = player; this.time = time; this.storyEvents = storyEvents;
+        this.player = player; this.time = time; this.storyEvents = storyEvents; this.loans = loans;
         int px = Config.PopupFontPx;
         Visible = false;
         MouseFilter = MouseFilterEnum.Stop;
@@ -92,6 +98,19 @@ public partial class CityPopup : PanelContainer
         crewSection.AddChild(crewActions);
         content.AddChild(crewSection);
 
+        // Bank: medium and large cities only (hidden everywhere else). The
+        // window itself is a second popup over this one — see ui/BankPopup.cs.
+        bankHeading = Heading("Bank");
+        content.AddChild(bankHeading);
+        bankSection = new HBoxContainer();
+        ((HBoxContainer)bankSection).AddThemeConstantOverride("separation", 14);
+        bankStatus = Fonts.MakeLabel("", Fonts.Mono, px, new Color("#dddddd"));
+        bankStatus.SizeFlagsHorizontal = SizeFlags.ExpandFill;
+        bankButton = Fonts.MakeButton("Bank", () => { if (current != null) OpenBank?.Invoke(current); }, 74);
+        bankSection.AddChild(bankStatus);
+        bankSection.AddChild(bankButton);
+        content.AddChild(bankSection);
+
         content.AddChild(Heading("Market"));
         market = new VBoxContainer();
         market.AddThemeConstantOverride("separation", 0);
@@ -104,51 +123,18 @@ public partial class CityPopup : PanelContainer
         content.AddChild(purse);
     }
 
-    private static Control Spacer(float h) => new Control { CustomMinimumSize = new Vector2(0, h), MouseFilter = MouseFilterEnum.Ignore };
-    private static Control Rule(Color c) => new ColorRect { Color = c, CustomMinimumSize = new Vector2(0, 1), MouseFilter = MouseFilterEnum.Ignore };
+    // The shared panel furniture lives in Fonts; a button here also refreshes
+    // the panel after it has done its work.
+    private static Control Spacer(float h) => Fonts.Spacer(h);
+    private static Control Rule(Color c) => Fonts.Rule(c);
+    private static Control Heading(string text) => Fonts.Heading(text);
+    private static void SetEnabled(Button b, bool enabled) => Fonts.SetEnabled(b, enabled);
 
-    private Control Heading(string text)
+    private Button MakeButton(string label, Action onClick) => Fonts.MakeButton(label, () =>
     {
-        var box = new VBoxContainer();
-        box.AddThemeConstantOverride("separation", 0);
-        box.AddChild(Spacer(18));
-        box.AddChild(Fonts.MakeLabel(text, Fonts.UiSemiBold, Config.PopupFontPx + 4, Colors.White));
-        box.AddChild(Spacer(6));
-        box.AddChild(Rule(new Color("#444444")));
-        box.AddChild(Spacer(8));
-        return box;
-    }
-
-    private Button MakeButton(string label, Action onClick)
-    {
-        var b = new Button { Text = label, CustomMinimumSize = new Vector2(58, 0) };
-        var normal = Fonts.Panel(new Color("#23262c"), 4, 10, 4, new Color("#666666"));
-        var hover = Fonts.Panel(new Color("#2b2f36"), 4, 10, 4, new Color("#777777"));
-        b.AddThemeStyleboxOverride("normal", normal);
-        b.AddThemeStyleboxOverride("hover", hover);
-        b.AddThemeStyleboxOverride("pressed", normal);
-        b.AddThemeStyleboxOverride("disabled", normal);
-        b.AddThemeStyleboxOverride("focus", new StyleBoxEmpty());
-        b.AddThemeFontOverride("font", Fonts.Ui);
-        b.AddThemeFontSizeOverride("font_size", Config.PopupFontPx - 2);
-        b.AddThemeColorOverride("font_color", new Color("#eeeeee"));
-        b.AddThemeColorOverride("font_hover_color", Colors.White);
-        b.AddThemeColorOverride("font_pressed_color", Colors.White);
-        b.AddThemeColorOverride("font_disabled_color", new Color("#eeeeee"));
-        b.Pressed += () =>
-        {
-            onClick();
-            Refresh();
-        };
-        return b;
-    }
-
-    private static void SetEnabled(Button b, bool enabled)
-    {
-        b.Disabled = !enabled;
-        b.Modulate = new Color(1, 1, 1, enabled ? 1f : 0.35f);
-        b.MouseDefaultCursorShape = enabled ? CursorShape.PointingHand : CursorShape.Arrow;
-    }
+        onClick();
+        Refresh();
+    });
 
     public void Refresh()
     {
@@ -163,8 +149,31 @@ public partial class CityPopup : PanelContainer
         SetEnabled(removeCrew, player.CanChangeCrew(-1));
         removeCrew.TooltipText = player.CrewCount > c.Min && !player.CanChangeCrew(-1)
             ? "Not enough hold space without them — sell some cargo first" : "";
+        RefreshBank();
         purse.Text = $"money {player.Money}    honour {player.Honour}    cargo {player.TotalUnits()}/{player.CargoCapacity()} units";
         Fonts.SetColor(purse, player.Money < 0 ? new Color("#ff8b7a") : new Color("#ffd166"));
+    }
+
+    // The bank row: what this city's bank is owed, or what it would lend.
+    public void RefreshBank()
+    {
+        if (current == null || !bankSection.Visible) return;
+        var loan = loans.LoanAt(current);
+        int today = Loans.DayOf(time.TotalMinutes);
+        if (loan != null)
+        {
+            int left = loan.DaysLeft(today);
+            bankStatus.Text = left >= 0
+                ? $"you owe {loan.Owed}, due in {left} day{(left == 1 ? "" : "s")}"
+                : $"you owe {loan.Owed} — {-left} day{(left == -1 ? "" : "s")} OVERDUE";
+            Fonts.SetColor(bankStatus, left >= 0 ? Config.BankDebtColor : Config.LowColor);
+        }
+        else
+        {
+            int limit = loans.LimitFor(current, player.Honour);
+            bankStatus.Text = limit > 0 ? $"will lend up to {limit} against your honour" : "will lend you nothing";
+            Fonts.SetColor(bankStatus, limit > 0 ? new Color("#dddddd") : new Color("#888888"));
+        }
     }
 
     // The nearest other-city events, as one line each; hearing a rumour is
@@ -376,10 +385,14 @@ public partial class CityPopup : PanelContainer
         storyEvents.DiscoverAt(city);
         title.Text = city.Name;
         facts.Text = $"{"coords",-8}{Mathf.RoundToInt(city.X)}, {Mathf.RoundToInt(city.Y)}\n{"size",-8}{city.Size}";
-        // Only the large cities have a hiring hall.
+        // Only the large cities have a hiring hall; only medium and large
+        // ones have a bank.
         bool hiring = city.Size == "large";
         crewHeading.Visible = hiring;
         crewSection.Visible = hiring;
+        bool banking = Loans.HasBank(city);
+        bankHeading.Visible = banking;
+        bankSection.Visible = banking;
         // Arriving is what completes a VIP delivery: passengers bound here
         // step ashore, and the popup opens on the reward note.
         int delivered = player.DeliverVips(city);

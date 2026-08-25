@@ -15,7 +15,8 @@ the rules.
 | [docs/boat.md](docs/boat.md) | the player boat: handling, lean/bob, land collision, the 3D model |
 | [docs/combat.md](docs/combat.md) | cannons, cannonballs, impact effects, targets (enemy-ready), aiming |
 | [docs/trading.md](docs/trading.md) | cities, markets, crew, rations/wages, the game clock, the city popup |
-| [docs/ui.md](docs/ui.md) | fonts, HUD, clock, minimap, city labels, the tweak panel |
+| [docs/banking.md](docs/banking.md) | city banks: borrowing against honour, interest, due dates, on-time rewards and late penalties |
+| [docs/ui.md](docs/ui.md) | fonts, HUD, clock, minimap, city labels, the event log, the tweak panel |
 
 ## Running
 
@@ -47,7 +48,7 @@ opens the project picker and hangs a scripted run.
 | C | cycle camera mode (follow / edge / free) |
 | V | cycle camera rig (isometric / perspective) |
 | T | toggle the live tweak panel (sliders for every `[Tweak]` value) |
-| Esc | close the city popup |
+| Esc | close the bank window, then the city popup |
 
 ### Live tuning
 
@@ -67,8 +68,8 @@ adding an attribute; keep names unique across config classes.
 
 User args after `--` drive a run without a human, which is how changes are
 verified (`dotnet test tests` covers the Godot-free core — the config,
-the .terrain parser and city placement; everything else is checked by
-scripted runs — look at the screenshots, and at the line
+the .terrain parser, city placement, docking and the loan rules;
+everything else is checked by scripted runs — look at the screenshots, and at the line
 the run prints: boat position/heading/speed, shots and hits):
 
 ```bash
@@ -81,6 +82,8 @@ $G --path . -- --screenshot=screenshots/drive.png --frames=240 --hold=W,D
 $G --path . -- --screenshot=screenshots/shore.png --frames=900 --hold=W          # sail out of the start harbour
 $G --path . -- --screenshot=screenshots/shot.png --frames=435 --zoom=4 --fire=110,-10@100 --set=Gravity=60
 $G --path . -- --screenshot=screenshots/dock.png --frames=400 --seed=7 --start=4415,5495,180 --hold=W --press=Escape@150   # sail into a city
+$G --path . -- --screenshot=screenshots/bank.png --seed=7 --honour=800 --bank            # a city's bank window
+$G --path . -- --screenshot=screenshots/late.png --seed=7 --honour=800 --loan=1000@4     # a loan four days overdue
 ```
 
 | flag | effect |
@@ -98,6 +101,9 @@ $G --path . -- --screenshot=screenshots/dock.png --frames=400 --seed=7 --start=4
 | `--start=x,y[,deg]` | put the boat here, heading in degrees (0 = east, 90 = south) |
 | `--fire=dx,dy@f1,f2` | fire at the ground point dx,dy from the boat on those frames (default frame 10); only cannons that bear fire |
 | `--set=Name=V,Name=V` | override `[Tweak]` values by field name |
+| `--honour=N` | set the player's honour (bank credit is a multiple of it) |
+| `--loan=N[@D]` | borrow N from that city's bank at launch, its due date moved D days earlier (`@4` = four days late, `@-2` = due in two days) |
+| `--bank` | open that city's bank window over its market |
 | `--tweaks` | start with the tweak panel open |
 | `--size=WxH` | window size |
 
@@ -139,15 +145,18 @@ src/combat/            CombatConfig, CombatSystem, Cannon, CannonBattery,
 src/enemies/           EnemyShips — the stationary hostile fleet (docs/enemies.md)
 src/trading/           Player, Crew, Upkeep, Market, StoryEvents — pure rules
                                                                           → docs/trading.md
-src/ui/                Fonts, Hud, Clock, Minimap, CityLabels, CityPopup, TweakPanel
+src/banking/           Loans — city banks, interest, due dates, late
+                       penalties; pure rules                              → docs/banking.md
+src/ui/                Fonts, Hud, Clock, Minimap, CityLabels, CityPopup,
+                       BankPopup, EventLog, TweakPanel
                        — Godot Controls on a CanvasLayer                  → docs/ui.md
 ```
 
 Per-frame order in `Main._Process`: key toggles (C/V/T) → boat physics in
 game time (sub-stepped; skipped in free mode) → camera controller → clamp →
 rig apply → terrain chunk streaming → city labels (hover/click) → combat
-(aim, fire, projectiles, effects) → popup → upkeep → clock/minimap/HUD →
-screenshot hook.
+(aim, fire, projectiles, effects) → popups → upkeep → loans (the midnight
+pass) → clock/event log/minimap/HUD → screenshot hook.
 
 ## Conventions
 

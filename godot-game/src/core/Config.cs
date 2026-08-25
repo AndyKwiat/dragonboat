@@ -128,6 +128,32 @@ public static class Config
     public static readonly Color MarketCheapColor = new Color("#6bd97a");
     public static readonly Color MarketNormalColor = new Color("#ffffff");
 
+    // Banking (medium and large cities only; rules in src/banking/Loans.cs).
+    // Credit is honour x HonourMultiplier, capped by the city's ceiling;
+    // a loan is repaid in full plus the interest, TermDays after it was taken.
+    public static readonly LoanTerms Bank = new()
+    {
+        HonourMultiplier = 10,
+        MaxMedium = 5000,
+        MaxLarge = 50000,
+        Interest = 0.2,
+        TermDays = 30,
+        LatePenaltyDivisor = 10,     // honour lost per penalty = principal / 10
+        LatePenaltyEveryDays = 5,    // one penalty a day late, then every 5 days
+        OnTimeHonourDivisor = 50,    // honour earned for paying up on time = principal / 50
+        WarnDays = 3,
+        Step = 100,                  // borrowing is rounded down to whole hundreds
+    };
+    // The debt tag under a city's name label, and the loan lines in the clock.
+    public static readonly Color BankDebtColor = new Color("#ff9f43");
+    public const int BankPopupWidthPx = 560;
+
+    // Event log (bottom left): world news — late-payment honour losses, loans
+    // coming due. Lines fade out after this many real seconds.
+    public const float EventLogSeconds = 14f;
+    public const int EventLogMaxLines = 6;
+    public const int EventLogFontPx = 15;
+
     // Player.
     public const int StartingMoney = 500;
     public static readonly Dictionary<string, int> StartingInventory = new() { ["RICE"] = 20 };

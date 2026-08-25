@@ -14,8 +14,8 @@ rules change.
   `./run.sh -- --screenshot=x.png --frames=120 --size=2560x1600` plus the
   other test hooks (`--city`, `--start=x,y,deg`, `--hold=W`,
   `--press=Key@frame`, `--seed=N` for a reproducible world, `--set`,
-  `--mode`, `--center`, `--zoom`, `--dump-tweaks`; see `ParseArgs` in
-  `src/Main.cs`). The run's final printed line (boat position/heading/speed,
+  `--mode`, `--center`, `--zoom`, `--dump-tweaks`, `--honour`, `--loan`,
+  `--bank`; see `ParseArgs` in `src/Main.cs`). The run's final printed line (boat position/heading/speed,
   shots/hits) is useful for asserting movement without pixels.
 - The window is hidpi: screenshots come out at 2× the logical size. A plain
   `./run.sh` fills the screen; `--screenshot`/`--size` keep the small
@@ -28,7 +28,8 @@ rules change.
   are the source of truth; the in-game dump button writes `tweaks.dump`
   (gitignored), which is re-applied at every launch — when the user asks to
   "apply my tweaks", fold that file's lines into the config defaults.
-- Keep `src/trading/*` and the rules files free of Godot types.
+- Keep `src/trading/*`, `src/banking/*` and the other rules files free of
+  Godot types.
 - A new gameplay system gets its own `src/<name>/` folder and
   `docs/<name>.md`, wired up only in `Main.cs`; trading and combat never
   reach into each other.
@@ -38,6 +39,8 @@ rules change.
   maps are `.terrain` files painted in `../terrain-gen`. One map cell = one
   world unit.
 - `dotnet test tests` runs the xunit suite over the Godot-free core
-  (config, terrain parsing, city placement); it compiles those files
-  straight from `src/`, so keep them free of Godot types.
+  (config, terrain parsing, city placement, docking, bank loans); it
+  compiles those files straight from `src/`, so keep them free of Godot
+  types — and add a new rules file to `tests/Tests.csproj` when you write
+  one.
 - Commit messages start with `godot-game: `.

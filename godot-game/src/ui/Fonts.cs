@@ -45,4 +45,53 @@ public static class Fonts
         if (border is Color b) { sb.BorderColor = b; sb.SetBorderWidthAll(1); }
         return sb;
     }
+
+    // Panel furniture shared by the popups (city market, bank).
+    public static Control Spacer(float h) =>
+        new Control { CustomMinimumSize = new Vector2(0, h), MouseFilter = Control.MouseFilterEnum.Ignore };
+
+    public static Control Rule(Color c) =>
+        new ColorRect { Color = c, CustomMinimumSize = new Vector2(0, 1), MouseFilter = Control.MouseFilterEnum.Ignore };
+
+    // A section heading: some air, the title, a hairline.
+    public static Control Heading(string text)
+    {
+        var box = new VBoxContainer();
+        box.AddThemeConstantOverride("separation", 0);
+        box.AddChild(Spacer(18));
+        box.AddChild(MakeLabel(text, UiSemiBold, Config.PopupFontPx + 4, Colors.White));
+        box.AddChild(Spacer(6));
+        box.AddChild(Rule(new Color("#444444")));
+        box.AddChild(Spacer(8));
+        return box;
+    }
+
+    // The popups' flat dark button.
+    public static Button MakeButton(string label, System.Action onClick, float minWidth = 58)
+    {
+        var b = new Button { Text = label, CustomMinimumSize = new Vector2(minWidth, 0) };
+        var normal = Panel(new Color("#23262c"), 4, 10, 4, new Color("#666666"));
+        var hover = Panel(new Color("#2b2f36"), 4, 10, 4, new Color("#777777"));
+        b.AddThemeStyleboxOverride("normal", normal);
+        b.AddThemeStyleboxOverride("hover", hover);
+        b.AddThemeStyleboxOverride("pressed", normal);
+        b.AddThemeStyleboxOverride("disabled", normal);
+        b.AddThemeStyleboxOverride("focus", new StyleBoxEmpty());
+        b.AddThemeFontOverride("font", Ui);
+        b.AddThemeFontSizeOverride("font_size", Config.PopupFontPx - 2);
+        b.AddThemeColorOverride("font_color", new Color("#eeeeee"));
+        b.AddThemeColorOverride("font_hover_color", Colors.White);
+        b.AddThemeColorOverride("font_pressed_color", Colors.White);
+        b.AddThemeColorOverride("font_disabled_color", new Color("#eeeeee"));
+        b.Pressed += onClick;
+        return b;
+    }
+
+    // A disabled button is dimmed and stops offering the hand cursor.
+    public static void SetEnabled(Button b, bool enabled)
+    {
+        b.Disabled = !enabled;
+        b.Modulate = new Color(1, 1, 1, enabled ? 1f : 0.35f);
+        b.MouseDefaultCursorShape = enabled ? Control.CursorShape.PointingHand : Control.CursorShape.Arrow;
+    }
 }

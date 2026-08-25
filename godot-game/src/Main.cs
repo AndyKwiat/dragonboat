@@ -36,12 +36,15 @@ public partial class Main : Node3D
     private Rations rations = null!;
     private Wages wages = null!;
     private StoryEvents storyEvents = null!;
+    private Loans loans = null!;
     private Hud hud = null!;
     private Clock clock = null!;
     private Minimap minimap = null!;
     private CityLabels cityLabels = null!;
     private VectorOverlay vectors = null!;
     private CityPopup cityPopup = null!;
+    private BankPopup bankPopup = null!;
+    private EventLog eventLog = null!;
     private TweakPanel tweakPanel = null!;
 
     private Docking docking = null!;   // auto-docking: hull against a city opens its market
@@ -182,13 +185,14 @@ public partial class Main : Node3D
         rations = new Rations(player, time);
         wages = new Wages(player, time);
         storyEvents = new StoryEvents(time);
+        loans = new Loans(Config.Bank);
         docking = new Docking(Config.CityDockCooldownSec);
 
         // UI overlays, in draw order (labels under the panels, popup on top).
         var ui = new CanvasLayer();
         AddChild(ui);
         cityLabels = new CityLabels();
-        cityLabels.Init(GameData.Cities, storyEvents, time);
+        cityLabels.Init(GameData.Cities, storyEvents, time, loans);
         ui.AddChild(cityLabels);
         vectors = new VectorOverlay();
         vectors.Init(boat);
@@ -197,14 +201,25 @@ public partial class Main : Node3D
         hud.Init(map.WorldW, map.WorldH);
         ui.AddChild(hud);
         clock = new Clock();
-        clock.Init(time, rations, player);
+        clock.Init(time, rations, player, loans);
         ui.AddChild(clock);
         minimap = new Minimap();
         minimap.Init(map, terrain.Texture);
         ui.AddChild(minimap);
         cityPopup = new CityPopup();
-        cityPopup.Init(player, time, storyEvents);
+        cityPopup.Init(player, time, storyEvents, loans);
         ui.AddChild(cityPopup);
+        // The bank window sits on top of the market panel it was opened from;
+        // the event log is the world talking back while you sail (banking.md).
+        bankPopup = new BankPopup();
+        bankPopup.Init(player, time, loans);
+        bankPopup.Announce = text => eventLog.Add(text);
+        bankPopup.Changed = () => { cityPopup.Refresh(); cityLabels.RefreshIntel(); };
+        cityPopup.OpenBank = city => bankPopup.Show(city);
+        ui.AddChild(bankPopup);
+        eventLog = new EventLog();
+        eventLog.Init();
+        ui.AddChild(eventLog);
         tweakPanel = new TweakPanel();
         tweakPanel.Init(topPx: 130);   // under the clock
         ui.AddChild(tweakPanel);
@@ -256,6 +271,10 @@ public partial class Main : Node3D
     // --mode=follow|edge|free  starting camera mode
     // --center=x,y         focus point (free mode)
     // --city[=Name]        open the market of the start city (or a named one)
+    // --bank               open that city's bank window over its market
+    // --honour=N           set the player's honour (bank credit is 10x it)
+    // --loan=N[@late]      borrow N from that city's bank at startup, its due
+    //                      date already `late` days in the past
     // --size=WxH           window size
     // --hold=W,D           keys held down for the whole run (physical key names)
     // --press=Key@frame,... one-shot key presses (Escape closes the market)
@@ -313,6 +332,39 @@ public partial class Main : Node3D
             var city = cityName == "true" ? startCity : GameData.Cities.Find(c => c.Name == cityName);
             if (city != null) { cityPopup.Show(city); cityLabels.RefreshIntel(); }
             else GD.PushWarning($"--city: no city named '{cityName}' this run");
+        }
+        // Banking test hooks: set honour (credit is a multiple of it), take
+        // a loan out, and/or open the bank window over the market.
+        if (args.TryGetValue("honour", out var honour)) player.Honour = int.Parse(honour);
+        var bankCity = args.TryGetValue("city", out var named) && named != "true"
+            ? GameData.Cities.Find(c => c.Name == named)
+            : startCity != null && Loans.HasBank(startCity) ? startCity : GameData.Cities.Find(Loans.HasBank);
+        if (args.TryGetValue("loan", out var loanArg) && bankCity != null)
+        {
+            var parts = loanArg.Split('@');
+            int today = Loans.DayOf(time.TotalMinutes);
+            var loan = loans.Borrow(bankCity, int.Parse(parts[0]), player.Honour, today);
+            if (loan == null) GD.PushWarning($"--loan: {bankCity.Name} would lend nothing (honour {player.Honour})");
+            else
+            {
+                player.Money += loan.Principal;
+                // `@late`: backdate the due date so the penalties can be seen
+                // without sailing a month for them.
+                if (parts.Length > 1)
+                {
+                    loan.DueDay = today - int.Parse(parts[1]);
+                    // Anchor the loan bookkeeping a day back, so the first
+                    // frame runs the midnight pass and the penalties land.
+                    loans.Update(today - 1, lost => player.Honour -= lost);
+                }
+                cityLabels.RefreshIntel();
+            }
+        }
+        if (args.ContainsKey("bank") && bankCity != null)
+        {
+            cityPopup.Show(bankCity);
+            cityLabels.RefreshIntel();
+            bankPopup.Show(bankCity);
         }
         if (args.TryGetValue("press", out var press))
             foreach (var spec in press.Split(','))
@@ -389,7 +441,7 @@ public partial class Main : Node3D
         // While the city menu is open the world is paused for input: no
         // sailing, no camera movement or zoom, no firing. Latched before the
         // click is handled so the click that closes the menu is inert too.
-        bool menuOpen = cityPopup.IsOpen;
+        bool menuOpen = cityPopup.IsOpen || bankPopup.IsOpen;
 
         // Hold either Shift to fast-forward: one real second buys more game
         // seconds, so the boat covers more ground AND the clock moves on by
@@ -447,9 +499,12 @@ public partial class Main : Node3D
         Input.SetDefaultCursorShape(hoveredCity != null ? Input.CursorShape.PointingHand : Input.CursorShape.Arrow);
         if (clicked)
         {
+            // With the bank window up, a click off it closes only the bank —
+            // the market panel underneath stays open.
+            if (bankPopup.IsOpen) bankPopup.Hide();
             // Opening the popup discovers the city and its live events, so
             // the map labels may have new price intel to show.
-            if (hoveredCity != null) { cityPopup.Show(hoveredCity); cityLabels.RefreshIntel(); }
+            else if (hoveredCity != null) { cityPopup.Show(hoveredCity); cityLabels.RefreshIntel(); }
             else cityPopup.Hide();
         }
         // Combat runs on game time like the boat; a click is a shot at the
@@ -479,7 +534,8 @@ public partial class Main : Node3D
         else if (combatCam && active == edgeCamera && !enemies.AnyWithin(boat.X, boat.Y, combatRange * 1.2f))
             SwitchMode("follow");
         if (active != edgeCamera) combatCam = false;
-        if (escaped) cityPopup.Hide();
+        // Esc closes the bank window first, then the market panel under it.
+        if (escaped) { if (bankPopup.IsOpen) bankPopup.Hide(); else cityPopup.Hide(); }
 
         // Auto-docking: running the hull into a city opens its market, the
         // same as clicking its label (rules in trading/Docking.cs).
@@ -491,6 +547,18 @@ public partial class Main : Node3D
         }
 
         cityPopup.Update(view);
+        bankPopup.Update(view);
+
+        // Bank loans turn over at midnight like story events: warnings as the
+        // due date nears, honour lost while one runs late (src/banking).
+        var loanNews = loans.Update(Loans.DayOf(time.TotalMinutes), lost => player.Honour -= lost);
+        if (loanNews.Count > 0)
+        {
+            eventLog.Add(loanNews);
+            cityLabels.RefreshIntel();
+            if (cityPopup.IsOpen) cityPopup.Refresh();
+            if (bankPopup.IsOpen) bankPopup.Refresh();
+        }
 
         // Crew upkeep runs on game time. An open market panel has to be told,
         // or it shows a stale hold and purse.
@@ -501,6 +569,7 @@ public partial class Main : Node3D
         // days-left intel, so rebuild both.
         if (storyEvents.Update()) { cityPopup.Rebuild(); cityLabels.RefreshIntel(); }
         clock.Update();
+        eventLog.Update(dt, view);
         minimap.Update(state, view, rig);
         string guns = combat.PlayerGuns == null ? "" :
             $"guns {combat.PlayerGuns.LoadedCount}/{combat.PlayerGuns.Cannons.Count} loaded, shots {combat.Projectiles.Shots}, in air {combat.Projectiles.InFlight}";

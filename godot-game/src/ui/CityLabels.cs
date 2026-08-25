@@ -23,10 +23,11 @@ public partial class CityLabels : Control
     private readonly List<Entry> entries = new();
     private StoryEvents storyEvents = null!;
     private GameTime time = null!;
+    private Loans loans = null!;
 
-    public void Init(List<City> cities, StoryEvents storyEvents, GameTime time)
+    public void Init(List<City> cities, StoryEvents storyEvents, GameTime time, Loans loans)
     {
-        this.storyEvents = storyEvents; this.time = time;
+        this.storyEvents = storyEvents; this.time = time; this.loans = loans;
         MouseFilter = MouseFilterEnum.Ignore;
         SetAnchorsPreset(LayoutPreset.FullRect);
         foreach (var city in cities)
@@ -97,6 +98,15 @@ public partial class CityLabels : Control
                 bool dear = q.SellPrice > product.BasePrice;
                 var color = dear ? Config.MarketDearColor : Config.MarketCheapColor;
                 lines.Add($"[center][color=#{color.ToHtml(false)}]{product.Name} {q.SellPrice} {(dear ? "▲" : "▼")}{tail}[/color][/center]");
+            }
+            // Under the price intel: a debt tag, so you know from the deck
+            // that this city's bank is waiting for its money.
+            if (loans.LoanAt(e.City) is Loan loan)
+            {
+                int left = loan.DaysLeft(Loans.DayOf(time.TotalMinutes));
+                var debtColor = left >= 0 ? Config.BankDebtColor : Config.LowColor;
+                lines.Add($"[center][color=#{debtColor.ToHtml(false)}]◆ OWE {Loans.ShortAmount(loan.Owed)} " +
+                          (left >= 0 ? $"({left}d)" : $"({-left}d LATE)") + "[/color][/center]");
             }
             e.HasIntel = lines.Count > 0;
             e.Intel.Text = string.Join("\n", lines);

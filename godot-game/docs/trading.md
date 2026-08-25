@@ -9,7 +9,10 @@ the source of truth for these rules (it began as a port of a three.js
 prototype, since deleted). Keep the `src/trading/` files free of Godot
 types.
 Combat never touches any of this; the only shared objects are the `Boat`
-(its `MaxSpeedScale` comes from the crew) and the clock.
+(its `MaxSpeedScale` comes from the crew) and the clock. Banking
+(`src/banking/`, [banking.md](banking.md)) is its own system too — it only
+moves the player's money and honour — but its bank row and button sit in
+the city popup, and medium/large cities are the ones that have a bank.
 
 ## Data
 
@@ -125,7 +128,9 @@ run needs a name from *that* run's startup output.
   since the event began.
 - **Player** (`Player.cs`): purse (never below 0), honour (starts 0, may
   go negative; shown beside money in the clock overlay and the popup's
-  purse line), crew count, inventory.
+  purse line), crew count, inventory. Honour is also what a city's bank
+  lends against, what repaying one in time earns, and what a late loan
+  costs ([banking.md](banking.md)).
   `Buy` clamps to hold space AND the purse, `Sell`/`Consume` to what's
   held; `ChangeCrew` goes through `Crew.ChangeAllowed`. `Restage` moves a
   staged market position between unit counts, undoing the old leg at the
@@ -156,8 +161,9 @@ run needs a name from *that* run's startup output.
 ## UI
 
 Click a city's name (`ui/CityLabels.cs` does the hit-testing) to open
-`CityPopup`: facts, rumours, the hiring hall (large cities), then one row
-per product with a trade slider: centre = no deal, left sells a fraction
+`CityPopup`: facts, rumours, the hiring hall (large cities), the bank row
+(medium and large cities — its button opens the bank window,
+[banking.md](banking.md)), then one row per product with a trade slider: centre = no deal, left sells a fraction
 of the stock aboard (full left = all of it), right buys a fraction of the
 most that fits in the hold AND that the purse can pay for, given every
 other product's staged deal. Deals apply to the player as the knob moves

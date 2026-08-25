@@ -14,6 +14,7 @@
     <Compile Include="../src/core/City.cs" />
     <Compile Include="../src/world/CityPlacer.cs" />
     <Compile Include="../src/trading/Docking.cs" />
+    <Compile Include="../src/banking/Loans.cs" />
   </ItemGroup>
   <ItemGroup>
     <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.11.1" />

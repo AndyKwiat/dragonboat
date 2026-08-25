@@ -5,15 +5,17 @@ using Godot;
 // money when in debt, honour when negative.
 public partial class Clock : PanelContainer
 {
-    private Label stamp = null!, rice = null!, money = null!, honour = null!, crew = null!, cargo = null!, vips = null!;
+    private Label stamp = null!, rice = null!, money = null!, honour = null!, crew = null!, cargo = null!, vips = null!, debts = null!;
     private GameTime time = null!;
     private Rations rations = null!;
     private Player player = null!;
+    private Loans loans = null!;
+    private int lastLoanVersion = -1, lastLoanDay = int.MinValue;
     private bool? lastNight, lastLowRice, lastInDebt, lastDishonoured;
 
-    public void Init(GameTime time, Rations rations, Player player)
+    public void Init(GameTime time, Rations rations, Player player, Loans loans)
     {
-        this.time = time; this.rations = rations; this.player = player;
+        this.time = time; this.rations = rations; this.player = player; this.loans = loans;
         MouseFilter = MouseFilterEnum.Ignore;
         AddThemeStyleboxOverride("panel", Fonts.Panel(new Color(0, 0, 0, 0.55f), 3, 10, 6));
         var box = new VBoxContainer { MouseFilter = MouseFilterEnum.Ignore };
@@ -28,7 +30,11 @@ public partial class Clock : PanelContainer
         // One line per VIP aboard: "VIP delivery - <city>".
         vips = Fonts.MakeLabel("", Fonts.MonoBold, px - 4, new Color("#7fe3ff"));
         vips.Visible = false;
-        foreach (var l in new[] { stamp, rice, money, honour, crew, cargo, vips }) box.AddChild(l);
+        // One line per outstanding bank loan, under the VIPs: what is owed
+        // (interest included), where, and how long is left.
+        debts = Fonts.MakeLabel("", Fonts.MonoBold, px - 4, Config.BankDebtColor);
+        debts.Visible = false;
+        foreach (var l in new[] { stamp, rice, money, honour, crew, cargo, vips, debts }) box.AddChild(l);
         AddChild(box);
         Position = new Vector2(8, 8);
     }
@@ -52,6 +58,27 @@ public partial class Clock : PanelContainer
             lines += (lines == "" ? "" : "\n") + $"VIP delivery - {dest.Name}";
         SetText(vips, lines);
         vips.Visible = lines != "";
+
+        // Loans only change at a repayment, a new loan or a midnight, so the
+        // lines are rebuilt on those, not every frame.
+        int today = Loans.DayOf(time.TotalMinutes);
+        if (loans.Version != lastLoanVersion || today != lastLoanDay)
+        {
+            lastLoanVersion = loans.Version; lastLoanDay = today;
+            var debtLines = "";
+            bool overdue = false;
+            foreach (var loan in loans.All)
+            {
+                int left = loan.DaysLeft(today);
+                if (left < 0) overdue = true;
+                debtLines += (debtLines == "" ? "" : "\n") +
+                    $"BANK LOAN {Loans.ShortAmount(loan.Owed)} - {loan.City.Name.ToUpperInvariant()} " +
+                    (left >= 0 ? $"(due in {left}d)" : $"({-left}d OVERDUE)");
+            }
+            SetText(debts, debtLines);
+            debts.Visible = debtLines != "";
+            Fonts.SetColor(debts, overdue ? Config.LowColor : Config.BankDebtColor);
+        }
 
         if (night != lastNight || lowRice != lastLowRice || inDebt != lastInDebt || dishonoured != lastDishonoured)
         {
