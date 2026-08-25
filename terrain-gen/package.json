@@ -1,0 +1,19 @@
+{
+  "name": "terrain-gen",
+  "version": "0.1.0",
+  "type": "module",
+  "scripts": {
+    "dev": "bun index.html",
+    "test": "bun test",
+    "build": "bun build index.html --outdir dist"
+  },
+  "dependencies": {
+    "three": "^0.168.0"
+  },
+  "devDependencies": {
+    "@types/three": "^0.168.0",
+    "bun-types": "^1.4.0",
+    "playwright-core": "^1.62.1",
+    "typescript": "^5.5.0"
+  }
+}

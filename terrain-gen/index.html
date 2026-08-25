@@ -1,0 +1,42 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Terrain Editor</title>
+  <style>
+    html, body { margin: 0; height: 100%; overflow: hidden; background: #0d1620; color: #dfe8f2; font: 13px/1.4 system-ui, sans-serif; }
+    #layout { display: flex; height: 100vh; width: 100vw; }
+    #view3d { flex: 1 1 50%; position: relative; min-width: 0; }
+    #view3d canvas { display: block; }
+    #panel2d { flex: 1 1 50%; display: flex; flex-direction: column; min-width: 0; border-left: 1px solid #23313f; }
+    #toolbar { display: flex; flex-wrap: wrap; gap: 10px 16px; align-items: center; padding: 8px 10px; background: #141f2b; border-bottom: 1px solid #23313f; }
+    .tb-group { display: flex; gap: 6px; align-items: center; }
+    .tb-group label { display: flex; gap: 6px; align-items: center; color: #9fb3c8; }
+    .tb-group label span { min-width: 2.5em; color: #dfe8f2; }
+    .tb-btn { background: #1f2d3b; color: #dfe8f2; border: 1px solid #2f4152; border-radius: 6px; padding: 4px 10px; cursor: pointer; }
+    .tb-btn:hover { background: #29394a; }
+    .tb-btn.active { background: #3b82f6; border-color: #3b82f6; color: #fff; }
+    .tb-btn:disabled { opacity: 0.4; cursor: default; }
+    .swatch { width: 24px; height: 24px; border-radius: 6px; border: 2px solid transparent; cursor: pointer; }
+    .swatch.active { border-color: #fff; box-shadow: 0 0 0 2px #3b82f6; }
+    .tb-status { color: #8fa4b8; margin-left: auto; }
+    #map-wrap { flex: 1; position: relative; min-height: 0; }
+    #map2d { position: absolute; inset: 0; cursor: none; touch-action: none; }
+    #hint { position: absolute; left: 10px; bottom: 10px; color: #cfe0f0; font-size: 12px; background: rgba(10,18,28,0.7); padding: 6px 10px; border-radius: 6px; pointer-events: none; }
+  </style>
+</head>
+<body>
+  <div id="layout">
+    <div id="view3d"><div id="hint">3D view (view only): drag = rotate around viewport center, right-drag = pan, wheel = zoom</div></div>
+    <div id="panel2d">
+      <div id="toolbar"></div>
+      <div id="map-wrap">
+        <canvas id="map2d"></canvas>
+        <div id="hint">2D map: left-drag = paint, right/middle-drag or space+drag = pan, wheel = zoom, [ ] = brush size</div>
+      </div>
+    </div>
+  </div>
+  <script type="module" src="./src/main.ts"></script>
+</body>
+</html>
