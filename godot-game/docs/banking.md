@@ -42,8 +42,10 @@ market.
 
 ## Falling behind
 
-Everything is counted in whole days — `Loans.DayOf(clock minutes)` — because
-loans fall due at a midnight and the penalties are charged at midnights too.
+Everything is counted in whole days — `Days.Of(clock minutes)`,
+`src/core/News.cs` — because loans fall due at a midnight and the penalties
+are charged at midnights too (VIP passengers run on the same beat, behind
+the same `DayTurn` gate).
 `Loans.Update(today, loseHonour)` is called every frame from `Main` and is a
 single integer compare until the day turns over, like the story events'
 midnight pass.

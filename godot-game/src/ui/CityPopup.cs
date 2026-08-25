@@ -159,7 +159,7 @@ public partial class CityPopup : PanelContainer
     {
         if (current == null || !bankSection.Visible) return;
         var loan = loans.LoanAt(current);
-        int today = Loans.DayOf(time.TotalMinutes);
+        int today = Days.Of(time.TotalMinutes);
         if (loan != null)
         {
             int left = loan.DaysLeft(today);
@@ -215,13 +215,18 @@ public partial class CityPopup : PanelContainer
             row.AddThemeConstantOverride("separation", 14);
             var desc = Fonts.MakeLabel(
                 $"An important passenger seeks passage to {offer.Destination.Name} " +
-                $"({Config.VipDeliveryMoney} money, {Config.VipDeliveryHonour} honour on arrival)",
+                $"({Config.VipDeliveryMoney} money and {Config.VipDeliveryHonour} honour on arrival, plus up to " +
+                $"{Config.Vips.SpeedHonour} more for a fast passage — they jump ship after {Config.Vips.AbandonDays} days)",
                 Fonts.Ui, Config.PopupFontPx - 1, new Color("#7fe3ff"));
             desc.AutowrapMode = TextServer.AutowrapMode.Word;
             desc.SizeFlagsHorizontal = SizeFlags.ExpandFill;
             var accept = MakeButton("Accept", () =>
             {
-                player.VipPassengers.Add(offer.Destination);
+                player.VipPassengers.Add(new VipPassenger
+                {
+                    Destination = offer.Destination,
+                    PickedUpDay = Days.Of(time.TotalMinutes),
+                });
                 storyEvents.Accept(offer);
                 Rebuild();
             });
@@ -395,10 +400,11 @@ public partial class CityPopup : PanelContainer
         bankSection.Visible = banking;
         // Arriving is what completes a VIP delivery: passengers bound here
         // step ashore, and the popup opens on the reward note.
-        int delivered = player.DeliverVips(city);
-        vipDeliveredNote = delivered == 0 ? "" :
-            $"Delivered {(delivered == 1 ? "an important passenger" : $"{delivered} important passengers")} — " +
-            $"+{delivered * Config.VipDeliveryMoney} money, +{delivered * Config.VipDeliveryHonour} honour";
+        var delivered = player.DeliverVips(city, Days.Of(time.TotalMinutes));
+        vipDeliveredNote = delivered.Count == 0 ? "" :
+            $"Delivered {(delivered.Count == 1 ? "an important passenger" : $"{delivered.Count} important passengers")} — " +
+            $"+{delivered.Money} money, +{delivered.TotalHonour} honour" +
+            (delivered.SpeedHonour > 0 ? $" ({delivered.Honour} for the passage, {delivered.SpeedHonour} for the speed of it)" : "");
         BuildVip(city);
         if (city != current)
         {

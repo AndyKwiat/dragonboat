@@ -7,7 +7,7 @@ using System.Collections.Generic;
 // Everything here counts whole DAYS (an absolute day index, day 0 = the
 // clock's first day), not minutes: a loan falls due at a midnight and the
 // late penalties are charged at midnights too, so Main converts the clock
-// once (Loans.DayOf) and this file is plain integer arithmetic.
+// once (Days.Of) and this file is plain integer arithmetic.
 
 // The terms every bank lends on (Config.Bank).
 public sealed class LoanTerms
@@ -37,14 +37,11 @@ public sealed class Loan
     public bool IsLate(int today) => today > DueDay;
 }
 
-// Something the world did to the player, for the event log (ui/EventLog.cs).
-public readonly record struct LoanEvent(string Text, bool Bad);
-
 public sealed class Loans
 {
     private readonly LoanTerms terms;
     private readonly List<Loan> loans = new();
-    private int lastDay = int.MinValue;
+    private readonly DayTurn midnight = new();
 
     public IReadOnlyList<Loan> All => loans;
     // Bumped by every borrow, repayment and penalty, so the UI (city labels,
@@ -52,12 +49,6 @@ public sealed class Loans
     public int Version { get; private set; }
 
     public Loans(LoanTerms terms) => this.terms = terms;
-
-    // The clock's total minutes as the absolute day index this file counts in.
-    public static int DayOf(long totalMinutes) => (int)(totalMinutes / GameTimeMinutesPerDay);
-    // GameTime is not compiled into the test project (it reaches Config, which
-    // is a Godot file), so the one constant it shares lives here as well.
-    public const int GameTimeMinutesPerDay = 24 * 60;
 
     // Money as it reads on the HUD: $12K, $1.5K, $600.
     public static string ShortAmount(int money)
@@ -131,13 +122,10 @@ public sealed class Loans
     // honour penalties for the late ones. Honour lost is returned through
     // `loseHonour` (it may take the player negative), and everything the
     // player should be told about comes back as events.
-    public List<LoanEvent> Update(int today, Action<int> loseHonour)
+    public List<NewsEvent> Update(int today, Action<int> loseHonour)
     {
-        var news = new List<LoanEvent>();
-        if (today == lastDay) return news;
-        bool first = lastDay == int.MinValue;
-        lastDay = today;
-        if (first) return news;   // the first call only anchors the day
+        var news = new List<NewsEvent>();
+        if (!midnight.Turned(today)) return news;
         foreach (var loan in loans)
         {
             int late = loan.DaysLate(today);
@@ -145,7 +133,7 @@ public sealed class Loans
             {
                 int left = loan.DaysLeft(today);
                 if (left <= terms.WarnDays)
-                    news.Add(new LoanEvent(left == 0
+                    news.Add(new NewsEvent(left == 0
                         ? $"Loan due TODAY in {loan.City.Name} — {loan.Owed} to repay!"
                         : $"Loan coming due in {loan.City.Name} in {left} day{(left == 1 ? "" : "s")}!!", false));
                 continue;
@@ -158,7 +146,7 @@ public sealed class Loans
                 int lost = Math.Max(1, loan.Principal / terms.LatePenaltyDivisor);
                 loseHonour(lost);
                 Version++;
-                news.Add(new LoanEvent(
+                news.Add(new NewsEvent(
                     $"Late on your {loan.City.Name} loan ({loan.LastPenaltyLateDays}d) — honour {-lost}", true));
             }
         }

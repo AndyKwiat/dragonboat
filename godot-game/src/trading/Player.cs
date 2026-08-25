@@ -12,9 +12,10 @@ public sealed class Player
     public int Honour;
     public int CrewCount;
     public readonly Dictionary<string, int> Inventory = new();
-    // VIP passengers aboard, each bound for a city. Take no cargo space and
-    // never expire once accepted.
-    public readonly List<City> VipPassengers = new();
+    // VIP passengers aboard, each bound for a city and stamped with the day
+    // they came aboard. They take no cargo space, but the reward for landing
+    // one decays by the day and they jump ship if kept too long (Vips).
+    public readonly List<VipPassenger> VipPassengers = new();
 
     public Player()
     {
@@ -76,14 +77,31 @@ public sealed class Player
         return n;
     }
 
-    // Everyone aboard bound for this city steps ashore: money and honour
-    // per head. Returns how many were delivered.
-    public int DeliverVips(City city)
+    // What a call at the destination paid: how many stepped ashore, the
+    // money, the flat honour per head and the speed bonus on top.
+    public readonly record struct VipDelivery(int Count, int Money, int Honour, int SpeedHonour)
     {
-        int n = VipPassengers.RemoveAll(c => c == city);
-        Money += n * Config.VipDeliveryMoney;
-        Honour += n * Config.VipDeliveryHonour;
-        return n;
+        public int TotalHonour => Honour + SpeedHonour;
+    }
+
+    // Everyone aboard bound for this city steps ashore: money and honour per
+    // head, plus a bonus that shrinks with every day they spent aboard
+    // (Vips.SpeedHonourFor), so a fast passage is worth far more than a slow
+    // one. `today` is the clock's day index (Days.Of).
+    public VipDelivery DeliverVips(City city, int today)
+    {
+        int speed = 0, n = 0;
+        for (int i = VipPassengers.Count - 1; i >= 0; i--)
+        {
+            if (VipPassengers[i].Destination != city) continue;
+            speed += Vips.SpeedHonourFor(VipPassengers[i].DaysAboard(today), Config.Vips);
+            VipPassengers.RemoveAt(i);
+            n++;
+        }
+        var paid = new VipDelivery(n, n * Config.VipDeliveryMoney, n * Config.VipDeliveryHonour, speed);
+        Money += paid.Money;
+        Honour += paid.TotalHonour;
+        return paid;
     }
 
     // Donate everything held of a product: no money back, one honour point

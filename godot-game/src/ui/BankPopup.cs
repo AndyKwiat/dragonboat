@@ -117,7 +117,7 @@ public partial class BankPopup : PanelContainer
     private void Borrow()
     {
         if (current == null || staged <= 0) return;
-        var loan = loans.Borrow(current, staged, player.Honour, Loans.DayOf(time.TotalMinutes));
+        var loan = loans.Borrow(current, staged, player.Honour, Days.Of(time.TotalMinutes));
         if (loan == null) return;
         player.Money += loan.Principal;
         Announce?.Invoke($"Borrowed {loan.Principal} in {loan.City.Name} — {loan.Owed} due in {Config.Bank.TermDays} days");
@@ -133,7 +133,7 @@ public partial class BankPopup : PanelContainer
         var loan = loans.LoanAt(current);
         if (loan == null || player.Money < loan.Owed) return;
         player.Money -= loan.Owed;
-        int earned = loans.Repay(loan, Loans.DayOf(time.TotalMinutes));
+        int earned = loans.Repay(loan, Days.Of(time.TotalMinutes));
         player.Honour += earned;
         Announce?.Invoke($"Loan repaid in full in {loan.City.Name} — {loan.Owed}" +
                          (earned > 0 ? $", on time: +{earned} honour" : ", late"));
@@ -145,7 +145,7 @@ public partial class BankPopup : PanelContainer
     {
         if (current == null) return;
         var loan = loans.LoanAt(current);
-        int today = Loans.DayOf(time.TotalMinutes);
+        int today = Days.Of(time.TotalMinutes);
         int cap = current.Size == "large" ? Config.Bank.MaxLarge : Config.Bank.MaxMedium;
         terms.Text =
             $"{current.Size} bank — lends up to {cap}, or {Config.Bank.HonourMultiplier}x your honour, whichever is less.\n" +

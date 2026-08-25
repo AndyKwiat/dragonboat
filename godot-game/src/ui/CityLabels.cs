@@ -103,7 +103,7 @@ public partial class CityLabels : Control
             // that this city's bank is waiting for its money.
             if (loans.LoanAt(e.City) is Loan loan)
             {
-                int left = loan.DaysLeft(Loans.DayOf(time.TotalMinutes));
+                int left = loan.DaysLeft(Days.Of(time.TotalMinutes));
                 var debtColor = left >= 0 ? Config.BankDebtColor : Config.LowColor;
                 lines.Add($"[center][color=#{debtColor.ToHtml(false)}]◆ OWE {Loans.ShortAmount(loan.Owed)} " +
                           (left >= 0 ? $"({left}d)" : $"({-left}d LATE)") + "[/color][/center]");

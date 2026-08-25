@@ -18,15 +18,19 @@ or zooming the map.
 - **Hud** (top right) — fps, view corners, zoom, camera mode/rig, sail-time
   factor, chunk stats, and a `guns N/M loaded, shots, in air` line from combat.
 - **Clock** (top left) — date/time, rations, money, honour, crew, cargo, one
-  line per VIP aboard and then one per outstanding bank loan
+  line per VIP aboard (`VIP delivery - Ravenport (+170, 12d left)`: what
+  landing them today pays and how long before they jump ship —
+  [trading.md](trading.md)) and then one per outstanding bank loan
   (`BANK LOAN $12K - CINDERFALL (due in 11d)`, red once overdue — rebuilt
   only when a loan changes or the day turns). Tints at night and when
   rations run low.
 - **Minimap** (bottom right) — a window onto `MinimapWorldFraction` of the
   world following the camera, with the view rectangle.
 - **EventLog** (bottom left) — world news while you sail: the loan warnings
-  and late-payment honour losses from [banking.md](banking.md), and a line
-  on borrowing or repaying. Lines fade after `Config.EventLogSeconds` and
+  and late-payment honour losses from [banking.md](banking.md), a line on
+  borrowing or repaying, and the VIP passengers losing patience and
+  jumping ship ([trading.md](trading.md)). `NewsEvent` (`src/core/News.cs`)
+  is the shape of a line; keep them short enough for a narrow window. Lines fade after `Config.EventLogSeconds` and
   the oldest go once past `EventLogMaxLines`. Anything the player must
   notice while not in a menu belongs here.
 - **CityLabels** — one label per city, styled by size (`Config.CityLabel`),

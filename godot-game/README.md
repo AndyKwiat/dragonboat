@@ -84,6 +84,8 @@ $G --path . -- --screenshot=screenshots/shot.png --frames=435 --zoom=4 --fire=11
 $G --path . -- --screenshot=screenshots/dock.png --frames=400 --seed=7 --start=4415,5495,180 --hold=W --press=Escape@150   # sail into a city
 $G --path . -- --screenshot=screenshots/bank.png --seed=7 --honour=800 --bank            # a city's bank window
 $G --path . -- --screenshot=screenshots/late.png --seed=7 --honour=800 --loan=1000@4     # a loan four days overdue
+$G --path . -- --screenshot=screenshots/vip.png --seed=7 --vip=3 --deliver               # land a VIP after three days
+$G --path . -- --screenshot=screenshots/jump.png --seed=7 --vip=15                       # a VIP giving up and jumping ship
 ```
 
 | flag | effect |
@@ -104,6 +106,8 @@ $G --path . -- --screenshot=screenshots/late.png --seed=7 --honour=800 --loan=10
 | `--honour=N` | set the player's honour (bank credit is a multiple of it) |
 | `--loan=N[@D]` | borrow N from that city's bank at launch, its due date moved D days earlier (`@4` = four days late, `@-2` = due in two days) |
 | `--bank` | open that city's bank window over its market |
+| `--vip[=days]` | take a VIP offer aboard, picked up that many days ago (the reward decays daily; at 15 they jump ship) |
+| `--deliver` | with `--vip`, open the destination's market so they land |
 | `--tweaks` | start with the tweak panel open |
 | `--size=WxH` | window size |
 
@@ -131,7 +135,8 @@ shaders/               terrain_plane.gdshader (map texture + tile grid),
 docs/                  one markdown doc per subsystem (table above)
 tests/                 xunit tests for the Godot-free core (`dotnet test tests`)
 src/Main.cs            wiring, the per-frame loop, the scripted-run flags
-src/core/              Config (world/camera/trading/UI constants), GameConfig
+src/core/              Config (world/camera/trading/UI constants), News (NewsEvent
+                       + the whole-day clock the daily rules share), GameConfig
                        (game-config.yml), TerrainMap (.terrain parser), City,
                        GameData (products + the run's cities), GameTime (clock), InputState,
                        Tweaks (the [Tweak] registry behind live tuning)
@@ -143,7 +148,7 @@ src/boat/              BoatConfig, Boat (physics, lean, land collision, hittable
 src/combat/            CombatConfig, CombatSystem, Cannon, CannonBattery,
                        Projectiles, Effects, ICombatTarget                → docs/combat.md
 src/enemies/           EnemyShips — the stationary hostile fleet (docs/enemies.md)
-src/trading/           Player, Crew, Upkeep, Market, StoryEvents — pure rules
+src/trading/           Player, Crew, Upkeep, Market, StoryEvents, Vips — pure rules
                                                                           → docs/trading.md
 src/banking/           Loans — city banks, interest, due dates, late
                        penalties; pure rules                              → docs/banking.md
@@ -155,8 +160,8 @@ src/ui/                Fonts, Hud, Clock, Minimap, CityLabels, CityPopup,
 Per-frame order in `Main._Process`: key toggles (C/V/T) → boat physics in
 game time (sub-stepped; skipped in free mode) → camera controller → clamp →
 rig apply → terrain chunk streaming → city labels (hover/click) → combat
-(aim, fire, projectiles, effects) → popups → upkeep → loans (the midnight
-pass) → clock/event log/minimap/HUD → screenshot hook.
+(aim, fire, projectiles, effects) → popups → upkeep → the daily pass (loans,
+VIP passengers) → clock/event log/minimap/HUD → screenshot hook.
 
 ## Conventions
 

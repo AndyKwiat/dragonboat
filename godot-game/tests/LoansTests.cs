@@ -107,9 +107,9 @@ public class LoansTests
         Assert.Equal(0, loans.Repay(loan, today: 31));
     }
 
-    private static (List<LoanEvent> news, int lost) Run(Loans loans, params int[] days)
+    private static (List<NewsEvent> news, int lost) Run(Loans loans, params int[] days)
     {
-        var news = new List<LoanEvent>();
+        var news = new List<NewsEvent>();
         int lost = 0;
         foreach (var d in days) news.AddRange(loans.Update(d, n => lost += n));
         return (news, lost);
@@ -205,8 +205,8 @@ public class LoansTests
     [Fact]
     public void DaysComeFromTheClocksMinutes()
     {
-        Assert.Equal(0, Loans.DayOf(0));
-        Assert.Equal(0, Loans.DayOf(24 * 60 - 1));
-        Assert.Equal(1, Loans.DayOf(24 * 60));
+        Assert.Equal(0, Days.Of(0));
+        Assert.Equal(0, Days.Of(Days.MinutesPerDay - 1));
+        Assert.Equal(1, Days.Of(Days.MinutesPerDay));
     }
 }

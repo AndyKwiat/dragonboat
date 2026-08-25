@@ -36,7 +36,7 @@ public partial class EventLog : PanelContainer
         Visible = true;
     }
 
-    public void Add(IEnumerable<LoanEvent> news)
+    public void Add(IEnumerable<NewsEvent> news)
     {
         foreach (var e in news) Add(e.Text, e.Bad);
     }

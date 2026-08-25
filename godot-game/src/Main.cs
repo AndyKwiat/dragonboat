@@ -48,6 +48,7 @@ public partial class Main : Node3D
     private TweakPanel tweakPanel = null!;
 
     private Docking docking = null!;   // auto-docking: hull against a city opens its market
+    private readonly DayTurn midnight = new();   // VIP passengers' daily pass
     private float fastForwardSec;   // how long Shift has been held, for the fast-forward ramp
     private bool combatCam;         // the edge cam was entered automatically by combat
 
@@ -272,6 +273,8 @@ public partial class Main : Node3D
     // --center=x,y         focus point (free mode)
     // --city[=Name]        open the market of the start city (or a named one)
     // --bank               open that city's bank window over its market
+    // --vip[=daysAboard]   take a VIP offer aboard, picked up that many days ago
+    // --deliver            then open the destination's market, landing them
     // --honour=N           set the player's honour (bank credit is 10x it)
     // --loan=N[@late]      borrow N from that city's bank at startup, its due
     //                      date already `late` days in the past
@@ -325,14 +328,6 @@ public partial class Main : Node3D
                 state.CenterY = float.Parse(parts[1], System.Globalization.CultureInfo.InvariantCulture);
             }
         }
-        if (args.TryGetValue("city", out var cityName))
-        {
-            // Names are dealt fresh every run, so bare --city opens the city
-            // the boat starts off; a name still works if you have one.
-            var city = cityName == "true" ? startCity : GameData.Cities.Find(c => c.Name == cityName);
-            if (city != null) { cityPopup.Show(city); cityLabels.RefreshIntel(); }
-            else GD.PushWarning($"--city: no city named '{cityName}' this run");
-        }
         // Banking test hooks: set honour (credit is a multiple of it), take
         // a loan out, and/or open the bank window over the market.
         if (args.TryGetValue("honour", out var honour)) player.Honour = int.Parse(honour);
@@ -342,7 +337,7 @@ public partial class Main : Node3D
         if (args.TryGetValue("loan", out var loanArg) && bankCity != null)
         {
             var parts = loanArg.Split('@');
-            int today = Loans.DayOf(time.TotalMinutes);
+            int today = Days.Of(time.TotalMinutes);
             var loan = loans.Borrow(bankCity, int.Parse(parts[0]), player.Honour, today);
             if (loan == null) GD.PushWarning($"--loan: {bankCity.Name} would lend nothing (honour {player.Honour})");
             else
@@ -365,6 +360,39 @@ public partial class Main : Node3D
             cityPopup.Show(bankCity);
             cityLabels.RefreshIntel();
             bankPopup.Show(bankCity);
+        }
+        // --vip: take the first VIP offer in the world aboard, optionally
+        // picked up some days ago, so the decaying reward, the warnings and
+        // the jump-ship penalty can be seen without sailing a fortnight.
+        if (args.TryGetValue("vip", out var vipArg))
+        {
+            int daysAboard = vipArg == "true" ? 0 : int.Parse(vipArg);
+            int today = Days.Of(time.TotalMinutes);
+            foreach (var e in storyEvents.All)
+            {
+                if (e is not VipDeliveryStoryEvent offer) continue;
+                player.VipPassengers.Add(new VipPassenger { Destination = offer.Destination, PickedUpDay = today - daysAboard });
+                storyEvents.Accept(offer);
+                GD.Print($"VIP aboard for {offer.Destination.Name}, picked up {daysAboard} day(s) ago");
+                break;
+            }
+            // Anchor the daily gate a day back, so the pass runs on frame 1.
+            if (daysAboard > 0) midnight.Turned(today - 1);
+            // Story events are rolled unseeded, so the destination is not
+            // knowable in advance: --deliver opens its market for us.
+            if (args.ContainsKey("deliver") && player.VipPassengers.Count > 0)
+            {
+                cityPopup.Show(player.VipPassengers[0].Destination);
+                cityLabels.RefreshIntel();
+            }
+        }
+        if (args.TryGetValue("city", out var cityName))
+        {
+            // Names are dealt fresh every run, so bare --city opens the city
+            // the boat starts off; a name still works if you have one.
+            var city = cityName == "true" ? startCity : GameData.Cities.Find(c => c.Name == cityName);
+            if (city != null) { cityPopup.Show(city); cityLabels.RefreshIntel(); }
+            else GD.PushWarning($"--city: no city named '{cityName}' this run");
         }
         if (args.TryGetValue("press", out var press))
             foreach (var spec in press.Split(','))
@@ -550,11 +578,16 @@ public partial class Main : Node3D
         bankPopup.Update(view);
 
         // Bank loans turn over at midnight like story events: warnings as the
-        // due date nears, honour lost while one runs late (src/banking).
-        var loanNews = loans.Update(Loans.DayOf(time.TotalMinutes), lost => player.Honour -= lost);
-        if (loanNews.Count > 0)
+        // due date nears, honour lost while one runs late (src/banking). VIP
+        // passengers run on the same daily beat — they lose patience and
+        // eventually jump ship (src/trading/Vips.cs).
+        int today = Days.Of(time.TotalMinutes);
+        var news = loans.Update(today, lost => player.Honour -= lost);
+        if (midnight.Turned(today))
+            news.AddRange(Vips.Update(player.VipPassengers, today, Config.Vips, lost => player.Honour -= lost));
+        if (news.Count > 0)
         {
-            eventLog.Add(loanNews);
+            eventLog.Add(news);
             cityLabels.RefreshIntel();
             if (cityPopup.IsOpen) cityPopup.Refresh();
             if (bankPopup.IsOpen) bankPopup.Refresh();

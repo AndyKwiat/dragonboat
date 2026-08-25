@@ -27,7 +27,8 @@ public partial class Clock : PanelContainer
         honour = Fonts.MakeLabel("", Fonts.MonoBold, px - 4, Config.DayColor);
         crew = Fonts.MakeLabel("", Fonts.MonoBold, px - 4, Config.DayColor);
         cargo = Fonts.MakeLabel("", Fonts.MonoBold, px - 4, Config.DayColor);
-        // One line per VIP aboard: "VIP delivery - <city>".
+        // One line per VIP aboard: where they are bound, what landing them
+        // today is worth and how long before they jump ship.
         vips = Fonts.MakeLabel("", Fonts.MonoBold, px - 4, new Color("#7fe3ff"));
         vips.Visible = false;
         // One line per outstanding bank loan, under the VIPs: what is owed
@@ -54,14 +55,19 @@ public partial class Clock : PanelContainer
         SetText(crew, $"crew  {player.CrewCount}");
         SetText(cargo, $"cargo {player.TotalUnits()}/{player.CargoCapacity()}");
         var lines = "";
-        foreach (var dest in player.VipPassengers)
-            lines += (lines == "" ? "" : "\n") + $"VIP delivery - {dest.Name}";
+        foreach (var vip in player.VipPassengers)
+        {
+            int days = vip.DaysAboard(Days.Of(time.TotalMinutes));
+            lines += (lines == "" ? "" : "\n") +
+                $"VIP delivery - {vip.Destination.Name} (+{Vips.SpeedHonourFor(days, Config.Vips) + Config.VipDeliveryHonour}, " +
+                $"{Config.Vips.AbandonDays - days}d left)";
+        }
         SetText(vips, lines);
         vips.Visible = lines != "";
 
         // Loans only change at a repayment, a new loan or a midnight, so the
         // lines are rebuilt on those, not every frame.
-        int today = Loans.DayOf(time.TotalMinutes);
+        int today = Days.Of(time.TotalMinutes);
         if (loans.Version != lastLoanVersion || today != lastLoanDay)
         {
             lastLoanVersion = loans.Version; lastLoanDay = today;

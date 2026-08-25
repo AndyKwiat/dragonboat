@@ -91,12 +91,26 @@ run needs a name from *that* run's startup output.
   expires like any event (a fresh one rolls elsewhere); its city's popup
   shows it at the top with an Accept button. Accepting retires the offer
   (`StoryEvents.Accept` immediately rolls a replacement, holding the count
-  steady) and adds the destination to `Player.VipPassengers` — passengers
-  take no cargo space, never expire, and stack (several may ride at once);
-  the clock overlay shows one "VIP delivery - <city>" line each. Opening
-  the destination's popup is what delivers (`Player.DeliverVips`):
-  `VipDeliveryMoney` (200) and `VipDeliveryHonour` (10) per head, with the
-  reward summarised in a note at the top of that popup.
+  steady) and puts a `VipPassenger` — the destination plus the day they
+  came aboard — in `Player.VipPassengers`. Passengers take no cargo space
+  and stack (several may ride at once); the clock overlay shows one line
+  each with what landing them right now is worth and how long is left
+  before they give up. Opening the destination's popup is what delivers
+  (`Player.DeliverVips`, summarised in a note at the top of that popup):
+  `VipDeliveryMoney` (200) and `VipDeliveryHonour` (10) per head, plus the
+  speed bonus below.
+- **The VIP clock** (`Vips.cs`, terms in `Config.Vips`): the passage is
+  timed from the day the passenger came aboard.
+  `Vips.SpeedHonourFor(daysAboard)` pays `SpeedHonour` (200) for landing
+  them inside the first day and `SpeedHonourPerDay` (20) less for every
+  further day, so day 2 is worth 180, day 6 is 100, and from day 11 the
+  bonus is gone and only the flat 10 honour remains. Keep one aboard for
+  `AbandonDays` (15) days and they give up: the passenger leaves the ship,
+  `AbandonHonour` (1000) honour goes with them (honour may go negative),
+  and the event log says so — with a warning each of the `WarnDays` (3)
+  days before it happens. `Vips.Update` runs on the same daily beat as the
+  bank loans (`Main`'s `DayTurn`; `Days.Of` turns the clock's minutes into
+  the whole-day index both use — `src/core/News.cs`).
 - **Rumours**: a city's popup opens with the `RumourCount` (3)
   geographically nearest events that are NOT the city's own
   (`StoryEvents.RumoursFor`), one line each from the event's

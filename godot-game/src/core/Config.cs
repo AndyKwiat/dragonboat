@@ -122,6 +122,16 @@ public static class Config
     public const int VipEventCountPer100Cities = 10;
     public const int VipMinRank = 6, VipMaxRank = 10;
     public const int VipDeliveryMoney = 200, VipDeliveryHonour = 10;
+    // On top of that flat reward, a bonus for a fast passage — and a heavy
+    // price for a passenger left aboard too long (src/trading/Vips.cs).
+    public static readonly VipTerms Vips = new()
+    {
+        SpeedHonour = 200,        // delivered within a day of coming aboard
+        SpeedHonourPerDay = 20,   // less for every further day, down to none
+        AbandonDays = 15,         // then they jump ship
+        AbandonHonour = 1000,
+        WarnDays = 3,
+    };
     // Nearest other-city events shown (and discovered) in a city's popup.
     public const int RumourCount = 3;
     public static readonly Color MarketDearColor = new Color("#ff6b6b");
