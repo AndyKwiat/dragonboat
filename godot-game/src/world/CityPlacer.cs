@@ -169,6 +169,31 @@ public static class CityPlacer
                 map.Data[y * map.Width + x] = TerrainMap.City;
     }
 
+    // Distance from a world point to a city's square footprint (0 inside).
+    public static float DistanceTo(City c, float x, float y)
+    {
+        float half = c.Cells / 2f;
+        float dx = Math.Max(Math.Abs(x - c.X) - half, 0);
+        float dy = Math.Max(Math.Abs(y - c.Y) - half, 0);
+        return MathF.Sqrt(dx * dx + dy * dy);
+    }
+
+    // The city whose footprint the point is within `margin` of — the nearest
+    // one if two are somehow in reach. Null if none is: this is what "the
+    // hull is against the quay" means (see Main's auto-docking).
+    public static City? Touching(List<City> cities, float x, float y, float margin)
+    {
+        City? best = null;
+        float bestDistance = float.PositiveInfinity;
+        foreach (var c in cities)
+        {
+            float d = DistanceTo(c, x, y);
+            if (d > margin || d >= bestDistance) continue;
+            bestDistance = d; best = c;
+        }
+        return best;
+    }
+
     // Does any cell of the footprint touch water (4-adjacent)?
     public static bool TouchesWater(TerrainMap map, City c)
     {

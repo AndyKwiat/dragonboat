@@ -100,6 +100,18 @@ run needs a name from *that* run's startup output.
   `Description` ("Fish prices are very high in Sword Hill"). Seeing a
   rumour marks that event discovered, so neighbouring markets spread the
   news — the player needn't visit every city.
+- **Docking** (`Docking.cs`, wired in `Main._Process`): running the hull
+  into a city opens its market by itself — no click needed. The boat counts
+  as at the quay when it comes within `CityDockContactMargin` (8 units) of
+  the city's square footprint (`CityPlacer.Touching`, nearest city wins);
+  the hull's three collision circles put its nose against land at about 7,
+  so this fires on contact and not while sailing past. Two rules stop the
+  market snapping straight back open when you close it: you have to **leave**
+  — the city is remembered while the hull is still against it, whether the
+  market was opened by the collision or by clicking the label — and a
+  `CityDockCooldownSec` (5 real seconds) cooldown runs from every close, so
+  bumping back in, or drifting into the quay next door, does nothing until
+  it lapses. The market never opens over an already-open one.
 - **Discovery**: opening a city's popup marks the city discovered forever
   (`City.Discovered`) and marks every event live there discovered
   (`StoryEvent.Discovered`; via `StoryEvents.DiscoverAt`, also called when

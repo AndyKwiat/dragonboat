@@ -12,7 +12,8 @@ rules change.
 - `dotnet test tests` covers the Godot-free core; everything else is
   verified with scripted runs + screenshots:
   `./run.sh -- --screenshot=x.png --frames=120 --size=2560x1600` plus the
-  other test hooks (`--city`, `--start=x,y,deg`, `--hold=W`, `--set`,
+  other test hooks (`--city`, `--start=x,y,deg`, `--hold=W`,
+  `--press=Key@frame`, `--seed=N` for a reproducible world, `--set`,
   `--mode`, `--center`, `--zoom`, `--dump-tweaks`; see `ParseArgs` in
   `src/Main.cs`). The run's final printed line (boat position/heading/speed,
   shots/hits) is useful for asserting movement without pixels.

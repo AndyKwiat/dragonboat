@@ -12,6 +12,13 @@ public static class Config
     public const string ProductsPath = "res://data/products.json";
     // Clear water (cells) around the boat's start spot off a large city's shore.
     public const int BoatStartClearanceCells = 30;
+    // Auto-docking: running the hull into a city opens its market. The hull
+    // is three circles of Width/2 spread over Length/3, so its nose touches
+    // land with the boat's centre ~7 units out; 8 is that plus a hair.
+    public const float CityDockContactMargin = 8f;
+    // After closing a market you get this long (real seconds) before the
+    // same quay can pull you in again — on top of having to leave it first.
+    public const float CityDockCooldownSec = 5f;
 
     public const float MaxZoom = 20f;                 // screen px per world unit
     public const float ZoomWheelSensitivity = 0.0015f;

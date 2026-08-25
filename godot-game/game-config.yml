@@ -7,7 +7,7 @@ terrainFile: map1.terrain
 
 # Current arrows per map area: 100 is the baseline (3600 arrows on an
 # 8192x8192 map), 200 twice as thick, 10 a tenth, 0 none.
-currentDensity: 100
+currentDensity: 10
 
 # Cities generated on the coast each launch (10% large, 30% medium, the
 # rest small). Story-event counts scale with this number (base: 100 cities).

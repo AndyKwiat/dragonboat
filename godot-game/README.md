@@ -42,6 +42,7 @@ opens the project picker and hangs a scripted run.
 | WASD / arrows | drive the boat (follow mode) or pan (free mode) |
 | wheel | zoom; drag pans in free mode |
 | **click** | fire the best loaded cannon at the reticle under the cursor — or open a city's market if you clicked its name |
+| *(sail into a city)* | opens its market too — you must leave the quay, and wait out a 5 s cooldown, before it opens again |
 | Shift (hold) | fast-forward game time — ramps up while held, eases back on release |
 | C | cycle camera mode (follow / edge / free) |
 | V | cycle camera rig (isometric / perspective) |
@@ -79,6 +80,7 @@ $G --path . -- --screenshot=screenshots/far.png --zoom=0.5 --rig=perspective
 $G --path . -- --screenshot=screenshots/drive.png --frames=240 --hold=W,D
 $G --path . -- --screenshot=screenshots/shore.png --frames=900 --hold=W          # sail out of the start harbour
 $G --path . -- --screenshot=screenshots/shot.png --frames=435 --zoom=4 --fire=110,-10@100 --set=Gravity=60
+$G --path . -- --screenshot=screenshots/dock.png --frames=400 --seed=7 --start=4415,5495,180 --hold=W --press=Escape@150   # sail into a city
 ```
 
 | flag | effect |
@@ -89,8 +91,10 @@ $G --path . -- --screenshot=screenshots/shot.png --frames=435 --zoom=4 --fire=11
 | `--rig=isometric\|perspective` | starting camera rig |
 | `--mode=follow\|edge\|free` | starting camera mode |
 | `--center=x,y` | focus point in world units (free mode) |
-| `--city=Name` | open that city's popup |
+| `--city[=Name]` | open the market of the city the boat starts off, or a named one (names are dealt fresh each run) |
+| `--seed=N` | fixed world RNG — the same cities, sizes, names and enemy fleet every run |
 | `--hold=W,D` | keys held down for the whole run |
+| `--press=Key@frame,...` | one-shot key presses on those frames (`--hold` never counts as a press; `Escape` closes the market) |
 | `--start=x,y[,deg]` | put the boat here, heading in degrees (0 = east, 90 = south) |
 | `--fire=dx,dy@f1,f2` | fire at the ground point dx,dy from the boat on those frames (default frame 10); only cannons that bear fire |
 | `--set=Name=V,Name=V` | override `[Tweak]` values by field name |

@@ -44,6 +44,7 @@ public partial class Main : Node3D
     private CityPopup cityPopup = null!;
     private TweakPanel tweakPanel = null!;
 
+    private Docking docking = null!;   // auto-docking: hull against a city opens its market
     private float fastForwardSec;   // how long Shift has been held, for the fast-forward ramp
     private bool combatCam;         // the edge cam was entered automatically by combat
 
@@ -55,6 +56,7 @@ public partial class Main : Node3D
     private City? startCity;        // the city the boat starts off (--city with no name)
     private Vector2? fireOffset;                 // --fire=dx,dy: aim point relative to the boat
     private readonly List<int> fireFrames = new();
+    private readonly List<(Key key, int frame)> pressFrames = new();   // --press=Key@frame
 
     private Vector2 View => GetViewport().GetVisibleRect().Size;
 
@@ -96,7 +98,8 @@ public partial class Main : Node3D
         GameConfig.Current = GameConfig.Parse(FileAccess.GetFileAsString(GameConfig.Path));
         GameData.Load();
         map = TerrainMap.Parse(FileAccess.GetFileAsBytes("res://" + GameConfig.Current.TerrainFile));
-        var worldRng = new Random();
+        // --seed makes a run reproducible: same cities, same enemy fleet.
+        var worldRng = args.TryGetValue("seed", out var seed) ? new Random(int.Parse(seed)) : new Random();
         var cities = CityPlacer.Place(map, GameConfig.Current.CityCount,
             CityPlacer.ParseNames(FileAccess.GetFileAsString(Config.CityNamesPath)), worldRng);
         GameData.SetCities(cities, worldRng);
@@ -147,7 +150,7 @@ public partial class Main : Node3D
         // tweaks as the player (see src/enemies/EnemyShips.cs).
         enemies = new EnemyShips();
         AddChild(enemies);
-        enemies.Init(map, terrainQuery, combat, boat, new Random(),
+        enemies.Init(map, terrainQuery, combat, boat, worldRng,
             () => player.Honour += EnemyShips.KillHonour);
 
         input = new InputState();
@@ -179,6 +182,7 @@ public partial class Main : Node3D
         rations = new Rations(player, time);
         wages = new Wages(player, time);
         storyEvents = new StoryEvents(time);
+        docking = new Docking(Config.CityDockCooldownSec);
 
         // UI overlays, in draw order (labels under the panels, popup on top).
         var ui = new CanvasLayer();
@@ -223,7 +227,7 @@ public partial class Main : Node3D
             if (CityPlacer.WaterStartNear(map, c, Config.BoatStartClearanceCells) is not (float x, float y, float heading)) continue;
             boat.X = x; boat.Y = y; boat.Heading = heading;
             startCity = c;
-            GD.Print($"Boat starts off {c.Name} ({c.Size}) at {x:0},{y:0}");
+            GD.Print($"Boat starts off {c.Name} ({c.Size}, {c.Cells} cells, centre {c.X:0},{c.Y:0}) at {x:0},{y:0}");
             return;
         }
         throw new Exception("No city has a usable shore for the boat to start on");
@@ -243,6 +247,7 @@ public partial class Main : Node3D
         return args;
     }
 
+    // --seed=N             fixed world RNG: same cities and fleet every run
     // The window fills the screen unless --screenshot or --size is given.
     // --screenshot[=path]  save the viewport after --frames (default 90) and quit
     // --zoom=Z             starting zoom (px per world unit)
@@ -253,6 +258,7 @@ public partial class Main : Node3D
     // --city[=Name]        open the market of the start city (or a named one)
     // --size=WxH           window size
     // --hold=W,D           keys held down for the whole run (physical key names)
+    // --press=Key@frame,... one-shot key presses (Escape closes the market)
     // --start=x,y[,deg]    put the boat here (world units, heading in degrees, 0 = east)
     // --set=Name=V,...     override [Tweak] values by field name (see core/Tweaks.cs)
     // --dump-tweaks        write changed tweaks to tweaks.dump on startup (test hook)
@@ -308,6 +314,12 @@ public partial class Main : Node3D
             if (city != null) { cityPopup.Show(city); cityLabels.RefreshIntel(); }
             else GD.PushWarning($"--city: no city named '{cityName}' this run");
         }
+        if (args.TryGetValue("press", out var press))
+            foreach (var spec in press.Split(','))
+            {
+                var parts = spec.Split('@');
+                pressFrames.Add((Enum.Parse<Key>(parts[0], true), parts.Length > 1 ? int.Parse(parts[1]) : 10));
+            }
         if (args.TryGetValue("hold", out var hold))
             foreach (var k in hold.Split(',')) heldKeys.Add(Enum.Parse<Key>(k, true));
         if (args.TryGetValue("screenshot", out var shot))
@@ -352,6 +364,10 @@ public partial class Main : Node3D
         float dt = Math.Min((float)delta, 0.1f);
         var view = View;
         foreach (var k in heldKeys) input.Keys.Add(k);
+        // --press: one-shot key presses on given frames (--hold only holds a
+        // key down, which never counts as a press).
+        foreach (var (key, frame) in pressFrames)
+            if (frame == frameCount) { input.Pressed.Add(key); input.Keys.Add(key); }
 
         // C toggles camera mode. WASD drives the boat in follow mode and pans
         // the camera in free mode, so only one of them consumes the keys.
@@ -464,6 +480,16 @@ public partial class Main : Node3D
             SwitchMode("follow");
         if (active != edgeCamera) combatCam = false;
         if (escaped) cityPopup.Hide();
+
+        // Auto-docking: running the hull into a city opens its market, the
+        // same as clicking its label (rules in trading/Docking.cs).
+        var atQuay = CityPlacer.Touching(GameData.Cities, boat.X, boat.Y, Config.CityDockContactMargin);
+        if (docking.Update(dt, atQuay, cityPopup.IsOpen) is City dock)
+        {
+            cityPopup.Show(dock);
+            cityLabels.RefreshIntel();
+        }
+
         cityPopup.Update(view);
 
         // Crew upkeep runs on game time. An open market panel has to be told,

@@ -44,6 +44,5 @@ only. See `docs/combat.md` for the cannon/projectile layer it drives.
 
 Scripted runs: `--start=x,y` next to a known ship position makes it open
 fire (the run's final line counts its shots); `--fire=dx,dy@frame` three
-times at a ship's offset sinks it. Positions are random per run — for a
-deterministic test, temporarily seed the `Random` handed to
-`EnemyShips.Init` in `Main.cs`.
+times at a ship's offset sinks it. Positions are random per run — pass `--seed=N` for a
+world (cities and fleet alike) that comes back the same every time.
