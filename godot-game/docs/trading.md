@@ -20,11 +20,16 @@ the city popup, and medium/large cities are the ones that have a bank.
 prototype's scripts); `GameData.Load()` reads it once.
 
 **Cities are generated fresh at every launch** — there is no cities.json.
-`game-config.yml`'s `cityCount` (20) says how many; `src/world/CityPlacer.cs`
-(Godot-free, unit-tested in `tests/`) places them:
+`game-config.yml`'s `smallCities` / `mediumCities` / `largeCities` say how
+many of each (24 / 12 / 4); `src/world/CityPlacer.cs` (Godot-free,
+unit-tested in `tests/`) places them:
 
-- **Sizes**: 10% large, 30% medium, the rest small (at least one large) —
-  the old 100-city world's mix, so 20 cities is 2 / 6 / 12.
+- **Sizes**: exactly what the config asks for — there is no ratio in the
+  code. `CityPlacer.SizesFor` just lists them, large first (the 140-cell
+  footprint is the hardest to fit, so it gets the pick of the coast).
+  Story-event and VIP counts scale with the total (`GameConfig.CityCount`),
+  and a world with no large city has nowhere for the boat to start or for
+  monks to be carried to, so keep at least one.
 - **Where**: on the coast. Every grass cell that touches water is collected
   and shuffled; each city takes the first one where its footprint fits —
   pushed inland from the coast cell so its edge is the shoreline, at least

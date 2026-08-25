@@ -107,7 +107,7 @@ public partial class Main : Node3D
         map = TerrainMap.Parse(FileAccess.GetFileAsBytes("res://" + GameConfig.Current.TerrainFile));
         // --seed makes a run reproducible: same cities, same enemy fleet.
         var worldRng = args.TryGetValue("seed", out var seed) ? new Random(int.Parse(seed)) : new Random();
-        var cities = CityPlacer.Place(map, GameConfig.Current.CityCount,
+        var cities = CityPlacer.Place(map, CityPlacer.SizesFor(GameConfig.Current),
             CityPlacer.ParseNames(FileAccess.GetFileAsString(Config.CityNamesPath)), worldRng);
         GameData.SetCities(cities, worldRng);
         terrainQuery = new Terrain(map);

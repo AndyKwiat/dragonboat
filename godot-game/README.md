@@ -129,9 +129,9 @@ that knows about all of them.
 project.godot          1280×800 window, hidpi on (Main sets the content scale
                        factor, so "px" stays a CSS-like logical px), clear colour
 Main.tscn              one Node3D with src/Main.cs
-game-config.yml        which terrain file to load, how many cities to
-                       generate, how thick the currents run — every key
-                       required, no code defaults
+game-config.yml        which terrain file to load, how many small/medium/
+                       large cities to generate, how thick the currents
+                       run — every key required, no code defaults
 map1.terrain           the map, painted in ../terrain-gen (TGN1, gzipped);
                        one cell = one world unit
 data/                  products.json (canonical here) and city-names.json;

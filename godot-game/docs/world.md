@@ -8,12 +8,14 @@ the world questions through `Terrain` and `CameraRig`.
 ## The map
 
 `game-config.yml` (repo root) is read first (`src/core/GameConfig.cs`, a flat
-`key: value` parser). It has two required keys — neither has a code default:
+`key: value` parser). Every key is required — none has a code default:
 
 ```yml
 terrainFile: map1.terrain   # which map to load
-cityCount: 20               # how many cities to generate
 currentDensity: 100         # currents per map area (100 = 3600 on an 8192² map)
+smallCities: 24             # how many cities of each size to generate —
+mediumCities: 12            # the mix is the file's, there is no ratio in
+largeCities: 4              # the code (CityPlacer.SizesFor)
 ```
 
 The terrain file is painted in `../terrain-gen` and exported in its `TGN1`

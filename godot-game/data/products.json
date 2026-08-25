@@ -4,25 +4,25 @@
       "id": "RICE",
       "name": "Rice",
       "description": "Basic rice used to feed people. Every port has it.",
-      "basePrice": 4
+      "basePrice": 5
     },
     {
       "id": "FISH",
       "name": "Fish",
       "description": "Salted river fish, cheap and always in demand.",
-      "basePrice": 6
+      "basePrice": 20
     },
     {
       "id": "FRUIT",
       "name": "Fruit",
       "description": "Crates of orchard fruit that spoil if you dawdle.",
-      "basePrice": 7
+      "basePrice": 10
     },
     {
       "id": "WOOD",
       "name": "Wood",
       "description": "Rough timber cut from the forests inland.",
-      "basePrice": 9
+      "basePrice": 10
     },
     {
       "id": "WOOL",

@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using System.Globalization;
 
 // game-config.yml (repo root): which terrain file to load, how many cities
-// to generate and how thick the currents run. No Godot types — Main reads the file text and hands
+// of each size to generate and how thick the currents run. No Godot types — Main reads the file text and hands
 // it to Parse. Every key is required: the file, not the code, is where
 // these numbers live. The YAML subset is flat `key: value` lines with `#`
 // comments, which is all the file needs.
@@ -12,7 +12,13 @@ public sealed class GameConfig
     public const string Path = "res://game-config.yml";
 
     public string TerrainFile { get; }
-    public int CityCount { get; }
+    // How many cities of each size to place; the mix is the file's business,
+    // not the code's (CityPlacer.SizesFor).
+    public int SmallCities { get; }
+    public int MediumCities { get; }
+    public int LargeCities { get; }
+    // The total, which is what the story-event counts scale by.
+    public int CityCount => SmallCities + MediumCities + LargeCities;
     // Currents per map area: 100 is the baseline (CurrentsAtBaseDensity
     // arrows on an 8192² map), 200 twice as many, 10 a tenth, 0 none.
     public double CurrentDensity { get; }
@@ -27,13 +33,17 @@ public sealed class GameConfig
     public const double BaseCurrentDensity = 100;
     public const long BaseMapCells = 8192L * 8192L;
 
-    public GameConfig(string terrainFile, int cityCount, double currentDensity)
+    public GameConfig(string terrainFile, int smallCities, int mediumCities, int largeCities, double currentDensity)
     {
         if (string.IsNullOrWhiteSpace(terrainFile)) throw new ArgumentException("terrainFile is empty");
-        if (cityCount < 1) throw new ArgumentException($"cityCount must be at least 1, got {cityCount}");
+        foreach (var (name, n) in new[] { ("smallCities", smallCities), ("mediumCities", mediumCities), ("largeCities", largeCities) })
+            if (n < 0) throw new ArgumentException($"{name} cannot be negative, got {n}");
+        if (smallCities + mediumCities + largeCities < 1)
+            throw new ArgumentException("at least one city is needed (smallCities + mediumCities + largeCities)");
         if (currentDensity < 0 || double.IsNaN(currentDensity))
             throw new ArgumentException($"currentDensity must be 0 or more, got {currentDensity}");
-        TerrainFile = terrainFile; CityCount = cityCount; CurrentDensity = currentDensity;
+        TerrainFile = terrainFile; CurrentDensity = currentDensity;
+        SmallCities = smallCities; MediumCities = mediumCities; LargeCities = largeCities;
     }
 
     // How many current arrows a map of this many cells gets: linear in both
@@ -50,13 +60,22 @@ public sealed class GameConfig
     {
         var values = ParseFlatYaml(text);
         if (!values.TryGetValue("terrainFile", out var terrain)) throw new Exception("game-config.yml: missing 'terrainFile'");
-        if (!values.TryGetValue("cityCount", out var count)) throw new Exception("game-config.yml: missing 'cityCount'");
-        if (!int.TryParse(count, NumberStyles.Integer, CultureInfo.InvariantCulture, out int cities))
-            throw new Exception($"game-config.yml: cityCount '{count}' is not an integer");
+        // The size mix used to be a code constant behind a single cityCount;
+        // it is now three counts in the file.
+        if (values.ContainsKey("cityCount") && !values.ContainsKey("smallCities"))
+            throw new Exception("game-config.yml: 'cityCount' is gone — give 'smallCities', 'mediumCities' and 'largeCities' instead");
+        int Count(string key)
+        {
+            if (!values.TryGetValue(key, out var raw)) throw new Exception($"game-config.yml: missing '{key}'");
+            if (!int.TryParse(raw, NumberStyles.Integer, CultureInfo.InvariantCulture, out int n))
+                throw new Exception($"game-config.yml: {key} '{raw}' is not an integer");
+            return n;
+        }
+        int small = Count("smallCities"), medium = Count("mediumCities"), large = Count("largeCities");
         if (!values.TryGetValue("currentDensity", out var density)) throw new Exception("game-config.yml: missing 'currentDensity'");
         if (!double.TryParse(density, NumberStyles.Float, CultureInfo.InvariantCulture, out double currents))
             throw new Exception($"game-config.yml: currentDensity '{density}' is not a number");
-        return new GameConfig(terrain, cities, currents);
+        return new GameConfig(terrain, small, medium, large, currents);
     }
 
     public static Dictionary<string, string> ParseFlatYaml(string text)

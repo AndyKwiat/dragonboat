@@ -2,10 +2,10 @@ using System;
 using System.Collections.Generic;
 using System.Text.Json;
 
-// Builds the world's cities at launch: N cities on the coast, 10% large,
-// 30% medium, the rest small (large first — the hardest to fit), each
-// stamped into the map as a square of City cells whose seaward edge sits
-// on the shoreline. No Godot types (unit-tested in tests/).
+// Builds the world's cities at launch: as many of each size as
+// game-config.yml asks for, on the coast, large first (they are the hardest
+// to fit), each stamped into the map as a square of City cells whose
+// seaward edge sits on the shoreline. No Godot types (unit-tested in tests/).
 //
 // Placement: the map's coast cells (grass touching real, in-bounds water,
 // never the map border) are collected once and shuffled; each city takes the first one that works. The footprint is
@@ -20,7 +20,6 @@ using System.Text.Json;
 public static class CityPlacer
 {
     public const int SmallCells = 60, MediumCells = 100, LargeCells = 140;
-    public const double LargeFraction = 0.1, MediumFraction = 0.3;
     public const int MinSpacing = 300;            // centre to centre, cells
     // No city (or its footprint) comes within this many cells of the map's
     // border: off-map counts as water, so the border reads as a fake coast.
@@ -31,19 +30,20 @@ public static class CityPlacer
 
     public static int CellsFor(string size) => size == "large" ? LargeCells : size == "medium" ? MediumCells : SmallCells;
 
-    // The size mix for a city count: large = 10%, medium = 30% (rounded,
-    // large at least 1), the rest small — the old 100-city world's 10/30/60.
-    public static List<string> SizesFor(int count)
+    // The sizes to place, in placement order: large first (a 140-cell
+    // footprint needs the most room), then medium, then small. How many of
+    // each is game-config.yml's business — there is no ratio in the code.
+    public static List<string> SizesFor(int large, int medium, int small)
     {
-        int large = Math.Max(1, (int)Math.Round(count * LargeFraction));
-        int medium = (int)Math.Round(count * MediumFraction);
-        if (large + medium > count) medium = count - large;
         var sizes = new List<string>();
         for (int i = 0; i < large; i++) sizes.Add("large");
         for (int i = 0; i < medium; i++) sizes.Add("medium");
-        while (sizes.Count < count) sizes.Add("small");
+        for (int i = 0; i < small; i++) sizes.Add("small");
         return sizes;
     }
+
+    public static List<string> SizesFor(GameConfig config) =>
+        SizesFor(config.LargeCities, config.MediumCities, config.SmallCities);
 
     public static List<string> ParseNames(string json)
     {
@@ -68,9 +68,10 @@ public static class CityPlacer
         return names;
     }
 
-    public static List<City> Place(TerrainMap map, int count, List<string> namePool, Random rng)
+    public static List<City> Place(TerrainMap map, List<string> sizes, List<string> namePool, Random rng)
     {
-        var sizes = SizesFor(count);
+        int count = sizes.Count;
+        if (count < 1) throw new Exception("CityPlacer: no cities to place");
         var names = DealNames(namePool, count, rng);
         var coast = ShuffledCoast(map, rng);
         var cities = new List<City>();

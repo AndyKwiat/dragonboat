@@ -12,28 +12,35 @@ public class CityPlacerTests
     // A big coastline map so 20 cities fit with the real spacing.
     private static TerrainMap BigCoast() => TerrainFixture.Coastline(8192);
 
+    // The 20-city mix the tests place: 2 large, 6 medium, 12 small.
+    private static List<string> Mix(int large = 2, int medium = 6, int small = 12) =>
+        CityPlacer.SizesFor(large, medium, small);
+
+    // The mix comes from the config, not from a ratio in the code.
     [Fact]
-    public void SizeMixIsTenThirtySixty()
+    public void SizesAreExactlyWhatWasAskedFor()
     {
-        var sizes = CityPlacer.SizesFor(20);
+        var sizes = CityPlacer.SizesFor(large: 2, medium: 6, small: 12);
         Assert.Equal(20, sizes.Count);
         Assert.Equal(2, sizes.Count(s => s == "large"));
         Assert.Equal(6, sizes.Count(s => s == "medium"));
         Assert.Equal(12, sizes.Count(s => s == "small"));
-
-        var hundred = CityPlacer.SizesFor(100);
-        Assert.Equal(10, hundred.Count(s => s == "large"));
-        Assert.Equal(30, hundred.Count(s => s == "medium"));
-        Assert.Equal(60, hundred.Count(s => s == "small"));
+        // Large first: the biggest footprint gets the pick of the coast.
+        Assert.Equal(new[] { "large", "large", "medium" }, sizes.Take(3));
+        // A size can be left out entirely.
+        Assert.Equal(new[] { "small", "small" }, CityPlacer.SizesFor(0, 0, 2));
+        Assert.Empty(CityPlacer.SizesFor(0, 0, 0));
     }
 
     [Fact]
-    public void AlwaysAtLeastOneLargeCity()
+    public void SizesComeStraightFromTheGameConfig()
     {
-        var sizes = CityPlacer.SizesFor(1);
-        Assert.Equal(new[] { "large" }, sizes);
-        Assert.Equal(3, CityPlacer.SizesFor(3).Count);
-        Assert.Contains("large", CityPlacer.SizesFor(3));
+        var config = new GameConfig("map1.terrain", smallCities: 5, mediumCities: 3, largeCities: 1, currentDensity: 0);
+        var sizes = CityPlacer.SizesFor(config);
+        Assert.Equal(9, sizes.Count);
+        Assert.Equal(1, sizes.Count(s => s == "large"));
+        Assert.Equal(3, sizes.Count(s => s == "medium"));
+        Assert.Equal(5, sizes.Count(s => s == "small"));
     }
 
     [Fact]
@@ -47,7 +54,7 @@ public class CityPlacerTests
     [Fact]
     public void PlacesTheRequestedNumberOfCitiesWithUniqueNames()
     {
-        var cities = CityPlacer.Place(BigCoast(), 20, Names(100), new Random(1));
+        var cities = CityPlacer.Place(BigCoast(), Mix(), Names(100), new Random(1));
         Assert.Equal(20, cities.Count);
         Assert.Equal(20, cities.Select(c => c.Name).Distinct().Count());
         Assert.All(cities, c => Assert.Contains(c.Name, Names(100)));
@@ -65,7 +72,7 @@ public class CityPlacerTests
     public void CitiesAreStampedAsCityCellsWithTheRightFootprint()
     {
         var map = BigCoast();
-        var cities = CityPlacer.Place(map, 20, Names(100), new Random(2));
+        var cities = CityPlacer.Place(map, Mix(), Names(100), new Random(2));
         foreach (var c in cities)
         {
             Assert.Equal(CityPlacer.CellsFor(c.Size), c.Cells);
@@ -82,7 +89,7 @@ public class CityPlacerTests
     public void EveryCityTouchesWater()
     {
         var map = BigCoast();
-        foreach (var c in CityPlacer.Place(map, 20, Names(100), new Random(3)))
+        foreach (var c in CityPlacer.Place(map, Mix(), Names(100), new Random(3)))
             Assert.True(CityPlacer.TouchesWater(map, c), $"{c.Name} is landlocked");
     }
 
@@ -90,7 +97,7 @@ public class CityPlacerTests
     public void CitiesAreSpacedApartAndClearOfTheMapEdge()
     {
         var map = BigCoast();
-        var cities = CityPlacer.Place(map, 20, Names(100), new Random(5));
+        var cities = CityPlacer.Place(map, Mix(), Names(100), new Random(5));
         foreach (var c in cities)
         {
             int half = c.Cells / 2, margin = CityPlacer.MapEdgeMargin;
@@ -116,14 +123,14 @@ public class CityPlacerTests
         Array.Fill(tiles, (byte)TerrainMap.Grass);
         var allLand = new TerrainMap(size, size, tiles);
         Assert.Empty(CityPlacer.ShuffledCoast(allLand, new Random(9)));
-        Assert.ThrowsAny<Exception>(() => CityPlacer.Place(allLand, 1, Names(10), new Random(9)));
+        Assert.ThrowsAny<Exception>(() => CityPlacer.Place(allLand, Mix(1, 0, 0), Names(10), new Random(9)));
     }
 
     [Fact]
     public void CitiesStayClearOfTheEdgeOnTheRealMap()
     {
         var map = TerrainMap.Parse(System.IO.File.ReadAllBytes(GameConfigTests.RepoFile("map1.terrain")));
-        foreach (var c in CityPlacer.Place(map, 20, Names(100), new Random(11)))
+        foreach (var c in CityPlacer.Place(map, Mix(), Names(100), new Random(11)))
         {
             int half = c.Cells / 2, margin = CityPlacer.MapEdgeMargin;
             Assert.InRange(c.X, half + margin, map.Width - half - margin);
@@ -135,14 +142,14 @@ public class CityPlacerTests
     public void FailsLoudlyWhenTheMapHasNoCoast()
     {
         var allWater = new TerrainMap(256, 256, new byte[256 * 256]);
-        Assert.ThrowsAny<Exception>(() => CityPlacer.Place(allWater, 1, Names(10), new Random(6)));
+        Assert.ThrowsAny<Exception>(() => CityPlacer.Place(allWater, Mix(1, 0, 0), Names(10), new Random(6)));
     }
 
     [Fact]
     public void BoatStartIsOpenWaterOffTheCityShore()
     {
         var map = BigCoast();
-        var city = CityPlacer.Place(map, 1, Names(10), new Random(7))[0];
+        var city = CityPlacer.Place(map, Mix(1, 0, 0), Names(10), new Random(7))[0];
         var start = CityPlacer.WaterStartNear(map, city, clearance: 30);
         Assert.NotNull(start);
         var (x, y, heading) = start!.Value;
@@ -169,7 +176,7 @@ public class CityPlacerTests
     public void PlacesCitiesOnTheRealMap()
     {
         var map = TerrainMap.Parse(System.IO.File.ReadAllBytes(GameConfigTests.RepoFile("map1.terrain")));
-        var cities = CityPlacer.Place(map, 20, CityPlacer.ParseNames(
+        var cities = CityPlacer.Place(map, Mix(), CityPlacer.ParseNames(
             System.IO.File.ReadAllText(GameConfigTests.RepoFile("data/city-names.json"))), new Random(8));
         Assert.Equal(20, cities.Count);
         Assert.All(cities, c => Assert.True(CityPlacer.TouchesWater(map, c)));
