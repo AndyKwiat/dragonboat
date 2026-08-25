@@ -31,8 +31,8 @@ rules change.
 - A new gameplay system gets its own `src/<name>/` folder and
   `docs/<name>.md`, wired up only in `Main.cs`; trading and combat never
   reach into each other.
-- `game-config.yml` (terrain file + city count) is required at launch and
-  has no code defaults; `data/products.json` and `data/city-names.json` are
+- `game-config.yml` (terrain file, city count, current density) is required
+  at launch and has no code defaults; `data/products.json` and `data/city-names.json` are
   canonical. Cities are generated on the coast every run (`CityPlacer`);
   maps are `.terrain` files painted in `../terrain-gen`. One map cell = one
   world unit.

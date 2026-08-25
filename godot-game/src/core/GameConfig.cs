@@ -2,8 +2,8 @@ using System;
 using System.Collections.Generic;
 using System.Globalization;
 
-// game-config.yml (repo root): which terrain file to load and how many
-// cities to generate. No Godot types — Main reads the file text and hands
+// game-config.yml (repo root): which terrain file to load, how many cities
+// to generate and how thick the currents run. No Godot types — Main reads the file text and hands
 // it to Parse. Every key is required: the file, not the code, is where
 // these numbers live. The YAML subset is flat `key: value` lines with `#`
 // comments, which is all the file needs.
@@ -13,16 +13,33 @@ public sealed class GameConfig
 
     public string TerrainFile { get; }
     public int CityCount { get; }
+    // Currents per map area: 100 is the baseline (CurrentsAtBaseDensity
+    // arrows on an 8192² map), 200 twice as many, 10 a tenth, 0 none.
+    public double CurrentDensity { get; }
 
     // Set once by Main; systems that scale with the city count read it.
     public static GameConfig Current { get; set; } = null!;
 
-    public GameConfig(string terrainFile, int cityCount)
+    // The baseline the current count is quoted at: CurrentsAtBaseDensity
+    // arrows for a density of 100 on an 8192² map. (This lives here rather
+    // than in Config.cs so GameConfig stays free of Godot types.)
+    public const int CurrentsAtBaseDensity = 3600;
+    public const double BaseCurrentDensity = 100;
+    public const long BaseMapCells = 8192L * 8192L;
+
+    public GameConfig(string terrainFile, int cityCount, double currentDensity)
     {
         if (string.IsNullOrWhiteSpace(terrainFile)) throw new ArgumentException("terrainFile is empty");
         if (cityCount < 1) throw new ArgumentException($"cityCount must be at least 1, got {cityCount}");
-        TerrainFile = terrainFile; CityCount = cityCount;
+        if (currentDensity < 0 || double.IsNaN(currentDensity))
+            throw new ArgumentException($"currentDensity must be 0 or more, got {currentDensity}");
+        TerrainFile = terrainFile; CityCount = cityCount; CurrentDensity = currentDensity;
     }
+
+    // How many current arrows a map of this many cells gets: linear in both
+    // the density and the map's area, so the flow looks the same on any map.
+    public int CurrentCount(long mapCells) => (int)Math.Round(
+        CurrentsAtBaseDensity * (CurrentDensity / BaseCurrentDensity) * (mapCells / (double)BaseMapCells));
 
     // A count tuned for a 100-city world, scaled to this config's city
     // count (rounded, never below 1).
@@ -36,7 +53,10 @@ public sealed class GameConfig
         if (!values.TryGetValue("cityCount", out var count)) throw new Exception("game-config.yml: missing 'cityCount'");
         if (!int.TryParse(count, NumberStyles.Integer, CultureInfo.InvariantCulture, out int cities))
             throw new Exception($"game-config.yml: cityCount '{count}' is not an integer");
-        return new GameConfig(terrain, cities);
+        if (!values.TryGetValue("currentDensity", out var density)) throw new Exception("game-config.yml: missing 'currentDensity'");
+        if (!double.TryParse(density, NumberStyles.Float, CultureInfo.InvariantCulture, out double currents))
+            throw new Exception($"game-config.yml: currentDensity '{density}' is not a number");
+        return new GameConfig(terrain, cities, currents);
     }
 
     public static Dictionary<string, string> ParseFlatYaml(string text)

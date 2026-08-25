@@ -2,7 +2,9 @@ using Godot;
 using System;
 using System.Collections.Generic;
 
-// TEST FEATURE: currents / rapids. Random arrows scattered on the water,
+// TEST FEATURE: currents / rapids. Arrows scattered at random over the
+// water — how many is game-config.yml's currentDensity, scaled by the map's
+// area (GameConfig.CurrentCount). Random arrows scattered on the water,
 // all flowing south (world +y) for now. Each
 // arrow owns a rectangular zone ahead of it that pushes anything in it
 // along the flow with a force of Strength, fading out over the zone's
@@ -11,7 +13,6 @@ using System.Collections.Generic;
 // arrow on top. Strength is live-tunable (T panel).
 public partial class Currents : Node3D
 {
-    public const int Count = 3600;             // arrows scattered over the map
     public const float ArrowLength = 30f;    // the arrow glyph itself
     public const float ZoneLength = 120f;     // zone extends this far from the arrow tail
     public const float ZoneWidth = 60f;
@@ -35,8 +36,9 @@ public partial class Currents : Node3D
         this.map = map;
         var rng = new Random();   // fresh layout every run
         const float dx = 0f, dy = 1f;   // south
+        int count = GameConfig.Current.CurrentCount((long)map.Width * map.Height);
         int tries = 0;
-        while (currents.Count < Count && tries++ < Count * 50)
+        while (currents.Count < count && tries++ < count * 50)
         {
             float x = (float)rng.NextDouble() * map.WorldW;
             float y = (float)rng.NextDouble() * map.WorldH;

@@ -13,6 +13,7 @@ the world questions through `Terrain` and `CameraRig`.
 ```yml
 terrainFile: map1.terrain   # which map to load
 cityCount: 20               # how many cities to generate
+currentDensity: 100         # currents per map area (100 = 3600 on an 8192² map)
 ```
 
 The terrain file is painted in `../terrain-gen` and exported in its `TGN1`
@@ -84,11 +85,16 @@ A data-only wrapper over `TerrainMap` for gameplay:
 
 ## Currents
 
-`world/Currents.cs` (a test feature): `Count` (3600) arrows scattered on
-water cells, **all flowing south** (world +y). Each owns a `ZoneLength` ×
-`ZoneWidth` rectangle ahead of it that pushes anything inside along the flow
-at `Strength`, fading at the edges; overlapping zones add up. The count is
-1/5 of what it was on the old 20000-unit map.
+`world/Currents.cs` (a test feature): arrows scattered on water cells, **all
+flowing south** (world +y). Each owns a `ZoneLength` × `ZoneWidth` rectangle
+ahead of it that pushes anything inside along the flow at `Strength`, fading
+at the edges; overlapping zones add up.
+
+How many arrows is `game-config.yml`'s required `currentDensity`, scaled by
+the map's area (`GameConfig.CurrentCount`): 100 is the baseline —
+`CurrentsAtBaseDensity` (3600) arrows on an 8192² map — so 200 is twice as
+thick, 10 a tenth, 0 none, and the same density gives the same look on a map
+of any size.
 
 ## Blob shadows (`world/BlobShadow.cs`)
 
