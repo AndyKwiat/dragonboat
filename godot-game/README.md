@@ -25,6 +25,11 @@ the rules.
 ./buildAndRun.sh    # both
 ```
 
+`./run.sh` with no window flags opens the game windowed at the full size of
+the screen, in the top-left corner. Passing `--screenshot` or `--size` keeps
+the small `project.godot` window instead (1280×800 logical), so scripted runs
+and their screenshots stay a predictable size.
+
 Requires the Godot 4.7 **.NET** build (`/Applications/Godot_mono.app`; the
 regular build cannot run C#) and a .NET SDK (8+; the project targets net8.0
 with roll-forward). Always run from this directory: `--path .` elsewhere

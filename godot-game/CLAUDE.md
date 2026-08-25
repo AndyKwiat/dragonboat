@@ -16,7 +16,9 @@ rules change.
   `--mode`, `--center`, `--zoom`, `--dump-tweaks`; see `ParseArgs` in
   `src/Main.cs`). The run's final printed line (boat position/heading/speed,
   shots/hits) is useful for asserting movement without pixels.
-- The window is hidpi: screenshots come out at 2× the logical size.
+- The window is hidpi: screenshots come out at 2× the logical size. A plain
+  `./run.sh` fills the screen; `--screenshot`/`--size` keep the small
+  1280×800 window, so scripted runs stay predictable.
 
 ## Conventions
 

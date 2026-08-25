@@ -60,19 +60,29 @@ public partial class Main : Node3D
 
     public override void _Ready()
     {
+        var args = ParseArgs();
+
         // Hi-dpi: render at the display's native density but keep every
         // coordinate in logical px (the web version's CSS px). The content
         // scale factor is the devicePixelRatio equivalent; the window is
         // enlarged to match so the logical size stays what project.godot asks
         // for. Fonts rasterise at the scaled size, so small text stays crisp.
         float screenScale = (float)DisplayServer.ScreenGetScale();
-        if (screenScale > 1f)
+        if (screenScale > 1f) GetWindow().ContentScaleFactor = screenScale;
+        // A human launch (./run.sh with no window flags) fills the screen,
+        // windowed, at the top-left corner. A scripted run keeps the small
+        // project.godot window (or whatever --size asks for) so screenshots
+        // stay a predictable size.
+        if (!args.ContainsKey("screenshot") && !args.ContainsKey("size"))
         {
-            GetWindow().ContentScaleFactor = screenScale;
+            var usable = DisplayServer.ScreenGetUsableRect();
+            DisplayServer.WindowSetSize(usable.Size);
+            DisplayServer.WindowSetPosition(usable.Position);
+        }
+        else if (screenScale > 1f)
+        {
             DisplayServer.WindowSetSize((Vector2I)((Vector2)DisplayServer.WindowGetSize() * screenScale));
         }
-
-        var args = ParseArgs();
         Tweaks.Register(typeof(BoatConfig), typeof(CombatConfig), typeof(Currents));
         // Tweaks persist: the panel's dump button writes tweaks.dump, and it
         // is applied over the code defaults at every launch (--set on top of
@@ -233,6 +243,7 @@ public partial class Main : Node3D
         return args;
     }
 
+    // The window fills the screen unless --screenshot or --size is given.
     // --screenshot[=path]  save the viewport after --frames (default 90) and quit
     // --zoom=Z             starting zoom (px per world unit)
     // --rig=name           starting camera rig
