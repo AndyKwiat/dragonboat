@@ -11,4 +11,4 @@ currentDensity: 10
 
 # Cities generated on the coast each launch (10% large, 30% medium, the
 # rest small). Story-event counts scale with this number (base: 100 cities).
-cityCount: 30
+cityCount: 40
