@@ -4,7 +4,7 @@ using System.Collections.Generic;
 // Story events: happenings out in the world, always tied to a city. The only
 // kind so far is a price swing: one product a city trades goes low or high
 // (a multiplier on the product's BASE price) until the event expires. The
-// world always carries Config.StoryEventCount of them; when one lapses a
+// world always carries the city-scaled StoryEventCount of them; when one lapses a
 // fresh one is rolled at a random city. Expiries always land on a midnight,
 // so Update() is a single compare until the clock crosses one — only then
 // does a pass drop the lapsed events and roll replacements.
@@ -115,19 +115,19 @@ public sealed class StoryEvents
         return true;
     }
 
-    // The world holds StoryEventCount price events and VipEventCount VIP
+    // The world holds the city-count-scaled number of price and VIP
     // offers at all times; each kind is topped up separately.
     private void TopUp()
     {
         int prices = 0, vips = 0;
         foreach (var e in events) { if (e is VipDeliveryStoryEvent) vips++; else prices++; }
-        while (prices < Config.StoryEventCount)
+        while (prices < GameConfig.Current.ScaledByCities(Config.StoryEventCountPer100Cities))
         {
             var e = RollPriceEvent();
             if (e == null) break;   // no distinct (city, product) slot left
             events.Add(e); prices++;
         }
-        while (vips < Config.VipEventCount)
+        while (vips < GameConfig.Current.ScaledByCities(Config.VipEventCountPer100Cities))
         {
             var e = RollVipEvent();
             if (e == null) break;   // no city free of a VIP offer left

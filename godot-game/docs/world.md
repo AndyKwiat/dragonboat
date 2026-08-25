@@ -1,30 +1,45 @@
 # World: map, coordinates, camera, terrain
 
-Files: `src/core/DMap.cs`, `src/core/Config.cs`, `src/world/*`,
+Files: `src/core/TerrainMap.cs`, `src/core/GameConfig.cs`, `src/core/Config.cs`,
+`src/world/*`,
 `shaders/*`. Nothing here knows about trading or combat; both of those ask
 the world questions through `Terrain` and `CameraRig`.
 
 ## The map
 
-`data/map.dmap` is exported by `../world-generator` (format spec:
-`../world-generator/map-format.md`): `DMAP` magic, uint32 LE width, uint32
-LE height, then width×height uint8 terrain indices, row-major, top to bottom.
-Indices: 0 ocean, 1 beach, 2 grassland, 3 forest, 4 mountain, 5 river,
-6 canal, 7 city. `DMap.TerrainAt` returns ocean outside the map. Each cell
-is `Config.TileScale` (20) world units, so the 1000×1000 map is a
-20000×20000 world; nothing else hardcodes the size.
+`game-config.yml` (repo root) is read first (`src/core/GameConfig.cs`, a flat
+`key: value` parser). It has two required keys — neither has a code default:
 
-**Water** is ocean, river and canal (`Terrain.IsWaterIndex`) — the blue and
-dark-blue cells. Everything else is land and rises out of the water by
-`Config.TerrainHeights[index]` (beach 3, grass 8, forest 10, mountain 14,
-city 24).
+```yml
+terrainFile: map1.terrain   # which map to load
+cityCount: 20               # how many cities to generate
+```
+
+The terrain file is painted in `../terrain-gen` and exported in its `TGN1`
+format (spec: `../terrain-gen/src/core/fileFormat.ts`): magic `TGN1`, uint32
+LE size (cells per side, a power of two), uint32 flags, float32 worldSize,
+then size² float32 heights and size² uint8 tile ids, row-major top to bottom,
+the whole file usually gzipped (`TerrainMap.Parse` gunzips transparently).
+The heightmap is **ignored for now**; only the tile ids are used.
+
+Tile ids: 0 water, 1 sand, 2 grass, 3 forest, 4 rock — plus 5 city, which is
+not in the file: `CityPlacer` stamps it into the loaded map at launch (see
+[trading.md](trading.md)). `TerrainMap.TerrainAt` returns water outside the map.
+
+**One cell is one world unit (~1 m)**, so `map1.terrain` (8192²) is an
+8192×8192 world — there is no tile scale any more. Distances in the config
+(cannon range, current zones, city footprints) are all in cells.
+
+**Water** is tile 0 only (`Terrain.IsWaterIndex`). Everything else is land
+and rises out of the water by `Config.TerrainHeights[id]` — small steps at
+this resolution (sand 0.3, grass 0.8, forest 1, rock 1.4, city 2.4).
 
 ## Coordinates and camera
 
 World coordinates are the map's: (0,0) top-left, x right, **y down**, in
 world units. In Godot space that is `X = x, Z = y, Y = height`
 (`CameraRig.WorldToGodot`), so north (world -y) is -Z and no axis flipping is
-needed anywhere: dmap rows go straight into the texture, `boat.Rotation.Y =
+needed anywhere: map rows go straight into the texture, `boat.Rotation.Y =
 -heading` (Godot turns +X towards -Z, world headings turn +X towards +Z/south).
 
 `zoom` is screen px per world unit at the camera's focus point. A **rig**
@@ -53,9 +68,10 @@ chunk streamer casts the four screen corners onto the ground with
 
 ## Terrain queries (`world/Terrain.cs`)
 
-A data-only wrapper over `DMap` for gameplay:
+A data-only wrapper over `TerrainMap` for gameplay:
 
-- `IsWater(x, y)`, `TerrainAt`, `HeightAt(x, y)` — cell lookups at a world point.
+- `IsWater(x, y)`, `TerrainAt`, `HeightAt(x, y)` — cell lookups at a world
+  point (a cell is a unit square, so the cell is just the floor of the point).
 - `ResolveCircle(ref x, ref y, r, out normal)` — pushes a circle out of every
   non-water cell it overlaps (closest-point-on-square vs circle, iterated for
   inside corners) and returns the total push. The boat's hull is three of
@@ -65,6 +81,14 @@ A data-only wrapper over `DMap` for gameplay:
   water plane or the top of a raised column (step-and-bisect through the
   band of column heights). Aiming uses it so clicking on a hill targets the
   hilltop, not the water plane underneath.
+
+## Currents
+
+`world/Currents.cs` (a test feature): `Count` (3600) arrows scattered on
+water cells, **all flowing south** (world +y). Each owns a `ZoneLength` ×
+`ZoneWidth` rectangle ahead of it that pushes anything inside along the flow
+at `Strength`, fading at the edges; overlapping zones add up. The count is
+1/5 of what it was on the old 20000-unit map.
 
 ## Blob shadows (`world/BlobShadow.cs`)
 
@@ -90,3 +114,8 @@ carry a disc that shrinks and fades with height (`BlobShadow.HeightT`).
   nearest-first inside `BuildBudgetMs` per frame, LRU-evicted past
   `MaxCachedChunks`. Water cells emit nothing — the plane is the water.
   Gameplay (collision, ballistics) always uses the raw map, not the LOD.
+  `MaxLodStep` is 64, enough for an 8192-cell map to fit in
+  `MaxVisibleChunks` when the whole world is on screen.
+- The map texture (one texel per cell) is built once by `TerrainPlane` and
+  shared with the minimap — at 8192² that is ~200 MB of RGB8, the biggest
+  single allocation in the game.

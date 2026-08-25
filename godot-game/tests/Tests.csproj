@@ -1,0 +1,22 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <LangVersion>latest</LangVersion>
+    <IsPackable>false</IsPackable>
+    <RollForward>LatestMajor</RollForward>
+    <RootNamespace>DragonboatGame.Tests</RootNamespace>
+  </PropertyGroup>
+  <ItemGroup>
+    <!-- The Godot-free core files, compiled straight from the game sources. -->
+    <Compile Include="../src/core/GameConfig.cs" />
+    <Compile Include="../src/core/TerrainMap.cs" />
+    <Compile Include="../src/core/City.cs" />
+    <Compile Include="../src/world/CityPlacer.cs" />
+  </ItemGroup>
+  <ItemGroup>
+    <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.11.1" />
+    <PackageReference Include="xunit" Version="2.9.2" />
+    <PackageReference Include="xunit.runner.visualstudio" Version="2.8.2" />
+  </ItemGroup>
+</Project>

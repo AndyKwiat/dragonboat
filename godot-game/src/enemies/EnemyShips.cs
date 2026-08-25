@@ -121,7 +121,7 @@ public partial class EnemyShip : Node3D, ICombatTarget
 // Spawns the fleet on random water and gates the per-frame logic.
 public partial class EnemyShips : Node3D
 {
-    public const int Count = 100;
+    public const int Count = 20;
     public const int HitsToSink = 3;
     public const int KillHonour = 50;   // paid the moment a ship goes down
     // A ship's logic runs only within this factor of the cannons' physical
@@ -132,17 +132,17 @@ public partial class EnemyShips : Node3D
     // Ships lurk near shore: a spawn cell must have land within this many
     // cells, which keeps them in rivers, canals and coastal water rather
     // than the open ocean.
-    public const int MaxLandDistanceCells = 1;
+    public const int MaxLandDistanceCells = 20;
     public static readonly Color HullColor = new Color("#8a2626");
 
     private readonly List<EnemyShip> ships = new();
 
-    private DMap map = null!;
+    private TerrainMap map = null!;
     private Terrain terrain = null!;
     private Random rng = null!;
     private Boat player = null!;
 
-    public void Init(DMap map, Terrain terrain, CombatSystem combat, Boat player, Random rng, Action onKill)
+    public void Init(TerrainMap map, Terrain terrain, CombatSystem combat, Boat player, Random rng, Action onKill)
     {
         Name = "EnemyShips";
         this.map = map; this.terrain = terrain; this.rng = rng; this.player = player;
@@ -191,9 +191,9 @@ public partial class EnemyShips : Node3D
     }
 
     // Any land cell within MaxLandDistanceCells of the cell under (x, y)?
-    private static bool NearLand(DMap map, float x, float y)
+    private static bool NearLand(TerrainMap map, float x, float y)
     {
-        int cx = (int)(x / Config.TileScale), cy = (int)(y / Config.TileScale);
+        int cx = (int)x, cy = (int)y;
         int r = MaxLandDistanceCells;
         for (int j = -r; j <= r; j++)
             for (int i = -r; i <= r; i++)

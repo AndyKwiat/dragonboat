@@ -3,7 +3,7 @@ using System;
 using System.Collections.Generic;
 
 // TEST FEATURE: currents / rapids. Random arrows scattered on the water,
-// all pointing away from the world centre (rivers flowing out to sea). Each
+// all flowing south (world +y) for now. Each
 // arrow owns a rectangular zone ahead of it that pushes anything in it
 // along the flow with a force of Strength, fading out over the zone's
 // edges so crossing a boundary is a swell, not a shove. Overlapping zones
@@ -11,7 +11,7 @@ using System.Collections.Generic;
 // arrow on top. Strength is live-tunable (T panel).
 public partial class Currents : Node3D
 {
-    public const int Count = 18000;            // arrows scattered over the map
+    public const int Count = 3600;             // arrows scattered over the map
     public const float ArrowLength = 30f;    // the arrow glyph itself
     public const float ZoneLength = 120f;     // zone extends this far from the arrow tail
     public const float ZoneWidth = 60f;
@@ -28,23 +28,19 @@ public partial class Currents : Node3D
     }
 
     private readonly List<Current> currents = new();
-    private DMap map = null!;
+    private TerrainMap map = null!;
 
-    public void Init(DMap map, Terrain terrain)
+    public void Init(TerrainMap map, Terrain terrain)
     {
         this.map = map;
         var rng = new Random();   // fresh layout every run
-        float cx = map.WorldW / 2, cy = map.WorldH / 2;
+        const float dx = 0f, dy = 1f;   // south
         int tries = 0;
         while (currents.Count < Count && tries++ < Count * 50)
         {
             float x = (float)rng.NextDouble() * map.WorldW;
             float y = (float)rng.NextDouble() * map.WorldH;
             if (!terrain.IsWater(x, y)) continue;
-            float dx = x - cx, dy = y - cy;
-            float len = Mathf.Sqrt(dx * dx + dy * dy);
-            if (len < 1) continue;
-            dx /= len; dy /= len;
             // Keep the whole zone on water so the arrow reads as a river mouth, not a land feature.
             if (!terrain.IsWater(x + dx * ZoneLength, y + dy * ZoneLength)) continue;
             currents.Add(new Current(x, y, dx, dy));

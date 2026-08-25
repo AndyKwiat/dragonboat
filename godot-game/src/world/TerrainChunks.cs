@@ -22,7 +22,7 @@ public partial class TerrainChunks : Node3D
 
     public struct Stats { public int Visible, Cached, Step, Pending; }
 
-    private DMap map = null!;
+    private TerrainMap map = null!;
     private readonly Dictionary<string, Chunk> cache = new();
     private ShaderMaterial material = null!;
     private long frame;
@@ -32,7 +32,7 @@ public partial class TerrainChunks : Node3D
     // the three.js version) and stored back as sRGB for the vertex colours.
     private Color[] topColors = null!, sideXColors = null!, sideYColors = null!;
 
-    public void Init(DMap map)
+    public void Init(TerrainMap map)
     {
         this.map = map;
         material = new ShaderMaterial { Shader = GD.Load<Shader>("res://shaders/terrain_chunk.gdshader") };
@@ -70,7 +70,7 @@ public partial class TerrainChunks : Node3D
     private MeshInstance3D? BuildChunk(int ci, int cj, int step)
     {
         int C = Config.CellsPerChunk;
-        float cellW = Config.TileScale * step;
+        float cellW = step;   // one cell = one world unit
         int x0 = ci * C, y0 = cj * C;   // in LOD-cell units
         int N = C + 2;
         var types = new int[N * N];     // with a 1-cell border for side exposure at the edges
@@ -145,7 +145,7 @@ public partial class TerrainChunks : Node3D
     {
         frame++;
         int C = Config.CellsPerChunk;
-        float pad = Config.BoundsPadCells * Config.TileScale;
+        float pad = Config.BoundsPadCells;
         float left = Math.Max(0, bounds.Position.X - pad);
         float top = Math.Max(0, bounds.Position.Y - pad);
         float right = Math.Min(map.WorldW, bounds.End.X + pad);
@@ -157,7 +157,7 @@ public partial class TerrainChunks : Node3D
         int ci0, ci1, cj0, cj1;
         for (;;)
         {
-            chunkW = C * Config.TileScale * step;
+            chunkW = C * step;
             ci0 = (int)Math.Floor(left / chunkW);
             ci1 = Math.Min((int)Math.Ceiling(right / chunkW), (int)Math.Ceiling(map.Width / (double)(C * step))) - 1;
             cj0 = (int)Math.Floor(top / chunkW);

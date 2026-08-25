@@ -1,7 +1,7 @@
 # dragonboat/godot-game
 
 Godot 4.7 (.NET / C#) dragonboat game: an isometric (or 45° perspective)
-view of the world-generator map; you sail a two-masted boat between cities,
+view of a hand-painted terrain map; you sail a two-masted boat between cities,
 trade, feed and pay a crew — and fire its cannons at anything you click.
 It began as a port of a three.js prototype (since deleted) plus the boat
 combat from `../combat-prototype`; this repo is now the only home of all
@@ -60,17 +60,20 @@ adding an attribute; keep names unique across config classes.
 ### Scripted runs / screenshots
 
 User args after `--` drive a run without a human, which is how changes are
-verified (there is no test suite — look at the screenshots, and at the line
+verified (`dotnet test tests` covers the Godot-free core — the config,
+the .terrain parser and city placement; everything else is checked by
+scripted runs — look at the screenshots, and at the line
 the run prints: boat position/heading/speed, shots and hits):
 
 ```bash
 G=/Applications/Godot_mono.app/Contents/MacOS/Godot
 $G --path . -- --screenshot=screenshots/iso.png --frames=120
-$G --path . -- --screenshot=screenshots/city.png --mode=free --center=11301,18085 --city=Chenglu
-$G --path . -- --screenshot=screenshots/far.png --zoom=0.15 --rig=perspective
+$G --path . -- --screenshot=screenshots/world.png --mode=free --center=4096,4096 --zoom=0.14   # the whole 8192² map
+$G --path . -- --screenshot=screenshots/city.png --city   # the start city's market (or --city=Name)
+$G --path . -- --screenshot=screenshots/far.png --zoom=0.5 --rig=perspective
 $G --path . -- --screenshot=screenshots/drive.png --frames=240 --hold=W,D
-$G --path . -- --screenshot=screenshots/shore.png --frames=900 --start=3300,15700,40 --hold=W   # slide along the beach east of the start
-$G --path . -- --screenshot=screenshots/shot.png --frames=435 --zoom=4 --start=3380,15829,0 --fire=110,-10@100 --set=Gravity=60
+$G --path . -- --screenshot=screenshots/shore.png --frames=900 --hold=W          # sail out of the start harbour
+$G --path . -- --screenshot=screenshots/shot.png --frames=435 --zoom=4 --fire=110,-10@100 --set=Gravity=60
 ```
 
 | flag | effect |
@@ -100,18 +103,25 @@ that knows about all of them.
 project.godot          1280×800 window, hidpi on (Main sets the content scale
                        factor, so "px" stays a CSS-like logical px), clear colour
 Main.tscn              one Node3D with src/Main.cs
-data/                  map.dmap (from ../world-generator), cities.json,
-                       products.json — canonical here; city specialities are
-                       dealt at runtime (docs/trading.md).
+game-config.yml        which terrain file to load and how many cities to
+                       generate — required, no code defaults
+map1.terrain           the map, painted in ../terrain-gen (TGN1, gzipped);
+                       one cell = one world unit
+data/                  products.json (canonical here) and city-names.json;
+                       cities themselves are generated on the coast every
+                       launch (docs/trading.md)
 shaders/               terrain_plane.gdshader (map texture + tile grid),
                        terrain_chunk.gdshader (vertex-coloured columns)
 docs/                  one markdown doc per subsystem (table above)
+tests/                 xunit tests for the Godot-free core (`dotnet test tests`)
 src/Main.cs            wiring, the per-frame loop, the scripted-run flags
-src/core/              Config (world/camera/trading/UI constants), DMap parser,
-                       GameData (cities/products), GameTime (clock), InputState,
+src/core/              Config (world/camera/trading/UI constants), GameConfig
+                       (game-config.yml), TerrainMap (.terrain parser), City,
+                       GameData (products + the run's cities), GameTime (clock), InputState,
                        Tweaks (the [Tweak] registry behind live tuning)
 src/world/             CameraRig + CameraControllers, TerrainPlane, TerrainChunks,
-                       Terrain (water/height/collision queries)           → docs/world.md
+                       Terrain (water/height/collision queries), CityPlacer,
+                       Currents                                          → docs/world.md
 src/boat/              BoatConfig, Boat (physics, lean, land collision, hittable),
                        BoatModel (hull/masts/sails)                       → docs/boat.md
 src/combat/            CombatConfig, CombatSystem, Cannon, CannonBattery,
@@ -135,7 +145,8 @@ C# with `Nullable` on, 4-space indent, one class per file, `partial` only
 where Godot needs it (Node subclasses). World/camera/trading/UI constants go
 in `core/Config.cs`; boat and combat knobs go in their own `*Config.cs` as
 `[Tweak]` statics. Keep the rules files (`GameTime`, `Crew`, `Player`,
-`Upkeep`, `Market`, `StoryEvents`) free of Godot types — pure, testable
-rules. New gameplay systems get their own `src/<name>/` folder and
+`Upkeep`, `Market`, `StoryEvents`) and the world-building ones
+(`GameConfig`, `TerrainMap`, `City`, `CityPlacer`) free of Godot types —
+pure, testable code, and `tests/` compiles them straight from `src/`. New gameplay systems get their own `src/<name>/` folder and
 `docs/<name>.md`, and are wired in `Main.cs`; don't make the trading code
 reach into combat or vice versa — both talk to the boat/world, not each other.

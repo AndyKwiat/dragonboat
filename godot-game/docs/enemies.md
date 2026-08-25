@@ -5,9 +5,10 @@ only. See `docs/combat.md` for the cannon/projectile layer it drives.
 
 ## Rules
 
-- **Fleet**: `EnemyShips.Count` (100) ships, spawned at launch on random
-  water cells that have land within `MaxLandDistanceCells` (1) — so they
-  lurk in rivers, canals and coastal water, never the open ocean — and
+- **Fleet**: `EnemyShips.Count` (20 — 1/5 of the old 100, matching the
+  world's 20 cities) ships, spawned at launch on random water cells that
+  have land within `MaxLandDistanceCells` (20 cells, i.e. ~20 m) — so they
+  lurk in rivers and coastal water, never the open ocean — and
   never within `MinSpawnDistance` (400) of the player's start, each with
   a random fixed heading. They never move and never turn.
 - **Same hardware as the player**: hull dimensions and hit box from

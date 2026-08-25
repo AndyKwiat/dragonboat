@@ -6,12 +6,12 @@ using System.Collections.Generic;
 // because those are live-tunable; everything here is a constant.
 public static class Config
 {
-    // World units per map cell — change this to resize the whole world.
-    public const float TileScale = 20f;
-
-    public const string MapPath = "res://data/map.dmap";
-    public const string CitiesPath = "res://data/cities.json";
+    // One map cell is one world unit (~1 m); the terrain file's size is the
+    // world's size. Which file, and how many cities, is game-config.yml.
+    public const string CityNamesPath = "res://data/city-names.json";
     public const string ProductsPath = "res://data/products.json";
+    // Clear water (cells) around the boat's start spot off a large city's shore.
+    public const int BoatStartClearanceCells = 30;
 
     public const float MaxZoom = 20f;                 // screen px per world unit
     public const float ZoomWheelSensitivity = 0.0015f;
@@ -32,17 +32,18 @@ public static class Config
     };
     public const float OrthoDistance = 30000f;        // how far back the ortho camera sits (only clipping)
 
-    // Column heights per terrain index (world units): water is the ground at
-    // 0, land rises out of it, cities rise 3x again.
-    // ocean, beach, grassland, forest, mountain, river, canal, city
-    public static readonly float[] TerrainHeights = { 0, 3, 8, 10, 14, 0, 0, 24 };
+    // Column heights per tile id (world units): water is the ground at 0,
+    // land rises out of it in small steps (the file's heightmap is ignored
+    // for now), cities rise 3x again.
+    // water, sand, grass, forest, rock, city
+    public static readonly float[] TerrainHeights = { 0, 0.3f, 0.8f, 1f, 1.4f, 2.4f };
 
     // Terrain streaming (see TerrainChunks.cs).
     public const int CellsPerChunk = 32;
     public const int MaxVisibleChunks = 110;
     public const int MaxCachedChunks = 360;
     public const double BuildBudgetMs = 5;
-    public const int MaxLodStep = 16;
+    public const int MaxLodStep = 64;    // 8192 cells / (32 × 64) = 4 chunks a side when fully zoomed out
     public const float SideShadeX = 0.72f;
     public const float SideShadeY = 0.55f;
     public const int BoundsPadCells = 2;
@@ -102,15 +103,16 @@ public static class Config
     public const double MarketSpecialityDiscount = 0.75;   // a medium/large city's specialities
     public static readonly HashSet<string> LuxuryProductIds = new() { "CLOTHES", "FURNITURE", "JEWELRY" };
 
-    // Story events.
-    public const int StoryEventCount = 40;
+    // Story events. Counts are per 100 cities and scaled to the config's
+    // city count at launch (GameConfig.ScaledByCities).
+    public const int StoryEventCountPer100Cities = 40;
     public const int StoryEventMinDays = 5, StoryEventMaxDays = 10;
     public const double StoryEventLowMultiplier = 0.5, StoryEventHighMultiplier = 1.5;
     // High-price events are this many times likelier than low-price ones.
     public const int StoryEventHighOddsToOne = 2;
     // VIP delivery events: a city hosts a passenger bound for another city
     // ranked 6th..10th nearest (never the 5 closest, never beyond the 10th).
-    public const int VipEventCount = 10;
+    public const int VipEventCountPer100Cities = 10;
     public const int VipMinRank = 6, VipMaxRank = 10;
     public const int VipDeliveryMoney = 200, VipDeliveryHonour = 10;
     // Nearest other-city events shown (and discovered) in a city's popup.
@@ -165,10 +167,10 @@ public static class Config
     public static readonly Color MinimapRectColor = new Color("#ffffff");
     public const float MinimapWorldFraction = 0.5f;
 
-    // Indexed by terrain value: ocean, beach, grassland, forest, mountain, river, canal, city
+    // Indexed by tile id: water, sand, grass, forest, rock, city
     public static readonly Color[] TerrainColors =
     {
         new Color(0x1a6dd4FF), new Color(0xdec882FF), new Color(0x4a9e4aFF), new Color(0x266626FF),
-        new Color(0x888888FF), new Color(0x1a6dd4FF), new Color(0x135ba1FF), new Color(0xcc2222FF),
+        new Color(0x888888FF), new Color(0xcc2222FF),
     };
 }

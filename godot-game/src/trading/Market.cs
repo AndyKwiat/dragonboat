@@ -28,7 +28,7 @@ public static class Market
         return new Quote(p, SellPriceFor(p, m), BuyPriceFor(p, m), ev);
     }
 
-    // The city's market in cities.json order; unknown ids are skipped.
+    // The city's market in its dealt-product order; unknown ids are skipped.
     public static List<Quote> MarketFor(City city, StoryEvents? events = null)
     {
         var quotes = new List<Quote>();

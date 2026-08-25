@@ -9,7 +9,8 @@ rules change.
 
 - `./build.sh` compiles (dotnet). `./run.sh` runs — needs
   `/Applications/Godot_mono.app`, and always run from this directory.
-- No test suite. Verify changes with scripted runs + screenshots:
+- `dotnet test tests` covers the Godot-free core; everything else is
+  verified with scripted runs + screenshots:
   `./run.sh -- --screenshot=x.png --frames=120 --size=2560x1600` plus the
   other test hooks (`--city`, `--start=x,y,deg`, `--hold=W`, `--set`,
   `--mode`, `--center`, `--zoom`, `--dump-tweaks`; see `ParseArgs` in
@@ -28,6 +29,12 @@ rules change.
 - A new gameplay system gets its own `src/<name>/` folder and
   `docs/<name>.md`, wired up only in `Main.cs`; trading and combat never
   reach into each other.
-- `data/*.json` are canonical (city specialities are dealt at runtime);
-  `data/map.dmap` comes from `../world-generator`.
+- `game-config.yml` (terrain file + city count) is required at launch and
+  has no code defaults; `data/products.json` and `data/city-names.json` are
+  canonical. Cities are generated on the coast every run (`CityPlacer`);
+  maps are `.terrain` files painted in `../terrain-gen`. One map cell = one
+  world unit.
+- `dotnet test tests` runs the xunit suite over the Godot-free core
+  (config, terrain parsing, city placement); it compiles those files
+  straight from `src/`, so keep them free of Godot types.
 - Commit messages start with `godot-game: `.

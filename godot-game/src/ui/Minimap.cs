@@ -6,16 +6,17 @@ using Godot;
 public partial class Minimap : Control
 {
     private ImageTexture mapTexture = null!;
-    private DMap map = null!;
+    private TerrainMap map = null!;
     private CameraState state = new(0, 0, 1);
     private Vector2 view;
     private CameraRig? rig;
     private float windowW, windowH;
 
-    public void Init(DMap map)
+    // The map texture is the terrain plane's (shared — it's the whole world).
+    public void Init(TerrainMap map, ImageTexture texture)
     {
         this.map = map;
-        mapTexture = TerrainPlane.BuildTexture(map);
+        mapTexture = texture;
         TextureFilter = TextureFilterEnum.Nearest;
         MouseFilter = MouseFilterEnum.Ignore;
         int s = Config.MinimapSizePx;

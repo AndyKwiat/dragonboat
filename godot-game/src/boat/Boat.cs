@@ -10,8 +10,7 @@ using System;
 // Guns (combat/CannonBattery) are mounted as children and ride along.
 public partial class Boat : Node3D, ICombatTarget
 {
-    public float X = BoatConfig.StartX;
-    public float Y = BoatConfig.StartY;
+    public float X, Y;   // set by Main before Init (off a large city's shore)
     public float Heading = BoatConfig.StartHeading;
     public float Vx, Vy;            // velocity, world units/sec
     public float ThrustScale = 1;   // multiplier on MaxForce, driven by crew size

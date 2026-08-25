@@ -6,20 +6,20 @@ using System;
 // Purely data — no nodes — so boats, projectiles and (later) AI can share it.
 public sealed class Terrain
 {
-    private readonly DMap map;
+    private readonly TerrainMap map;
     public readonly float MaxHeight;
 
-    public Terrain(DMap map)
+    public Terrain(TerrainMap map)
     {
         this.map = map;
         MaxHeight = 0;
         foreach (var h in Config.TerrainHeights) MaxHeight = Math.Max(MaxHeight, h);
     }
 
-    public static bool IsWaterIndex(int t) => t == DMap.Ocean || t == DMap.River || t == DMap.Canal;
+    public static bool IsWaterIndex(int t) => TerrainMap.IsWaterIndex(t);
 
-    public int TerrainAt(float x, float y) =>
-        map.TerrainAt((int)MathF.Floor(x / Config.TileScale), (int)MathF.Floor(y / Config.TileScale));
+    // One cell is one world unit.
+    public int TerrainAt(float x, float y) => map.TerrainAt((int)MathF.Floor(x), (int)MathF.Floor(y));
 
     public bool IsWater(float x, float y) => IsWaterIndex(TerrainAt(x, y));
 
@@ -35,17 +35,16 @@ public sealed class Terrain
     public Vector2 ResolveCircle(ref float x, ref float y, float r, out Vector2 normal)
     {
         var total = Vector2.Zero;
-        float ts = Config.TileScale;
         for (int iter = 0; iter < 4; iter++)
         {
             bool moved = false;
-            int cx0 = (int)MathF.Floor((x - r) / ts), cx1 = (int)MathF.Floor((x + r) / ts);
-            int cy0 = (int)MathF.Floor((y - r) / ts), cy1 = (int)MathF.Floor((y + r) / ts);
+            int cx0 = (int)MathF.Floor(x - r), cx1 = (int)MathF.Floor(x + r);
+            int cy0 = (int)MathF.Floor(y - r), cy1 = (int)MathF.Floor(y + r);
             for (int cy = cy0; cy <= cy1; cy++)
                 for (int cx = cx0; cx <= cx1; cx++)
                 {
                     if (IsWaterIndex(map.TerrainAt(cx, cy))) continue;
-                    float bx0 = cx * ts, by0 = cy * ts, bx1 = bx0 + ts, by1 = by0 + ts;
+                    float bx0 = cx, by0 = cy, bx1 = bx0 + 1, by1 = by0 + 1;
                     float px = Math.Clamp(x, bx0, bx1), py = Math.Clamp(y, by0, by1);
                     float dx = x - px, dy = y - py;
                     float d2 = dx * dx + dy * dy;

@@ -115,7 +115,7 @@ public partial class CityLabels : Control
     public City? Update(CameraState state, Vector2 view, Vector2 cursorPx, CameraRig rig)
     {
         const float margin = 200; // px of slack so labels don't pop at the edges
-        float cityTop = Config.TerrainHeights[DMap.City];
+        float cityTop = Config.TerrainHeights[TerrainMap.City];
         Entry? best = null;
         float bestDistance = float.PositiveInfinity;
 

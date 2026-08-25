@@ -14,7 +14,7 @@ using System.Collections.Generic;
 //   Godot --path . -- --screenshot=shot.png --frames=90 --zoom=0.5 --rig=perspective
 public partial class Main : Node3D
 {
-    private DMap map = null!;
+    private TerrainMap map = null!;
     private TerrainPlane terrain = null!;
     private TerrainChunks chunks = null!;
     private Terrain terrainQuery = null!;
@@ -52,6 +52,7 @@ public partial class Main : Node3D
     private int screenshotFrames = 90;
     private int frameCount;
     private readonly List<Key> heldKeys = new();
+    private City? startCity;        // the city the boat starts off (--city with no name)
     private Vector2? fireOffset;                 // --fire=dx,dy: aim point relative to the boat
     private readonly List<int> fireFrames = new();
 
@@ -80,11 +81,15 @@ public partial class Main : Node3D
             foreach (var line in FileAccess.GetFileAsString(TweakPanel.DumpPath).Split('\n'))
                 if (!Tweaks.ApplyDumpedLine(line))
                     GD.PushWarning($"tweaks.dump: could not apply '{line.Trim()}'");
+        // game-config.yml picks the terrain file and the city count; the
+        // cities are placed fresh on the coast every launch.
+        GameConfig.Current = GameConfig.Parse(FileAccess.GetFileAsString(GameConfig.Path));
         GameData.Load();
-        map = DMap.Load(Config.MapPath);
-        // TEMPORARY HACK (see CityHacks.cs): reshape city footprints and
-        // guarantee water access — delete with the new terrain generator.
-        CityHacks.Apply(map, GameData.Cities);
+        map = TerrainMap.Parse(FileAccess.GetFileAsBytes("res://" + GameConfig.Current.TerrainFile));
+        var worldRng = new Random();
+        var cities = CityPlacer.Place(map, GameConfig.Current.CityCount,
+            CityPlacer.ParseNames(FileAccess.GetFileAsString(Config.CityNamesPath)), worldRng);
+        GameData.SetCities(cities, worldRng);
         terrainQuery = new Terrain(map);
 
         // The world: terrain plane (ground/water) + streamed raised chunks + boat.
@@ -98,6 +103,7 @@ public partial class Main : Node3D
         currents.Init(map, terrainQuery);
         AddChild(currents);
         boat = new Boat();
+        PlaceBoatStart(cities, worldRng);
         boat.Init(terrainQuery);
         boat.Currents = currents;
         AddChild(boat);
@@ -180,7 +186,7 @@ public partial class Main : Node3D
         clock.Init(time, rations, player);
         ui.AddChild(clock);
         minimap = new Minimap();
-        minimap.Init(map);
+        minimap.Init(map, terrain.Texture);
         ui.AddChild(minimap);
         cityPopup = new CityPopup();
         cityPopup.Init(player, time, storyEvents);
@@ -191,6 +197,26 @@ public partial class Main : Node3D
 
         GetTree().Root.SizeChanged += Resize;
         ApplyArgs(args);
+    }
+
+    // The boat starts on open water off a random large city's shore,
+    // pointing out to sea (any city if no large one has a usable shore).
+    private void PlaceBoatStart(List<City> cities, Random rng)
+    {
+        // A random large city first, then the rest as fallbacks.
+        var large = cities.FindAll(c => c.Size == "large");
+        var order = new List<City>();
+        if (large.Count > 0) order.Add(large[rng.Next(large.Count)]);
+        foreach (var c in cities) if (!order.Contains(c)) order.Add(c);
+        foreach (var c in order)
+        {
+            if (CityPlacer.WaterStartNear(map, c, Config.BoatStartClearanceCells) is not (float x, float y, float heading)) continue;
+            boat.X = x; boat.Y = y; boat.Heading = heading;
+            startCity = c;
+            GD.Print($"Boat starts off {c.Name} ({c.Size}) at {x:0},{y:0}");
+            return;
+        }
+        throw new Exception("No city has a usable shore for the boat to start on");
     }
 
     // `--key=value` pairs after `--` on the command line, for scripted runs.
@@ -213,7 +239,7 @@ public partial class Main : Node3D
     // --vectors            start with the velocity/force overlay on (F toggles)
     // --mode=follow|edge|free  starting camera mode
     // --center=x,y         focus point (free mode)
-    // --city=Name          open the city popup for this city
+    // --city[=Name]        open the market of the start city (or a named one)
     // --size=WxH           window size
     // --hold=W,D           keys held down for the whole run (physical key names)
     // --start=x,y[,deg]    put the boat here (world units, heading in degrees, 0 = east)
@@ -265,8 +291,11 @@ public partial class Main : Node3D
         }
         if (args.TryGetValue("city", out var cityName))
         {
-            var city = GameData.Cities.Find(c => c.Name == cityName);
+            // Names are dealt fresh every run, so bare --city opens the city
+            // the boat starts off; a name still works if you have one.
+            var city = cityName == "true" ? startCity : GameData.Cities.Find(c => c.Name == cityName);
             if (city != null) { cityPopup.Show(city); cityLabels.RefreshIntel(); }
+            else GD.PushWarning($"--city: no city named '{cityName}' this run");
         }
         if (args.TryGetValue("hold", out var hold))
             foreach (var k in hold.Split(',')) heldKeys.Add(Enum.Parse<Key>(k, true));

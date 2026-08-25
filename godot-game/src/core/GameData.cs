@@ -3,30 +3,16 @@ using System;
 using System.Collections.Generic;
 using System.Text.Json;
 
-// cities.json / products.json, loaded once at startup.
-// A city's name and location are fixed by the JSON; the sizes are shuffled
-// between the cities every run (DealSizes — same counts, different spots)
-// and what each trades is dealt fresh from its size (DealProducts). Prices
-// are derived in Market.cs, never stored.
+// products.json, loaded once at startup, and the run's cities — placed on
+// the coast by CityPlacer (Main hands them over with SetCities) and dealt
+// their markets here from their size (DealProducts). Prices are derived in
+// Market.cs, never stored.
 public sealed class Product
 {
     public string Id = "";
     public string Name = "";
     public string Description = "";
     public double BasePrice;
-}
-
-public sealed class City
-{
-    public string Name = "";
-    public float X, Y;                        // world units, y-down from the top-left
-    public string Size = "small";             // small | medium | large
-    public List<string> Products = new();
-    // The city's always-cheaper goods, dealt with the products each run.
-    public List<string> Specialities = new();
-    // Runtime state, not from JSON: set forever once the player opens the
-    // city's popup; gates the price intel shown under its map label.
-    public bool Discovered;
 }
 
 public static class GameData
@@ -56,42 +42,16 @@ public static class GameData
         ById.Clear();
         foreach (var p in Products) ById[p.Id] = p;
 
-        using (var doc = JsonDocument.Parse(FileAccess.GetFileAsString(Config.CitiesPath)))
-        {
-            Cities = new List<City>();
-            foreach (var c in doc.RootElement.GetProperty("cities").EnumerateArray())
-            {
-                var city = new City
-                {
-                    Name = c.GetProperty("name").GetString() ?? "",
-                    X = c.GetProperty("location").GetProperty("x").GetSingle(),
-                    Y = c.GetProperty("location").GetProperty("y").GetSingle(),
-                    Size = c.GetProperty("size").GetString() ?? "small",
-                };
-                Cities.Add(city);
-            }
-        }
-        var rng = new Random();
-        DealSizes(rng);
+    }
+
+    // The run's freshly placed cities; deals each its market.
+    public static void SetCities(List<City> cities, Random rng)
+    {
+        Cities = cities;
         DealProducts(rng);
     }
 
-    // Shuffle the JSON sizes between the cities, so each run the large,
-    // medium and small cities land in different spots but the mix of the
-    // world stays the same.
-    public static void DealSizes(Random rng)
-    {
-        var sizes = Cities.ConvertAll(c => c.Size);
-        for (int i = sizes.Count - 1; i > 0; i--)
-        {
-            int j = rng.Next(i + 1);
-            (sizes[i], sizes[j]) = (sizes[j], sizes[i]);
-        }
-        for (int i = 0; i < Cities.Count; i++) Cities[i].Size = sizes[i];
-    }
-
-    // Each run deals the markets fresh (any products in cities.json are
-    // ignored): medium and large cities trade everything, a small city rice
+    // Each run deals the markets fresh: medium and large cities trade everything, a small city rice
     // plus one other random staple. Specialities — always-cheaper goods
     // (Market.MultiplierFor) — are dealt too: a small city's other staple,
     // one random product for a medium city, two for a large.
