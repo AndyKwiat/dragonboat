@@ -15,6 +15,6 @@ currentDensity: 10
 # room), and every city needs MinSpacing (300) cells of clearance, so a
 # crowded map will fail loudly rather than pile them up. Story-event and
 # VIP-offer counts scale with the total (base: 100 cities).
-smallCities: 24
-mediumCities: 12
-largeCities: 4
+smallCities: 18
+mediumCities: 18
+largeCities: 5

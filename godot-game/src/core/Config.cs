@@ -112,11 +112,11 @@ public static class Config
 
     // Story events. Counts are per 100 cities and scaled to the config's
     // city count at launch (GameConfig.ScaledByCities).
-    public const int StoryEventCountPer100Cities = 40;
+    public const int StoryEventCountPer100Cities = 50;
     public const int StoryEventMinDays = 5, StoryEventMaxDays = 10;
     public const double StoryEventLowMultiplier = 0.5, StoryEventHighMultiplier = 1.5;
     // High-price events are this many times likelier than low-price ones.
-    public const int StoryEventHighOddsToOne = 2;
+    public const int StoryEventHighOddsToOne = 3;
     // VIP delivery events: a city hosts a passenger bound for another city
     // ranked 6th..10th nearest (never the 5 closest, never beyond the 10th).
     public const int VipEventCountPer100Cities = 10;
