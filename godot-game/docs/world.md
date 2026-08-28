@@ -16,6 +16,8 @@ currentDensity: 100         # currents per map area (100 = 3600 on an 8192² map
 smallCities: 24             # how many cities of each size to generate —
 mediumCities: 12            # the mix is the file's, there is no ratio in
 largeCities: 4              # the code (CityPlacer.SizesFor)
+priceEvents: 20             # story events held at a time, by kind — supply
+vipEvents: 4                # shocks and VIP offers; 0 = none (trading.md)
 ```
 
 The terrain file is painted in `../terrain-gen` and exported in its `TGN1`

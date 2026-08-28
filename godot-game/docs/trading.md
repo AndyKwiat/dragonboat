@@ -68,10 +68,10 @@ a startup error, not a playable run.
   average every percentage is quoted against, and the Give button's
   threshold. Nothing in this file sets a price.
 - **Story events** (`StoryEvents.cs`): the world always holds
-  `StoryEventCountPer100Cities` (50) supply shocks plus
-  `VipEventCountPer100Cities` (10) VIP delivery offers **scaled to the
-  config's city count** (`GameConfig.ScaledByCities`), each tied to a city — a
-  city can hold several (but at most one VIP offer).
+  `game-config.yml`'s `priceEvents` supply shocks plus `vipEvents` VIP
+  delivery offers (both required keys; 0 means that kind never spawns),
+  each tied to a city — a city can hold several (but at most one VIP
+  offer).
   `ProductPriceStoryEvent`: one product the city stocks — picked with weight
   1/(cities stocking it), so rare goods headline more events but ubiquitous
   rice keeps a small chance — never two on the same (city, product).

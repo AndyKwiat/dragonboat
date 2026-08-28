@@ -35,7 +35,7 @@ public class CityPlacerTests
     [Fact]
     public void SizesComeStraightFromTheGameConfig()
     {
-        var config = new GameConfig("map1.terrain", smallCities: 5, mediumCities: 3, largeCities: 1, currentDensity: 0);
+        var config = new GameConfig("map1.terrain", smallCities: 5, mediumCities: 3, largeCities: 1, currentDensity: 0, priceEvents: 0, vipEvents: 0);
         var sizes = CityPlacer.SizesFor(config);
         Assert.Equal(9, sizes.Count);
         Assert.Equal(1, sizes.Count(s => s == "large"));

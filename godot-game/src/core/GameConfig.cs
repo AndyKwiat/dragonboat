@@ -17,8 +17,12 @@ public sealed class GameConfig
     public int SmallCities { get; }
     public int MediumCities { get; }
     public int LargeCities { get; }
-    // The total, which is what the story-event counts scale by.
     public int CityCount => SmallCities + MediumCities + LargeCities;
+    // How many story events of each kind the world holds at a time
+    // (StoryEvents.TopUp): supply shocks and VIP delivery offers. 0 means
+    // none of that kind ever spawns.
+    public int PriceEvents { get; }
+    public int VipEvents { get; }
     // Currents per map area: 100 is the baseline (CurrentsAtBaseDensity
     // arrows on an 8192² map), 200 twice as many, 10 a tenth, 0 none.
     public double CurrentDensity { get; }
@@ -33,10 +37,12 @@ public sealed class GameConfig
     public const double BaseCurrentDensity = 100;
     public const long BaseMapCells = 8192L * 8192L;
 
-    public GameConfig(string terrainFile, int smallCities, int mediumCities, int largeCities, double currentDensity)
+    public GameConfig(string terrainFile, int smallCities, int mediumCities, int largeCities, double currentDensity,
+        int priceEvents, int vipEvents)
     {
         if (string.IsNullOrWhiteSpace(terrainFile)) throw new ArgumentException("terrainFile is empty");
-        foreach (var (name, n) in new[] { ("smallCities", smallCities), ("mediumCities", mediumCities), ("largeCities", largeCities) })
+        foreach (var (name, n) in new[] { ("smallCities", smallCities), ("mediumCities", mediumCities), ("largeCities", largeCities),
+                                          ("priceEvents", priceEvents), ("vipEvents", vipEvents) })
             if (n < 0) throw new ArgumentException($"{name} cannot be negative, got {n}");
         if (smallCities + mediumCities + largeCities < 1)
             throw new ArgumentException("at least one city is needed (smallCities + mediumCities + largeCities)");
@@ -44,17 +50,13 @@ public sealed class GameConfig
             throw new ArgumentException($"currentDensity must be 0 or more, got {currentDensity}");
         TerrainFile = terrainFile; CurrentDensity = currentDensity;
         SmallCities = smallCities; MediumCities = mediumCities; LargeCities = largeCities;
+        PriceEvents = priceEvents; VipEvents = vipEvents;
     }
 
     // How many current arrows a map of this many cells gets: linear in both
     // the density and the map's area, so the flow looks the same on any map.
     public int CurrentCount(long mapCells) => (int)Math.Round(
         CurrentsAtBaseDensity * (CurrentDensity / BaseCurrentDensity) * (mapCells / (double)BaseMapCells));
-
-    // A count tuned for a 100-city world, scaled to this config's city
-    // count (rounded, never below 1).
-    public int ScaledByCities(int per100Cities) =>
-        Math.Max(1, (int)Math.Round(per100Cities * CityCount / 100.0));
 
     public static GameConfig Parse(string text)
     {
@@ -75,7 +77,10 @@ public sealed class GameConfig
         if (!values.TryGetValue("currentDensity", out var density)) throw new Exception("game-config.yml: missing 'currentDensity'");
         if (!double.TryParse(density, NumberStyles.Float, CultureInfo.InvariantCulture, out double currents))
             throw new Exception($"game-config.yml: currentDensity '{density}' is not a number");
-        return new GameConfig(terrain, small, medium, large, currents);
+        // The event counts used to be code constants quoted per 100 cities
+        // and scaled; now they are the file's, as plain counts.
+        int priceEvents = Count("priceEvents"), vipEvents = Count("vipEvents");
+        return new GameConfig(terrain, small, medium, large, currents, priceEvents, vipEvents);
     }
 
     public static Dictionary<string, string> ParseFlatYaml(string text)

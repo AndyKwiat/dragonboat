@@ -17,6 +17,7 @@ public partial class CityLabels : Control
         public RichTextLabel Intel = null!;
         public bool HasIntel;
         public float HalfWidthPx, HeightPx, MinZoom;
+        public float IntelWidthPx = Config.CityIntelBoxPx;
         public bool Visible, Hovered;
         public Vector2 Screen;
         public Color Color;
@@ -29,6 +30,13 @@ public partial class CityLabels : Control
     private Loans loans = null!;
     private Monasteries religion = null!;
     private Player player = null!;
+    // Debug (P): every price in every city, discovered or not.
+    private bool debugPrices;
+    // -1 = every product; otherwise an index into GameData.Products and only
+    // that product is listed ([ / ] step through, P leaves the mode).
+    private int debugProduct = -1;
+    public bool DebugPrices => debugPrices;
+    public Product? DebugProduct => debugProduct < 0 ? null : GameData.Products[debugProduct];
 
     public void Init(List<City> cities, StoryEvents storyEvents, WorldPrices world, GameTime time,
         Loans loans, Monasteries religion, Player player)
@@ -88,6 +96,33 @@ public partial class CityLabels : Control
         foreach (var e in entries)
         {
             var lines = new List<string>();
+            if (debugPrices)
+            {
+                // Everything, discovered or not: price, % of the world
+                // average, (P) where this city makes the product.
+                float widest = 0;
+                foreach (var id in e.City.Products)
+                {
+                    var product = GameData.ProductById(id);
+                    if (product == null) continue;
+                    if (debugProduct >= 0 && product != GameData.Products[debugProduct]) continue;
+                    var q = Market.QuoteFor(e.City, product, terms);
+                    var read = Market.Read(q.SellPrice, world.Of(product));
+                    var text = $"{product.Name} {q.SellPrice} ({read.Percent}%)" + (q.Produces ? " (P)" : "");
+                    widest = Math.Max(widest, Fonts.Ui.GetStringSize(text, HorizontalAlignment.Left, -1, Config.CityIntelFontPx).X);
+                    lines.Add($"[center]{text}[/center]");
+                }
+                StyleIntel(e.Intel, debug: true);
+                // The panel hugs the text: as wide as the widest line (plus
+                // padding), as tall as the rows actually shown.
+                e.IntelWidthPx = widest + 2 * DebugPanelPadX + 2;
+                e.Intel.CustomMinimumSize = new Vector2(e.IntelWidthPx, 0);
+                e.HasIntel = lines.Count > 0;
+                e.Intel.Text = string.Join("\n", lines);
+                e.Intel.ResetSize();
+                if (!e.HasIntel) e.Intel.Visible = false;
+                continue;
+            }
             var scored = new List<(double Off, string Line)>();
             foreach (var id in e.City.Products)
             {
@@ -105,6 +140,10 @@ public partial class CityLabels : Control
                 scored.Add((known ? double.MaxValue : off,
                     $"[center][color=#{color.ToHtml(false)}]{product.Name} {q.SellPrice} {(read.Dear ? "▲" : "▼")}{tail}[/color][/center]"));
             }
+            StyleIntel(e.Intel, debug: false);
+            e.IntelWidthPx = Config.CityIntelBoxPx;
+            e.Intel.CustomMinimumSize = new Vector2(e.IntelWidthPx, 0);
+            e.Intel.ResetSize();
             scored.Sort((a, b) => b.Off.CompareTo(a.Off));
             for (int i = 0; i < scored.Count && i < Config.CityIntelMaxLines; i++) lines.Add(scored[i].Line);
             // Under the price intel: a debt tag, so you know from the deck
@@ -134,6 +173,38 @@ public partial class CityLabels : Control
             e.Intel.Text = string.Join("\n", lines);
             if (!e.HasIntel) e.Intel.Visible = false;
         }
+    }
+
+    // The debug listing is plain white on a translucent black panel, no
+    // outline or shadow — easier to read than the coloured intel lines.
+    private const float DebugPanelPadX = 6, DebugPanelPadY = 3;
+
+    private static void StyleIntel(RichTextLabel intel, bool debug)
+    {
+        intel.AddThemeColorOverride("default_color", Colors.White);
+        intel.AddThemeConstantOverride("outline_size", debug ? 0 : 2);
+        intel.AddThemeConstantOverride("shadow_offset_y", debug ? 0 : 1);
+        intel.AddThemeColorOverride("font_shadow_color", new Color(0, 0, 0, debug ? 0f : 0.9f));
+        if (debug) intel.AddThemeStyleboxOverride("normal", Fonts.Panel(new Color(0, 0, 0, 0.6f), 3, DebugPanelPadX, DebugPanelPadY));
+        else intel.RemoveThemeStyleboxOverride("normal");
+    }
+
+    // P: flip the debug price listing on or off and redraw every label.
+    public void ToggleDebugPrices()
+    {
+        debugPrices = !debugPrices;
+        debugProduct = -1;
+        RefreshIntel();
+    }
+
+    // [ / ] while the debug listing is up: the first press narrows it to a
+    // single product, later presses step through the catalogue (wrapping).
+    public void StepDebugProduct(int dir)
+    {
+        if (!debugPrices || GameData.Products.Count == 0) return;
+        int n = GameData.Products.Count;
+        debugProduct = debugProduct < 0 ? (dir > 0 ? 0 : n - 1) : ((debugProduct + dir) % n + n) % n;
+        RefreshIntel();
     }
 
     private static string Tag(string colorHtml, string text) =>
@@ -169,7 +240,7 @@ public partial class CityLabels : Control
 
             e.Screen = p;
             e.Label.Position = new Vector2(p.X - e.HalfWidthPx, p.Y + Config.CityLabelOffsetPx);
-            e.Intel.Position = new Vector2(p.X - Config.CityIntelBoxPx / 2, p.Y + Config.CityLabelOffsetPx + e.HeightPx);
+            e.Intel.Position = new Vector2(p.X - e.IntelWidthPx / 2, p.Y + Config.CityLabelOffsetPx + e.HeightPx);
 
             float dx = cursorPx.X - p.X, dy = cursorPx.Y - p.Y;
             bool inCircle = dx * dx + dy * dy <= Config.CityHitRadiusPx * Config.CityHitRadiusPx;

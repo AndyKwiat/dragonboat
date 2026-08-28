@@ -575,6 +575,11 @@ public partial class Main : Node3D
         if (input.Pressed.Contains(Key.T)) tweakPanel.Toggle();
         // F shows the boat's velocity and force vectors.
         if (input.Pressed.Contains(Key.F)) vectors.Toggle();
+        // P (debug) lists every product's price under every city label.
+        if (input.Pressed.Contains(Key.P)) cityLabels.ToggleDebugPrices();
+        // [ / ] in that mode: one product at a time.
+        if (input.Pressed.Contains(Key.Bracketleft)) cityLabels.StepDebugProduct(-1);
+        if (input.Pressed.Contains(Key.Bracketright)) cityLabels.StepDebugProduct(1);
         // Latched here: the active controller clears the frame deltas in Update().
         bool clicked = input.Clicked;
         bool escaped = input.Pressed.Contains(Key.Escape);

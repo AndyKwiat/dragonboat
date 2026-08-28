@@ -123,9 +123,8 @@ public static class Config
         UniversalProductId = RationsProductId,
     };
 
-    // Story events. Counts are per 100 cities and scaled to the config's
-    // city count at launch (GameConfig.ScaledByCities).
-    public const int StoryEventCountPer100Cities = 50;
+    // Story events. How many of each kind the world holds is
+    // game-config.yml's priceEvents / vipEvents (GameConfig).
     public const int StoryEventMinDays = 5, StoryEventMaxDays = 10;
     // How hard an event shoves the city's stock level, as a fraction of its
     // market size; the daily decay walks it back from there.
@@ -134,7 +133,6 @@ public static class Config
     public const int StoryEventShortageOddsToOne = 3;
     // VIP delivery events: a city hosts a passenger bound for another city
     // ranked 6th..10th nearest (never the 5 closest, never beyond the 10th).
-    public const int VipEventCountPer100Cities = 10;
     public const int VipMinRank = 6, VipMaxRank = 10;
     public const int VipDeliveryMoney = 200, VipDeliveryHonour = 10;
     // On top of that flat reward, a bonus for a fast passage — and a heavy

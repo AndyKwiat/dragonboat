@@ -53,7 +53,13 @@ or zooming the map.
   notice while not in a menu belongs here.
 - **CityLabels** — one label per city, styled by size (`Config.CityLabel`),
   hidden below each size's min zoom, hover highlight; returns the hovered
-  city to `Main` for the click. Under the name, discovered price intel
+  city to `Main` for the click. **P** toggles a debug listing
+  (`ToggleDebugPrices`): every product the city trades, its sell price,
+  % of the world average (red dear / green cheap) and `(P)` where the
+  city produces it — regardless of what the player has discovered. In
+  that mode `[` / `]` (`StepDebugProduct`) narrow the listing to a single
+  product and step through the catalogue; P again clears everything.
+  Otherwise, under the name, discovered price intel
   (`RefreshIntel`): one red/green line per product the player knows trades
   off base price, with days left for story events, and under those the
   tags: `◆ OWE $12K (11d)` when that city's bank is owed money,

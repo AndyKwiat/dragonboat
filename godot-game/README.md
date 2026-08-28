@@ -51,6 +51,7 @@ opens the project picker and hangs a scripted run.
 | C | cycle camera mode (follow / edge / free) |
 | V | cycle camera rig (isometric / perspective) |
 | T | toggle the live tweak panel (sliders for every `[Tweak]` value) |
+| P | debug: every city label lists every product's price, % of the world average and `(P)` on the cities that produce it; `[` / `]` there narrow it to one product and step through them |
 | Esc | close the bank or monastery window, then the city popup |
 
 ### Live tuning
@@ -135,7 +136,8 @@ project.godot          1280×800 window, hidpi on (Main sets the content scale
 Main.tscn              one Node3D with src/Main.cs
 game-config.yml        which terrain file to load, how many small/medium/
                        large cities to generate, how thick the currents
-                       run — every key required, no code defaults
+                       run, how many story events of each kind are live —
+                       every key required, no code defaults
 map1.terrain           the map, painted in ../terrain-gen (TGN1, gzipped);
                        one cell = one world unit
 data/                  products.json (canonical here — each good is a staple or a
