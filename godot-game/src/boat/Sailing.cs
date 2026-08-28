@@ -51,6 +51,25 @@ public sealed class Wind
         return (MathF.Cos(b) * f, MathF.Sin(b) * f);
     }
 
+    /// How much of the rig's pull the wind is actually giving, 0..1: a dead
+    /// calm leaves the boat helpless, but the curve is generous — it climbs
+    /// steeply to `kneeDrive` by `kneeFrac` of `fullWind` and only then
+    /// eases on to 1, so a light breeze already beats the oars. Force above
+    /// `fullWind` gives nothing more.
+    public static float Drive(float force, float fullWind, float kneeFrac, float kneeDrive)
+    {
+        if (fullWind <= 0) return 1;
+        float f = Math.Clamp(force / fullWind, 0f, 1f);
+        if (kneeFrac <= 0) return kneeDrive + (1 - kneeDrive) * f;
+        return f <= kneeFrac
+            ? kneeDrive * f / kneeFrac
+            : kneeDrive + (1 - kneeDrive) * (f - kneeFrac) / (1 - kneeFrac);
+    }
+
+    /// This wind's own drive, for callers holding an instance.
+    public float Drive(float fullWind, float kneeFrac, float kneeDrive)
+        => Drive(Force, fullWind, kneeFrac, kneeDrive);
+
     /// "NE" etc. for the readout — the compass point the wind blows towards.
     public string Towards()
     {

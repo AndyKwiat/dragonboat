@@ -83,8 +83,10 @@ public partial class WindDial : PanelContainer
         if (rig.WorldToScreen(x, y, 0, out var n0) &&
             rig.WorldToScreen(x, y - far, 0, out var n1) && !n0.IsEqualApprox(n1))
             face.NorthRad = (n1 - n0).Angle();
-        face.Strength = Config.WindDialFullForce <= 0 ? 1
-            : Mathf.Clamp(wind.Force / Config.WindDialFullForce, 0, 1);
+        // The same "fully powered" reference the sails use, so the arrow
+        // filling out means the rig is filling out.
+        face.Strength = BoatConfig.SailFullWind <= 0 ? 1
+            : Mathf.Clamp(wind.Force / BoatConfig.SailFullWind, 0, 1);
         face.QueueRedraw();
         Position = new Vector2(8, view.Y - Size.Y - 8);
     }

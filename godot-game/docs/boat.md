@@ -50,6 +50,7 @@ match — struck sails simply vanish, leaving the bare masts.
 |  | sails up | sails down (oars) |
 |---|---|---|
 | thrust | always drawing; W is a no-op, S takes the way off | only while W (or S astern) is held |
+| what powers it | the wind (`Wind.Drive`) — a calm goes nowhere | the crew, always at full pull |
 | thrust scale | `× SailThrustScale` (0.7) | `× OarThrustScale` (1.6) |
 | drag | `× SailDragScale` (0.45) | `× OarDragScale` (2) |
 | rudder | `× SailTurnScale` (0.6) | `× OarTurnScale` (1) |
@@ -59,6 +60,23 @@ match — struck sails simply vanish, leaving the bare masts.
 With the defaults that is ~67 u/s under canvas against ~43 at the oars, and
 an oared boat that gathers way more than twice as fast and turns markedly
 harder. All six are `[Tweak]`s in the "Sailing" group.
+
+### What the sails are worth
+
+The rig's pull is the wind's to give: the forward thrust is scaled by
+`Wind.Drive`, a deliberately generous ramp — `SailWindKneeDrive` (0.6) of
+full pull by `SailWindKneeFrac` (0.15) of `SailFullWind` (30), then easing
+on to 1 at a full wind, and no more above it. So 15% of a full wind already
+makes ~50 u/s downwind and ~44 on a beam reach, both ahead of the oars' 43,
+while a flat calm leaves the boat sitting there until the oars come out —
+which is the whole point of carrying them. Measured downwind at 400 frames:
+0 wind → becalmed, 1 → 15 u/s, 3 → 36, 4.5 (the knee) → 50, 10 → 60, 22 →
+80, 30 → 91. Beating into a 22 still makes 49.
+
+Note that this is the *thrust along the heading*; the wind's own push on the
+hull (above) is separate and uncapped, which is why a gale still adds speed
+past `SailFullWind`. The HUD's `drive N%` line is the ramp's output, and the
+dial's arrow fills out on the same scale.
 
 A boat left alone under canvas therefore keeps sailing — and keeps burning
 the calendar, since `Main` advances game time whenever the hull is moving.

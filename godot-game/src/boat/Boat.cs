@@ -20,6 +20,7 @@ public partial class Boat : Node3D, ICombatTarget
     public bool SailsUp = true;     // SPACE toggles: canvas (wind, fast, sluggish helm)
                                     // vs oars (no wind, punchy, slower, tires the crew)
     public bool Rowing;             // sails down AND a helm order given this frame
+    public float SailDrive = 1;     // 0..1 of the rig's pull the wind is giving
     public Wind? Wind;              // the world's wind; only felt with the sails up
     public float Roll;              // radians about the forward axis (+ = starboard down)
     public int HitsTaken;
@@ -105,7 +106,12 @@ public partial class Boat : Node3D, ICombatTarget
         // whether or not W is held (holding it changes nothing), and S is how
         // you take the way off. At the oars nothing moves without an order.
         bool driving = SailsUp ? !back : forward;
-        float thrust = driving ? BoatConfig.MaxForce * ThrustScale * thrustScale
+        // What the canvas pulls is the wind's to give: becalmed, the boat
+        // goes nowhere until the oars come out. Oars pull their own weight.
+        SailDrive = SailsUp && Wind != null
+            ? Wind.Drive(BoatConfig.SailFullWind, BoatConfig.SailWindKneeFrac, BoatConfig.SailWindKneeDrive)
+            : 1;
+        float thrust = driving ? BoatConfig.MaxForce * ThrustScale * thrustScale * SailDrive
                      : back ? -BoatConfig.BrakeForce * thrustScale : 0;
         ThrustForce = new Vector2(cosH, sinH) * thrust;
         float k1 = BoatConfig.DragLinear * dragScale + (turn != 0 ? BoatConfig.RudderDrag * authority : 0);

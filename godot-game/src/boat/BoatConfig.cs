@@ -52,6 +52,15 @@ public static class BoatConfig
     // water over the rudder.
     [Tweak("Sailing", 0, 1, 0.05f)] public static float OarStandingTurn = 0.5f;
 
+    // What the sails pull is the wind's to give: no wind, no way on. The
+    // curve is deliberately generous (Wind.Drive) — SailWindKneeDrive of the
+    // rig's full pull by SailWindKneeFrac of SailFullWind — so anything
+    // above a breath of air already beats the oars, and only a flat calm
+    // leaves you reaching for them.
+    [Tweak("Sailing", 1, 60, 0.5f)] public static float SailFullWind = 30f;
+    [Tweak("Sailing", 0.02f, 1, 0.01f)] public static float SailWindKneeFrac = 0.15f;
+    [Tweak("Sailing", 0, 1, 0.05f)] public static float SailWindKneeDrive = 0.6f;
+
     public static float ThrustScaleFor(bool sailsUp) => sailsUp ? SailThrustScale : OarThrustScale;
     public static float DragScaleFor(bool sailsUp) => sailsUp ? SailDragScale : OarDragScale;
     public static float TurnScaleFor(bool sailsUp) => sailsUp ? SailTurnScale : OarTurnScale;
@@ -65,7 +74,7 @@ public static class BoatConfig
     // Reference top speed in still water with no crew bonus; cameras and the
     // HUD scale by it. Derived from the drag, so it follows the sliders —
     // and from the sail state, so the no-argument form (the fastest the boat
-    // goes, under canvas) is what the cameras use.
+    // goes: fully-powered canvas) is what the cameras use.
     public static float TerminalSpeed() => TerminalSpeed(true);
 
     public static float TerminalSpeed(bool sailsUp)

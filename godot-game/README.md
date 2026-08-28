@@ -43,7 +43,7 @@ opens the project picker and hangs a scripted run.
 | key | |
 |---|---|
 | WASD / arrows | drive the boat (follow mode) or pan (free mode) — under sail the canvas is always drawing, so W does nothing and S takes the way off |
-| **space** | sails up / sails down — canvas is always drawing (and catches the wind), runs faster but steers lazily; oars ignore the wind, accelerate harder, top out slower and tire the crew (the bar at the top) |
+| **space** | sails up / sails down — canvas is always drawing, as hard as the wind allows (a calm goes nowhere), runs faster but steers lazily; oars ignore the wind, accelerate harder, top out slower and tire the crew (the bar at the top) |
 | wheel | zoom; drag pans in free mode |
 | **click** | fire the best loaded cannon at the reticle under the cursor — or open a city's market if you clicked its name |
 | *(sail into a city)* | opens its market too — you must leave the quay, and wait out a 5 s cooldown, before it opens again |

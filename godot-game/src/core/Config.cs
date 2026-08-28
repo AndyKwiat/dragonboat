@@ -257,13 +257,13 @@ public static class Config
 
     // Wind dial (bottom left, ui/WindDial.cs): an arrow pointing the way the
     // wind blows, projected through the camera rig so it lines up with the
-    // map, over a ring; the colour warms with the strength.
+    // map, over a ring; the colour warms as the force approaches
+    // BoatConfig.SailFullWind (the same reference the sails use).
     public const int WindDialSizePx = 84;
     public const int WindDialFontPx = 12;
     public const float WindDialHeadPx = 13f;
     public const int WindDialTickFontPx = 9;
     public const float WindDialProbeUnits = 200f;   // how far out the direction is projected
-    public const float WindDialFullForce = 30f;     // force that paints the arrow at full strength
     public static readonly Color WindDialRingColor = new Color("#4a5568");
     public static readonly Color WindDialCalmColor = new Color("#8fa3bf");
     public static readonly Color WindDialBlowColor = new Color("#7fe3ff");

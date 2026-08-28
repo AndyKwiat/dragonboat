@@ -763,7 +763,8 @@ public partial class Main : Node3D
         staminaBar.Update(dt, view, boat.SailsUp);
         windDial.Update(rig, boat.X, boat.Y, view);
         string sailing = $"{(boat.SailsUp ? "sails up" : "oars")} [space]  crew {crewStamina.Level * 100:F0}%\n" +
-                         $"wind {wind.Force:F0} to the {wind.Towards()} ({wind.BearingDeg:F0}°)\n";   // the dial (bottom left) shows the same
+                         $"wind {wind.Force:F0} to the {wind.Towards()} ({wind.BearingDeg:F0}°), " +
+                         $"drive {boat.SailDrive * 100:F0}%\n";   // the dial (bottom left) shows the wind
         hud.Update(state, view, rig, CameraRig.MinZoomFor(view, map.WorldW, map.WorldH), active.Name, timeScale, chunks.GetStats(), guns, sailing);
         tweakPanel.Update(view);
 

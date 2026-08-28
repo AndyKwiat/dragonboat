@@ -73,6 +73,35 @@ public class SailingTests
     }
 
     [Fact]
+    public void ACalmGivesTheSailsNothing()
+    {
+        Assert.Equal(0, Wind.Drive(0, 30, 0.15f, 0.6f), 3);
+    }
+
+    [Fact]
+    public void ABreezeIsAlreadyMostOfTheRigsPull()
+    {
+        // The knee: 15% of a full wind buys 60% of the pull, which is what
+        // keeps a light air ahead of the oars.
+        Assert.Equal(0.6f, Wind.Drive(4.5f, 30, 0.15f, 0.6f), 3);
+        Assert.Equal(0.3f, Wind.Drive(2.25f, 30, 0.15f, 0.6f), 3);
+    }
+
+    [Fact]
+    public void DriveClimbsToOneAtFullWindAndStops()
+    {
+        Assert.Equal(0.8f, Wind.Drive(30 * 0.575f, 30, 0.15f, 0.6f), 3);
+        Assert.Equal(1f, Wind.Drive(30, 30, 0.15f, 0.6f), 3);
+        Assert.Equal(1f, Wind.Drive(90, 30, 0.15f, 0.6f), 3);   // a gale is no better
+    }
+
+    [Fact]
+    public void DriveReadsTheWindsOwnForce()
+    {
+        Assert.Equal(0.6f, new Wind(0, 4.5f, 0, 0).Drive(30, 0.15f, 0.6f), 3);
+    }
+
+    [Fact]
     public void RowingEmptiesTheCrewOverRowHours()
     {
         var crew = new CrewStamina(72, 36);
