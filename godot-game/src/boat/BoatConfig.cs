@@ -34,23 +34,61 @@ public static class BoatConfig
     [Tweak("Boat", 0.2f, 5, 0.05f)] public static float TurnRate = Mathf.Pi * 0.55f;  // rad/s at full authority
     [Tweak("Boat", 1, 60, 1)] public static float TurnFullSpeed = 20f;  // water speed at which the rudder has full authority
 
+    // Sails up or down (SPACE). Under canvas the boat is slower to answer
+    // the helm and slower to gather way, but the sea drags it less, so it
+    // ends up faster — and the wind acts on it. Under oars nothing but the
+    // rowers moves it: a hard shove that dies against much more drag, and a
+    // tired crew (CrewStamina). Each state scales the thrust, the drag and
+    // the rudder; the defaults give ~67 u/s under sail vs ~43 at the oars,
+    // and the oars pull more than twice as hard off the mark.
+    [Tweak("Sailing", 0.2f, 3, 0.05f)] public static float SailThrustScale = 0.7f;
+    [Tweak("Sailing", 0.2f, 3, 0.05f)] public static float SailDragScale = 0.45f;
+    [Tweak("Sailing", 0.2f, 2, 0.05f)] public static float SailTurnScale = 0.6f;
+    [Tweak("Sailing", 0.2f, 3, 0.05f)] public static float OarThrustScale = 1.6f;
+    [Tweak("Sailing", 0.2f, 3, 0.05f)] public static float OarDragScale = 2f;
+    [Tweak("Sailing", 0.2f, 2, 0.05f)] public static float OarTurnScale = 1f;
+    // Rudder authority an oared boat keeps with no way on: the crew can back
+    // one side and pull the other, so it spins on the spot. Sails still need
+    // water over the rudder.
+    [Tweak("Sailing", 0, 1, 0.05f)] public static float OarStandingTurn = 0.5f;
+
+    public static float ThrustScaleFor(bool sailsUp) => sailsUp ? SailThrustScale : OarThrustScale;
+    public static float DragScaleFor(bool sailsUp) => sailsUp ? SailDragScale : OarDragScale;
+    public static float TurnScaleFor(bool sailsUp) => sailsUp ? SailTurnScale : OarTurnScale;
+
+    // Crew stamina: game hours of unbroken rowing to empty the bar, and of
+    // rest (sailing, or oars shipped with no helm order) to fill it again.
+    // Nothing happens at 0 yet beyond the bar flashing.
+    [Tweak("Sailing", 6, 240, 1)] public static float RowHoursToEmpty = 72f;    // ~3 game days
+    [Tweak("Sailing", 6, 240, 1)] public static float RestHoursToFull = 36f;
+
     // Reference top speed in still water with no crew bonus; cameras and the
-    // HUD scale by it. Derived from the drag, so it follows the sliders.
-    public static float TerminalSpeed()
+    // HUD scale by it. Derived from the drag, so it follows the sliders —
+    // and from the sail state, so the no-argument form (the fastest the boat
+    // goes, under canvas) is what the cameras use.
+    public static float TerminalSpeed() => TerminalSpeed(true);
+
+    public static float TerminalSpeed(bool sailsUp)
     {
-        if (DragQuad <= 0) return DragLinear <= 0 ? 1e9f : MaxForce / DragLinear;
-        return (-DragLinear + Mathf.Sqrt(DragLinear * DragLinear + 4 * DragQuad * MaxForce)) / (2 * DragQuad);
+        float force = MaxForce * ThrustScaleFor(sailsUp);
+        float k1 = DragLinear * DragScaleFor(sailsUp), k2 = DragQuad * DragScaleFor(sailsUp);
+        if (k2 <= 0) return k1 <= 0 ? 1e9f : force / k1;
+        return (-k1 + Mathf.Sqrt(k1 * k1 + 4 * k2 * force)) / (2 * k2);
     }
 
-    // Wind: a constant force on the hull. Direction is a compass bearing in
-    // degrees the wind blows TOWARDS (0 = east/+x, 90 = south/+y, 180 = west).
-    [Tweak("Wind", 0, 60, 0.5f)] public static float WindForce = 0f;
+    // Wind (world/boat/Sailing.cs `Wind`): a force on a hull under canvas
+    // only — with the sails down the boat feels nothing. Bearing is the
+    // compass direction in degrees the wind blows TOWARDS (0 = east/+x,
+    // 90 = south/+y, 180 = west); it wanders SwingDeg either side of the
+    // base bearing over SwingHours of game time. What the boat catches
+    // depends on where it points: everything running dead downwind, nothing
+    // on a beam reach, and BeatingScale× of it — still blowing the boat
+    // astern — when it tries to beat into the wind.
+    [Tweak("Wind", 0, 60, 0.5f)] public static float WindForce = 22f;
     [Tweak("Wind", 0, 360, 5)] public static float WindBearingDeg = 180f;   // west
-    public static Vector2 WindVector()
-    {
-        float a = Mathf.DegToRad(WindBearingDeg);
-        return new Vector2(Mathf.Cos(a), Mathf.Sin(a)) * WindForce;
-    }
+    [Tweak("Wind", 0, 180, 5)] public static float WindSwingDeg = 60f;
+    [Tweak("Wind", 1, 480, 1)] public static float WindSwingHours = 96f;    // one full swing in ~4 game days
+    [Tweak("Wind", 0, 1, 0.05f)] public static float WindBeatingScale = 0.35f;
 
     // Largest physics step; Main sub-steps fast-forwarded time so turns don't cut corners.
     public const float MaxStepSeconds = 0.05f;

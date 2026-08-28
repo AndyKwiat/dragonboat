@@ -1,7 +1,7 @@
 # UI overlays
 
 Files: `src/ui/*` — Godot `Control`s on one `CanvasLayer` added in `Main`,
-in draw order: city labels (under everything), HUD, clock, minimap, city
+in draw order: city labels (under everything), HUD, clock, stamina bar, wind dial, minimap, city
 popup, bank/monastery windows, event log, tweak panel. The popup and tweak panel have `MouseFilter.Stop`, so
 clicks and wheel events inside them never reach `InputState` (which listens
 in `_UnhandledInput`) — that is what keeps a slider drag from firing a cannon
@@ -16,7 +16,20 @@ or zooming the map.
   `Spacer`/`Rule`/`Heading`/`MakeButton`/`SetEnabled` are the panel furniture
   the popups share (the city market panel and the bank window).
 - **Hud** (top right) — fps, view corners, zoom, camera mode/rig, sail-time
-  factor, chunk stats, and a `guns N/M loaded, shots, in air` line from combat.
+  factor, the sail state / crew / wind lines, chunk stats, and a
+  `guns N/M loaded, shots, in air` line from combat.
+- **StaminaBar** (top centre) — the sail state (`SAILS UP` / `OARS -
+  ROWING` / `OARS - RESTING`, SPACE toggles), the crew's remaining pull as a
+  bar that fades green → red as it empties. Spent (0%), the track flashes
+  red; that is the only thing exhaustion costs so far. Rules:
+  [boat.md](boat.md).
+- **WindDial** (bottom left) — `WIND 22 TO THE SE` over an arrow pointing
+  the way the wind blows, with a ring and a north tick. Both directions are
+  projected through the live camera rig (two points on the water either side
+  of the boat, screen-space delta), so the arrow lines up with the map in
+  either rig; the arrow lengthens and warms from `WindDialCalmColor` to
+  `WindDialBlowColor` as the force approaches `WindDialFullForce`. The event
+  log stacks above it. Rules: [boat.md](boat.md).
 - **Clock** (top left) — date/time, rations, money, honour, piety (red when
   negative — [religion.md](religion.md)), crew, cargo, one
   line per VIP aboard (`VIP delivery - Ravenport (+170, 12d left)`: what
@@ -33,7 +46,9 @@ or zooming the map.
   and late-payment honour losses from [banking.md](banking.md), a line on
   borrowing or repaying, and the VIP passengers losing patience and
   jumping ship ([trading.md](trading.md)). `NewsEvent` (`src/core/News.cs`)
-  is the shape of a line; keep them short enough for a narrow window. Lines fade after `Config.EventLogSeconds` and
+  is the shape of a line; keep them short enough for a narrow window. It
+  sits above whatever the wind dial has claimed at the foot of the screen
+  (`Update`'s `bottomPx`). Lines fade after `Config.EventLogSeconds` and
   the oldest go once past `EventLogMaxLines`. Anything the player must
   notice while not in a menu belongs here.
 - **CityLabels** — one label per city, styled by size (`Config.CityLabel`),

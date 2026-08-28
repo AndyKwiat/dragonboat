@@ -8,6 +8,7 @@ using Godot;
 public partial class BoatModel : Node3D
 {
     private StandardMaterial3D hullMaterial = null!;
+    private readonly System.Collections.Generic.List<MeshInstance3D> sails = new();
 
     public BoatModel(float length, Color hullColor)
     {
@@ -31,15 +32,23 @@ public partial class BoatModel : Node3D
             st.AddVertex(new Vector3(fwd, 3.5f, 0.2f) * s);
             st.AddVertex(new Vector3(fwd, 9f, 0.2f) * s);
             st.AddVertex(new Vector3(fwd - 3.5f, 3.5f, 0.2f) * s);
-            Add(st.Commit(), sailMaterial, Vector3.Zero);
+            sails.Add(Add(st.Commit(), sailMaterial, Vector3.Zero));
         }
     }
 
-    private void Add(Mesh mesh, Material material, Vector3 position, Vector3? rotation = null)
+    private MeshInstance3D Add(Mesh mesh, Material material, Vector3 position, Vector3? rotation = null)
     {
         var mi = new MeshInstance3D { Mesh = mesh, MaterialOverride = material, Position = position };
         if (rotation is Vector3 r) mi.Rotation = r;
         AddChild(mi);
+        return mi;
+    }
+
+    // Sails up or down (the SPACE toggle): struck canvas simply disappears,
+    // leaving the bare masts, so the state is readable at any zoom.
+    public void SetSails(bool up)
+    {
+        foreach (var sail in sails) sail.Visible = up;
     }
 
     // Hull glow after a hit, 0..1.

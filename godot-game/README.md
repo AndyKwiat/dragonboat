@@ -12,7 +12,7 @@ the rules.
 | doc | covers |
 |---|---|
 | [docs/world.md](docs/world.md) | map, coordinates, camera rigs/modes, terrain rendering and streaming, terrain queries |
-| [docs/boat.md](docs/boat.md) | the player boat: handling, lean/bob, land collision, the 3D model |
+| [docs/boat.md](docs/boat.md) | the player boat: handling, sails vs oars, wind, crew stamina, lean/bob, land collision, the 3D model |
 | [docs/combat.md](docs/combat.md) | cannons, cannonballs, impact effects, targets (enemy-ready), aiming |
 | [docs/economy.md](docs/economy.md) | who produces what, supply-driven prices, the trade ladder, the world average, cargo cost |
 | [docs/trading.md](docs/trading.md) | cities, story events, VIP deliveries, crew, rations/wages, the game clock, the city popup |
@@ -43,6 +43,7 @@ opens the project picker and hangs a scripted run.
 | key | |
 |---|---|
 | WASD / arrows | drive the boat (follow mode) or pan (free mode) |
+| **space** | sails up / sails down — canvas catches the wind and runs faster but steers lazily; oars ignore the wind, accelerate harder, top out slower and tire the crew (the bar at the top) |
 | wheel | zoom; drag pans in free mode |
 | **click** | fire the best loaded cannon at the reticle under the cursor — or open a city's market if you clicked its name |
 | *(sail into a city)* | opens its market too — you must leave the quay, and wait out a 5 s cooldown, before it opens again |
@@ -116,6 +117,8 @@ $G --path . -- --screenshot=screenshots/monk.png --seed=7 --monk=5 --deliver    
 | `--monastery[=Name]` | open a monastery's window over its city's market |
 | `--monk[=days]` | take a monk aboard, accepted that many days ago (30 days to land him) |
 | `--alms=daysAgo` | pretend that monastery last took alms then, to see the weekly cooldown |
+| `--sails=up\|down` | start under canvas (default) or at the oars |
+| `--stamina=0..1` | start the crew part-spent (default 1 = fresh) |
 | `--tweaks` | start with the tweak panel open |
 | `--size=WxH` | window size |
 
@@ -156,7 +159,8 @@ src/world/             CameraRig + CameraControllers, TerrainPlane, TerrainChunk
                        Terrain (water/height/collision queries), CityPlacer,
                        Currents                                          → docs/world.md
 src/boat/              BoatConfig, Boat (physics, lean, land collision, hittable),
-                       BoatModel (hull/masts/sails)                       → docs/boat.md
+                       BoatModel (hull/masts/sails), Sailing (wind + crew
+                       stamina; pure rules)                               → docs/boat.md
 src/combat/            CombatConfig, CombatSystem, Cannon, CannonBattery,
                        Projectiles, Effects, ICombatTarget                → docs/combat.md
 src/enemies/           EnemyShips — the stationary hostile fleet (docs/enemies.md)
@@ -168,7 +172,7 @@ src/banking/           Loans — city banks, interest, due dates, late
                        penalties; pure rules                              → docs/banking.md
 src/religion/          Monasteries — piety, alms, monk errands; pure rules
                                                                           → docs/religion.md
-src/ui/                Fonts, Hud, Clock, Minimap, CityLabels, CityPopup,
+src/ui/                Fonts, Hud, Clock, StaminaBar, WindDial, Minimap, CityLabels, CityPopup,
                        BankPopup, MonasteryPopup, EventLog, TweakPanel
                        — Godot Controls on a CanvasLayer                  → docs/ui.md
 ```

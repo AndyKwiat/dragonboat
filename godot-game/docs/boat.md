@@ -1,7 +1,8 @@
 # The boat
 
 Files: `src/boat/BoatConfig.cs` (knobs), `src/boat/Boat.cs` (physics,
-lean, land collision, hit box), `src/boat/BoatModel.cs` (the mesh). The
+lean, land collision, hit box), `src/boat/BoatModel.cs` (the mesh),
+`src/boat/Sailing.cs` (the Godot-free wind and crew-stamina rules). The
 boat is shared ground: trading cares about its speed (crew multiplier) and
 position (cities); combat mounts guns on it and shoots at it. Neither side
 should need to read the other's doc.
@@ -25,16 +26,72 @@ cannonball hit.
 
 ## Handling (`Boat.Update`)
 
-W/S accelerate/brake by `Accel`, coasting loses
-`Friction` units/s², speed clamps to `[-MaxReverseSpeed, MaxSpeed ×
-MaxSpeedScale]` (the crew multiplier, set by `Main` from
-`Crew.SpeedMultiplier`). Steering authority ramps with speed up to
-`TurnFullSpeed`; `TurnRateScale` is `1/timeScale` from `Main` so steering
-feels the same in fast-forward. `Main` sub-steps by `MaxStepSeconds`.
+The boat is a point mass (mass 1, so every force is an acceleration in world
+units/s²): W pushes `MaxForce` along the heading, S pushes `BrakeForce`
+astern, the water drags with a linear + quadratic term split into the keel
+and lateral axes (`LateralDragScale`× abeam), and the current
+([world.md](world.md)) and the wind add their own. Top speed is whatever the
+drag allows — `TerminalSpeed(sailsUp)` solves it. Steering authority ramps
+with water speed over the hull up to `TurnFullSpeed`, so a boat merely
+drifting on a current can't steer; `TurnRateScale` is `1/timeScale` from
+`Main` so the helm feels the same in fast-forward, and `ThrustScale` is the
+crew multiplier. `Main` sub-steps by `MaxStepSeconds`.
 
 `Speed` is the scalar along the heading; `GroundSpeed` is what the boat
 actually moved along its heading this step (less when the shore pushed back)
 — the follow camera's look-ahead uses the latter.
+
+## Sails up or down (SPACE)
+
+`Boat.SailsUp` (toggled by SPACE in `Main`, `SetSails` on the boat) picks
+between two ways of moving, and the model raises or strikes the canvas to
+match — struck sails simply vanish, leaving the bare masts.
+
+|  | sails up | sails down (oars) |
+|---|---|---|
+| thrust | `× SailThrustScale` (0.7) | `× OarThrustScale` (1.6) |
+| drag | `× SailDragScale` (0.45) | `× OarDragScale` (2) |
+| rudder | `× SailTurnScale` (0.6) | `× OarTurnScale` (1) |
+| wind | felt | ignored |
+| crew | resting | tiring while a helm key is held |
+
+With the defaults that is ~67 u/s under canvas against ~43 at the oars, and
+an oared boat that gathers way more than twice as fast and turns markedly
+harder. All six are `[Tweak]`s in the "Sailing" group.
+
+Oars also steer with no way on: a rudder needs water flowing past it, but a
+crew can back one side and pull the other, so under oars the authority never
+drops below `OarStandingTurn` (0.5) of full and the boat turns bow-first even
+dead in the water. Under canvas it still has to be moving. Verify with
+`--start=5330,2763,180 --sails=down --hold=D --frames=200`: heading swings
+180° → 273° on the spot.
+
+### Wind
+
+`Wind` (`src/boat/Sailing.cs`, Godot-free and unit-tested) is one force
+blowing **towards** `BearingDeg` (0 = east/+x, 90 = south/+y, 180 = west),
+wandering `WindSwingDeg` either side of `WindBearingDeg` as a sine of game
+hours over `WindSwingHours` — deterministic, so a `--seed` run repeats.
+`Main` owns the instance, feeds it game hours and re-reads the tweaks each
+frame; only a boat under canvas is given it.
+
+What the boat catches depends on where it points: `SailFactor` is
+`cos(bearing − heading)` running downwind (1 dead downwind, 0 on a beam
+reach) and `WindBeatingScale ×` that when beating into it. The force always
+acts **along the wind's own direction**, so a quartering wind sets the boat
+sideways and a headwind shoves it astern. Measured, sailing due west with a
+22-force wind: 85 u/s downwind, 63 on a beam reach, 55 beating.
+
+### Crew stamina
+
+`CrewStamina` (same file) is the rowers: `Level` 1 → 0 over
+`RowHoursToEmpty` game hours (72 ≈ 3 game days) of unbroken rowing, back to
+full over `RestHoursToFull` (36). Rowing means **sails down and a helm key
+held**; sailing, or oars shipped with no order given, rests them. Running
+out costs nothing yet — the bar (`ui/StaminaBar.cs`, top centre) just sits
+at 0 and flashes. The wind gets its own arrow bottom left
+(`ui/WindDial.cs`) — both are in [ui.md](ui.md). `--sails=up|down` and `--stamina=0..1` set the state for a
+scripted run, and the run's final line prints both.
 
 ## Lean and bob
 

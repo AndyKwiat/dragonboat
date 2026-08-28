@@ -39,7 +39,11 @@ public partial class Main : Node3D
     private Loans loans = null!;
     private Monasteries religion = null!;
     private Hud hud = null!;
+    private StaminaBar staminaBar = null!;
+    private WindDial windDial = null!;
     private Clock clock = null!;
+    private Wind wind = null!;
+    private CrewStamina crewStamina = null!;
     private Minimap minimap = null!;
     private CityLabels cityLabels = null!;
     private VectorOverlay vectors = null!;
@@ -137,6 +141,12 @@ public partial class Main : Node3D
         PlaceBoatStart(cities, worldRng);
         boat.Init(terrainQuery);
         boat.Currents = currents;
+        // Sailing: the world's wind (only felt with the sails up) and the
+        // rowers' stamina (only spent with them down) — boat/Sailing.cs.
+        wind = new Wind(BoatConfig.WindBearingDeg, BoatConfig.WindForce,
+                        BoatConfig.WindSwingDeg, BoatConfig.WindSwingHours);
+        boat.Wind = wind;
+        crewStamina = new CrewStamina(BoatConfig.RowHoursToEmpty, BoatConfig.RestHoursToFull);
         AddChild(boat);
         // The terrain is unshaded, so this light only touches the boats,
         // guns and balls — enough to make the model read.
@@ -224,6 +234,12 @@ public partial class Main : Node3D
         clock = new Clock();
         clock.Init(time, rations, player, loans, religion);
         ui.AddChild(clock);
+        staminaBar = new StaminaBar();
+        staminaBar.Init(crewStamina);
+        ui.AddChild(staminaBar);
+        windDial = new WindDial();
+        windDial.Init(wind);
+        ui.AddChild(windDial);
         minimap = new Minimap();
         minimap.Init(map, terrain.Texture);
         ui.AddChild(minimap);
@@ -311,6 +327,8 @@ public partial class Main : Node3D
     // --hold=W,D           keys held down for the whole run (physical key names)
     // --press=Key@frame,... one-shot key presses (Escape closes the market)
     // --start=x,y[,deg]    put the boat here (world units, heading in degrees, 0 = east)
+    // --sails=up|down      start under canvas (default) or at the oars
+    // --stamina=0..1       start the crew part-spent (default 1 = fresh)
     // --set=Name=V,...     override [Tweak] values by field name (see core/Tweaks.cs)
     // --dump-tweaks        write changed tweaks to tweaks.dump on startup (test hook)
     // --fire=dx,dy@f,...   fire at the point dx,dy from the boat on those frames
@@ -465,6 +483,8 @@ public partial class Main : Node3D
                 var parts = spec.Split('@');
                 pressFrames.Add((Enum.Parse<Key>(parts[0], true), parts.Length > 1 ? int.Parse(parts[1]) : 10));
             }
+        if (args.TryGetValue("sails", out var sails)) boat.SetSails(sails != "down");
+        if (args.TryGetValue("stamina", out var stamina)) crewStamina.Set(F(stamina));
         if (args.TryGetValue("hold", out var hold))
             foreach (var k in hold.Split(',')) heldKeys.Add(Enum.Parse<Key>(k, true));
         if (args.TryGetValue("screenshot", out var shot))
@@ -576,7 +596,12 @@ public partial class Main : Node3D
 
         // The boat is drivable in every mode that follows it; in free mode
         // WASD belongs to the camera instead.
-        if (active != freeCamera && !menuOpen)
+        // SPACE strikes or sets the sails: canvas catches the wind and runs
+        // faster but answers the helm lazily; oars ignore the wind, shove
+        // harder off the mark, top out slower and tire the crew.
+        bool driving = active != freeCamera && !menuOpen;
+        if (driving && input.Pressed.Contains(Key.Space)) boat.SetSails(!boat.SailsUp);
+        if (driving)
         {
             boat.ThrustScale = Crew.SpeedMultiplier(player.CrewCount, Config.Crew);
             // Fast-forward speeds the voyage, not the helm: keep the turn rate
@@ -593,6 +618,18 @@ public partial class Main : Node3D
             // Being under way is what burns the day.
             if (boat.Velocity.LengthSquared() > 0.01f) time.AdvanceHours(Config.HoursPerSecondSailing * gameDt);
         }
+        else boat.Rowing = false;
+
+        // Sailing bookkeeping on game time, so fast-forward tires the crew
+        // and swings the wind at the same rate it eats the calendar. The
+        // knobs are live-tunable, so re-read them each frame.
+        wind.BaseBearingDeg = BoatConfig.WindBearingDeg; wind.Force = BoatConfig.WindForce;
+        wind.SwingDeg = BoatConfig.WindSwingDeg; wind.SwingHours = BoatConfig.WindSwingHours;
+        crewStamina.RowHoursToEmpty = BoatConfig.RowHoursToEmpty;
+        crewStamina.RestHoursToFull = BoatConfig.RestHoursToFull;
+        float sailHours = Config.HoursPerSecondSailing * gameDt;
+        wind.Advance(sailHours);
+        crewStamina.Update(sailHours, boat.Rowing);
 
         if (menuOpen) input.ConsumeFrameDeltas();   // swallow wheel/drag so it doesn't replay on close
         else active.Update(dt, input, view);
@@ -717,12 +754,17 @@ public partial class Main : Node3D
         // days-left intel, so rebuild both.
         if (storyEvents.Update()) RefreshMarkets();
         clock.Update();
-        eventLog.Update(dt, view);
+        // The event log stacks above the wind dial in the same corner.
+        eventLog.Update(dt, view, windDial.Size.Y + 8);
         minimap.Update(state, view, rig);
         string guns = combat.PlayerGuns == null ? "" :
             $"guns {combat.PlayerGuns.LoadedCount}/{combat.PlayerGuns.Cannons.Count} loaded, shots {combat.Projectiles.Shots}, in air {combat.Projectiles.InFlight}";
         vectors.Update(rig);
-        hud.Update(state, view, rig, CameraRig.MinZoomFor(view, map.WorldW, map.WorldH), active.Name, timeScale, chunks.GetStats(), guns);
+        staminaBar.Update(dt, view, boat.SailsUp);
+        windDial.Update(rig, boat.X, boat.Y, view);
+        string sailing = $"{(boat.SailsUp ? "sails up" : "oars")} [space]  crew {crewStamina.Level * 100:F0}%\n" +
+                         $"wind {wind.Force:F0} to the {wind.Towards()} ({wind.BearingDeg:F0}°)\n";   // the dial (bottom left) shows the same
+        hud.Update(state, view, rig, CameraRig.MinZoomFor(view, map.WorldW, map.WorldH), active.Name, timeScale, chunks.GetStats(), guns, sailing);
         tweakPanel.Update(view);
 
         frameCount++;
@@ -732,6 +774,8 @@ public partial class Main : Node3D
             var err = img.SavePng(screenshotPath);
             GD.Print($"screenshot {(err == Error.Ok ? "saved to" : "FAILED " + err + " for")} {screenshotPath} at frame {frameCount}; " +
                      $"boat at ({boat.X:F1}, {boat.Y:F1}) heading {Mathf.RadToDeg(boat.Heading):F0}° speed {boat.Speed:F1}; " +
+                     $"sails {(boat.SailsUp ? "up" : "down")} stamina {crewStamina.Level:F2} " +
+                     $"wind {wind.Force:F0}@{wind.BearingDeg:F0}°; " +
                      $"shots {combat.Projectiles.Shots} hits {combat.Projectiles.Hits}");
             screenshotPath = null;
             GetTree().Quit();

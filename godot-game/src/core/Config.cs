@@ -115,7 +115,7 @@ public static class Config
     // time; a tenth of whatever is left decays away every midnight.
     public static readonly MarketTerms Market = new()
     {
-        SmallSize = 60, MediumSize = 600, LargeSize = 6000,
+        SmallSize = 300, MediumSize = 3000, LargeSize = 12000,
         MaxOfBase = 2.5,      // the shortage ceiling, of the WORLD base price
         GlutFactor = 0.8,     // the glut floor, of the city's local price
         BuyMarkup = 1.1,
@@ -221,6 +221,15 @@ public static class Config
     public const float FastForwardRampUpSec = 1.5f;
     public const float FastForwardRampDownSec = 1f;
     public const int NightStartHour = 20, NightEndHour = 5;
+    // Crew stamina bar (top centre, ui/StaminaBar.cs): the sail/oar caption
+    // and a bar that empties as the rowers tire. Flashes once spent.
+    public static readonly Vector2 StaminaBarPx = new Vector2(260, 10);
+    public const int StaminaFontPx = 13;
+    public static readonly Color StaminaTrackColor = new Color("#2a2f38");
+    public static readonly Color StaminaFullColor = new Color("#6bd97a");
+    public static readonly Color StaminaEmptyColor = new Color("#ff6b6b");
+    public const float StaminaFlashRadPerSec = 6f;
+
     public static readonly Color DayColor = new Color("#f2e9d8");
     public static readonly Color NightColor = new Color("#4a5568");
     public const int ClockFontPx = 20;
@@ -245,6 +254,19 @@ public static class Config
     public const float PopupMaxHeightVh = 100f;
     public const int PopupFontPx = 16;
     public const int PopupTitleFontPx = 28;
+
+    // Wind dial (bottom left, ui/WindDial.cs): an arrow pointing the way the
+    // wind blows, projected through the camera rig so it lines up with the
+    // map, over a ring; the colour warms with the strength.
+    public const int WindDialSizePx = 84;
+    public const int WindDialFontPx = 12;
+    public const float WindDialHeadPx = 13f;
+    public const int WindDialTickFontPx = 9;
+    public const float WindDialProbeUnits = 200f;   // how far out the direction is projected
+    public const float WindDialFullForce = 30f;     // force that paints the arrow at full strength
+    public static readonly Color WindDialRingColor = new Color("#4a5568");
+    public static readonly Color WindDialCalmColor = new Color("#8fa3bf");
+    public static readonly Color WindDialBlowColor = new Color("#7fe3ff");
 
     // Minimap.
     public const int MinimapSizePx = 240;

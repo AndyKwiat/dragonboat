@@ -48,7 +48,9 @@ public partial class EventLog : PanelContainer
     }
 
     // Real seconds, not game time: the feed empties even while moored.
-    public void Update(float dt, Vector2 view)
+    // `bottomPx` is what the wind dial has already claimed at the foot of
+    // the screen; the feed stacks above it.
+    public void Update(float dt, Vector2 view, float bottomPx = 0)
     {
         for (int i = lines.Count - 1; i >= 0; i--)
         {
@@ -60,6 +62,6 @@ public partial class EventLog : PanelContainer
         }
         if (lines.Count == 0) { Visible = false; return; }
         Visible = true;
-        Position = new Vector2(8, view.Y - Size.Y - 8);
+        Position = new Vector2(8, view.Y - Size.Y - 8 - bottomPx);
     }
 }

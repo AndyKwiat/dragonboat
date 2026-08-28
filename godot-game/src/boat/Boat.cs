@@ -17,6 +17,10 @@ public partial class Boat : Node3D, ICombatTarget
     public bool Turning;            // a steering key was held this frame
     public float TurnRateScale = 1; // multiplier on turn rate; Main sets 1/timeScale so
                                     // steering feels the same in fast-forward
+    public bool SailsUp = true;     // SPACE toggles: canvas (wind, fast, sluggish helm)
+                                    // vs oars (no wind, punchy, slower, tires the crew)
+    public bool Rowing;             // sails down AND a helm order given this frame
+    public Wind? Wind;              // the world's wind; only felt with the sails up
     public float Roll;              // radians about the forward axis (+ = starboard down)
     public int HitsTaken;
     // Last step's force breakdown (world units/s²), for the vector overlay.
@@ -46,11 +50,19 @@ public partial class Boat : Node3D, ICombatTarget
     {
         model = new BoatModel(BoatConfig.Length, BoatConfig.HullColor);
         AddChild(model);
+        model.SetSails(SailsUp);
         // The shadow is a sibling, not a child: it must stay flat on the
         // water while the hull rolls and bobs above it.
         shadow = new BlobShadow(BoatConfig.ShadowStrength);
         GetParent().CallDeferred(Node.MethodName.AddChild, shadow);
         SyncMesh();
+    }
+
+    /// Sails up or down. The model raises/strikes the canvas to match.
+    public void SetSails(bool up)
+    {
+        SailsUp = up;
+        model?.SetSails(up);
     }
 
     public void Update(float dt, InputState input)
@@ -66,24 +78,46 @@ public partial class Boat : Node3D, ICombatTarget
         float vLat = -Vx * sinH + Vy * cosH;
 
         // Rudder: authority scales with water speed over the hull, so a boat
-        // merely drifting on a current can't steer. Turning also drags.
+        // merely drifting on a current can't steer. Turning also drags. A
+        // boat under canvas answers the helm worse than one under oars.
         int turn = (right ? 1 : 0) - (left ? 1 : 0);
         Turning = turn != 0;
+        Rowing = !SailsUp && (forward || back || turn != 0);
         float authority = Math.Min(Math.Abs(vFwd) / BoatConfig.TurnFullSpeed, 1f);
-        if (turn != 0 && vFwd != 0)
-            Heading += turn * BoatConfig.TurnRate * TurnRateScale * authority * Math.Sign(vFwd) * dt;
+        // Oars don't need water over the rudder: the crew backs one side and
+        // pulls the other, so a boat under oars can spin where it lies. It
+        // keeps at least OarStandingTurn of full authority however slowly it
+        // is going, and turns bow-first even dead in the water.
+        int turnSign = vFwd < 0 ? -1 : 1;
+        if (!SailsUp) authority = Math.Max(authority, BoatConfig.OarStandingTurn);
+        else if (vFwd == 0) authority = 0;
+        if (turn != 0 && authority > 0)
+            Heading += turn * BoatConfig.TurnRate * BoatConfig.TurnScaleFor(SailsUp)
+                     * TurnRateScale * authority * turnSign * dt;
 
         // Forces. Thrust is along the heading; drag is split by axis so the
-        // keel resists sideways motion far more than forward motion.
-        float thrust = forward ? BoatConfig.MaxForce * ThrustScale : back ? -BoatConfig.BrakeForce : 0;
+        // keel resists sideways motion far more than forward motion. The sail
+        // state scales both: canvas pushes gently against little drag (fast,
+        // lazy), oars shove hard against a lot of it (nippy, slower).
+        float thrustScale = BoatConfig.ThrustScaleFor(SailsUp);
+        float dragScale = BoatConfig.DragScaleFor(SailsUp);
+        float thrust = forward ? BoatConfig.MaxForce * ThrustScale * thrustScale
+                     : back ? -BoatConfig.BrakeForce * thrustScale : 0;
         ThrustForce = new Vector2(cosH, sinH) * thrust;
-        float k1 = BoatConfig.DragLinear + (turn != 0 ? BoatConfig.RudderDrag * authority : 0);
-        float k2 = BoatConfig.DragQuad;
+        float k1 = BoatConfig.DragLinear * dragScale + (turn != 0 ? BoatConfig.RudderDrag * authority : 0);
+        float k2 = BoatConfig.DragQuad * dragScale;
         float dFwd = -(k1 + k2 * Math.Abs(vFwd)) * vFwd;
         float dLat = -(k1 + k2 * Math.Abs(vLat)) * vLat * BoatConfig.LateralDragScale;
         DragForce = new Vector2(dFwd * cosH - dLat * sinH, dFwd * sinH + dLat * cosH);
         CurrentForce = Currents?.ForceAt(X, Y) ?? Vector2.Zero;
-        WindForce = BoatConfig.WindVector();
+        // Only canvas catches the wind; with the sails struck the boat feels
+        // nothing but the oars, the water and the current.
+        WindForce = Vector2.Zero;
+        if (SailsUp && Wind != null)
+        {
+            var (wx, wy) = Wind.ForceOn(Heading, BoatConfig.WindBeatingScale);
+            WindForce = new Vector2(wx, wy);
+        }
 
         var f = ThrustForce + DragForce + CurrentForce + WindForce;
         // Semi-implicit: drag can't overshoot through zero within one step
