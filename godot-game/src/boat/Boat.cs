@@ -101,7 +101,11 @@ public partial class Boat : Node3D, ICombatTarget
         // lazy), oars shove hard against a lot of it (nippy, slower).
         float thrustScale = BoatConfig.ThrustScaleFor(SailsUp);
         float dragScale = BoatConfig.DragScaleFor(SailsUp);
-        float thrust = forward ? BoatConfig.MaxForce * ThrustScale * thrustScale
+        // Under canvas the sails are always drawing: the boat makes way
+        // whether or not W is held (holding it changes nothing), and S is how
+        // you take the way off. At the oars nothing moves without an order.
+        bool driving = SailsUp ? !back : forward;
+        float thrust = driving ? BoatConfig.MaxForce * ThrustScale * thrustScale
                      : back ? -BoatConfig.BrakeForce * thrustScale : 0;
         ThrustForce = new Vector2(cosH, sinH) * thrust;
         float k1 = BoatConfig.DragLinear * dragScale + (turn != 0 ? BoatConfig.RudderDrag * authority : 0);

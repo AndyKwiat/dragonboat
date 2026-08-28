@@ -27,8 +27,8 @@ cannonball hit.
 ## Handling (`Boat.Update`)
 
 The boat is a point mass (mass 1, so every force is an acceleration in world
-units/s²): W pushes `MaxForce` along the heading, S pushes `BrakeForce`
-astern, the water drags with a linear + quadratic term split into the keel
+units/s²): `MaxForce` pushes along the heading — held W at the oars, always
+under canvas — S pushes `BrakeForce` astern, the water drags with a linear + quadratic term split into the keel
 and lateral axes (`LateralDragScale`× abeam), and the current
 ([world.md](world.md)) and the wind add their own. Top speed is whatever the
 drag allows — `TerminalSpeed(sailsUp)` solves it. Steering authority ramps
@@ -49,7 +49,8 @@ match — struck sails simply vanish, leaving the bare masts.
 
 |  | sails up | sails down (oars) |
 |---|---|---|
-| thrust | `× SailThrustScale` (0.7) | `× OarThrustScale` (1.6) |
+| thrust | always drawing; W is a no-op, S takes the way off | only while W (or S astern) is held |
+| thrust scale | `× SailThrustScale` (0.7) | `× OarThrustScale` (1.6) |
 | drag | `× SailDragScale` (0.45) | `× OarDragScale` (2) |
 | rudder | `× SailTurnScale` (0.6) | `× OarTurnScale` (1) |
 | wind | felt | ignored |
@@ -59,7 +60,9 @@ With the defaults that is ~67 u/s under canvas against ~43 at the oars, and
 an oared boat that gathers way more than twice as fast and turns markedly
 harder. All six are `[Tweak]`s in the "Sailing" group.
 
-Oars also steer with no way on: a rudder needs water flowing past it, but a
+A boat left alone under canvas therefore keeps sailing — and keeps burning
+the calendar, since `Main` advances game time whenever the hull is moving.
+Strike the sails (or hold S) to stop. Oars also steer with no way on: a rudder needs water flowing past it, but a
 crew can back one side and pull the other, so under oars the authority never
 drops below `OarStandingTurn` (0.5) of full and the boat turns bow-first even
 dead in the water. Under canvas it still has to be moving. Verify with
