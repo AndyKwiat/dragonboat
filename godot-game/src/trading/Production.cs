@@ -21,7 +21,7 @@ using System.Collections.Generic;
 public static class Production
 {
     public const int LocalProducerCount = 3;
-    public const double LocalMaxMarkup = 1.0;
+    public const double LocalMaxMarkup = 2.0;
     // A city that makes the product itself has its distance halved before
     // the world is normalised: the goods are not just near, they are on the
     // quay, so a producer sits well down the cheap end rather than merely
