@@ -11,6 +11,7 @@ public partial class CityPopup : PanelContainer
     private Player player = null!;
     private GameTime time = null!;
     private StoryEvents storyEvents = null!;
+    private WorldPrices world = null!;
     private Loans loans = null!;
     private Monasteries religion = null!;
     // Set by Main: opens the bank window over this panel (medium/large
@@ -41,9 +42,10 @@ public partial class CityPopup : PanelContainer
 
     public bool IsOpen => Visible;
 
-    public void Init(Player player, GameTime time, StoryEvents storyEvents, Loans loans, Monasteries religion)
+    public void Init(Player player, GameTime time, StoryEvents storyEvents, WorldPrices world, Loans loans, Monasteries religion)
     {
-        this.player = player; this.time = time; this.storyEvents = storyEvents; this.loans = loans;
+        this.player = player; this.time = time; this.storyEvents = storyEvents; this.world = world;
+        this.loans = loans;
         this.religion = religion;
         int px = Config.PopupFontPx;
         Visible = false;
@@ -172,7 +174,8 @@ public partial class CityPopup : PanelContainer
             ? "Not enough hold space without them — sell some cargo first" : "";
         RefreshBank();
         RefreshMonastery();
-        purse.Text = $"money {player.Money}    honour {player.Honour}    cargo {player.TotalUnits()}/{player.CargoCapacity()} units";
+        purse.Text = $"money {player.Money}    honour {player.Honour}    " +
+                     $"cargo {player.TotalUnits()}/{player.CargoCapacity()} units (cost {player.CargoValue()})";
         Fonts.SetColor(purse, player.Money < 0 ? new Color("#ff8b7a") : new Color("#ffd166"));
     }
 
@@ -224,7 +227,7 @@ public partial class CityPopup : PanelContainer
         foreach (var ev in heard)
         {
             ev.Discovered = true;
-            bool dear = ev is ProductPriceStoryEvent p && p.PriceMultiplier > 1;
+            bool dear = ev is ProductPriceStoryEvent p && p.Shortage;
             var line = Fonts.MakeLabel($"“{ev.Description}”", Fonts.Ui, Config.PopupFontPx - 1,
                 ev is VipDeliveryStoryEvent ? new Color("#7fe3ff") : dear ? Config.MarketDearColor : Config.MarketCheapColor);
             line.AutowrapMode = TextServer.AutowrapMode.Word;
@@ -281,57 +284,72 @@ public partial class CityPopup : PanelContainer
         }
     }
 
+    // The names, not the ids, of what this city makes — for the facts line.
+    private static List<string> ProducedNames(City city)
+    {
+        var names = new List<string>();
+        foreach (var id in city.Produces) names.Add(GameData.ProductById(id)?.Name ?? id);
+        return names;
+    }
+
     private void BuildMarket(City city)
     {
         foreach (var child in market.GetChildren()) child.QueueFree();
         refreshers.Clear();
         int px = Config.PopupFontPx;
+        var terms = Config.Market;
 
-        foreach (var quote in Market.MarketFor(city, storyEvents))
+        foreach (var quote in Market.MarketFor(city, GameData.Products, terms))
         {
             var product = quote.Product;
-            // Colour the row by how the quoted sell price compares to the
-            // product's base price: red = over the odds, green = a bargain.
-            double ratio = quote.SellPrice / product.BasePrice;
-            bool dear = quote.SellPrice > product.BasePrice;
-            bool quirky = quote.SellPrice != product.BasePrice;
-            var tint = !quirky ? Config.MarketNormalColor : dear ? Config.MarketDearColor : Config.MarketCheapColor;
-            // A price driven by a story event carries its shelf life; the
-            // structural small/medium discounts are permanent, so no tag.
-            int daysLeft = quote.Event?.DaysLeftAt(time.TotalMinutes) ?? 0;
 
             var row = new HBoxContainer();
             row.AddThemeConstantOverride("separation", 14);
 
             var info = new VBoxContainer { SizeFlagsHorizontal = SizeFlags.ExpandFill };
             info.AddThemeConstantOverride("separation", 0);
-            var name = Fonts.MakeLabel(quirky
-                ? $"{product.Name}  {(dear ? "▲" : "▼")} {Math.Round(ratio * 100)}%{(quote.Event != null ? $"  ({daysLeft}d)" : "")}"
-                : product.Name, Fonts.UiSemiBold, px, tint);
+            // Name line: the product, its price against the world base price,
+            // and — for a good this city makes itself — the producer mark.
+            var nameRow = new HBoxContainer();
+            nameRow.AddThemeConstantOverride("separation", 8);
+            var name = Fonts.MakeLabel(product.Name, Fonts.UiSemiBold, px, Config.MarketNormalColor);
             name.MouseFilter = MouseFilterEnum.Stop;
-            name.TooltipText =
-                quote.Event != null ? $"{city.Name} trades {product.Name} at {Math.Round(ratio * 100)}% of the base price for another {daysLeft} day{(daysLeft == 1 ? "" : "s")}" :
-                quirky ? $"{city.Name} trades {product.Name} at {Math.Round(ratio * 100)}% of the base price" : "";
+            nameRow.AddChild(name);
+            if (quote.Produces)
+            {
+                var mark = Fonts.MakeLabel("◆ PRODUCES", Fonts.MonoBold, px - 4, Config.MarketProducerColor);
+                mark.MouseFilter = MouseFilterEnum.Stop;
+                mark.TooltipText = $"{city.Name} makes {product.Name} — the cheapest it gets anywhere near here";
+                mark.SizeFlagsVertical = SizeFlags.ShrinkCenter;
+                nameRow.AddChild(mark);
+            }
+            info.AddChild(nameRow);
             var desc = Fonts.MakeLabel(product.Description, Fonts.Ui, px - 3, new Color("#999999"));
             desc.AutowrapMode = TextServer.AutowrapMode.Word;
             desc.SizeFlagsHorizontal = SizeFlags.ExpandFill;
-            info.AddChild(name);
             info.AddChild(desc);
+            // Debug readout: the two numbers every price in this row comes out
+            // of — the market's live stock level against its size, and what
+            // the city settles at when that level is 0.
+            var debug = Fonts.MakeLabel("", Fonts.Mono, px - 4, Config.MarketDebugColor);
+            info.AddChild(debug);
 
-            var prices = Fonts.MakeLabel($"buy {quote.BuyPrice}\nsell {quote.SellPrice}", Fonts.Mono, px - 2, quirky ? tint : new Color("#cfd6e4"));
+            var prices = Fonts.MakeLabel("", Fonts.Mono, px - 2, new Color("#cfd6e4"));
             prices.HorizontalAlignment = HorizontalAlignment.Right;
 
             var held = Fonts.MakeLabel("", Fonts.Mono, px - 1, new Color("#9fe8a0"));
-            held.CustomMinimumSize = new Vector2(72, 0);
+            held.CustomMinimumSize = new Vector2(96, 0);
             held.HorizontalAlignment = HorizontalAlignment.Right;
 
             // The trade slider: centre = no deal, left = sell a fraction of
-            // the stock aboard, right = buy a fraction of the most the hold
-            // and the purse allow. Deltas hit the player immediately, and a
-            // leg is undone at the price it was struck (Player.Restage), so
-            // sliding back to centre always refunds in full.
-            int baseline = player.Held(product.Id);
-            int delta = 0;
+            // the stock aboard, right = buy a fraction of the most the hold,
+            // the purse and the market itself allow. All of the arithmetic —
+            // the price ladder, the limits, the exact refund on the way back
+            // to centre, the hold's book value — belongs to the deal
+            // (trading/MarketDeal.cs), which anchors itself on the market and
+            // the hold as they are right now. That anchor is why the rows are
+            // rebuilt whenever anything moves them behind the row's back.
+            var deal = new MarketDeal(city, product, player, terms);
             var slider = new HSlider
             {
                 MinValue = -1, MaxValue = 1, Step = 0.001, Value = 0,
@@ -343,42 +361,22 @@ public partial class CityPopup : PanelContainer
             net.CustomMinimumSize = new Vector2(96, 0);
             net.HorizontalAlignment = HorizontalAlignment.Right;
 
-            // The most that fits AND can be paid for, as if this product's own
-            // staged deal were first undone (other products' deals stand).
-            int MaxBuy()
-            {
-                int space = player.CargoSpace() + delta;
-                int money = player.Money + delta * (delta > 0 ? quote.BuyPrice : quote.SellPrice);
-                return Math.Min(space, quote.BuyPrice > 0 ? money / quote.BuyPrice : space);
-            }
-            slider.ValueChanged += v =>
-            {
-                int target = v >= 0 ? (int)Math.Round(v * MaxBuy()) : -(int)Math.Round(-v * baseline);
-                if (target == delta) return;
-                player.Restage(product.Id, delta, target, quote.BuyPrice, quote.SellPrice);
-                delta = target;
-                Refresh();
-            };
-            // Snap the knob to what was actually dealt (the max may be 0, or
-            // have shifted while other products were being slid around).
-            slider.DragEnded += _ =>
-            {
-                int maxBuy = MaxBuy();
-                slider.SetValueNoSignal(delta >= 0
-                    ? (maxBuy > 0 ? (double)delta / maxBuy : 0)
-                    : (baseline > 0 ? (double)delta / baseline : 0));
-            };
+            slider.ValueChanged += v => { if (deal.MoveTo(deal.UnitsAt(v))) Refresh(); };
+            // Snap the knob to what was actually dealt: the limits may be 0,
+            // or have shifted while other products were being slid around.
+            slider.DragEnded += _ => slider.SetValueNoSignal(deal.Fraction);
 
             row.AddChild(info);
             row.AddChild(prices);
             row.AddChild(held);
             row.AddChild(slider);
             row.AddChild(net);
-            // Give: only where the city pays over the odds — donate every
-            // unit held for no money, one honour point apiece. Rebuild the
-            // rows after, so the sliders' baselines match the new holdings.
+            // Give: only where the city is paying well over the odds for it —
+            // donate every unit held for no money, one honour point apiece.
+            // Rebuild the rows after, so the sliders re-anchor on the new
+            // holdings and the new stock level.
             Button? give = null;
-            if (quote.SellPrice > product.BasePrice)
+            if (quote.SellPrice >= world.Of(product) * Config.MarketGiveMinRatio)
             {
                 give = MakeButton("Give", () =>
                 {
@@ -397,13 +395,41 @@ public partial class CityPopup : PanelContainer
 
             refreshers.Add(() =>
             {
+                // Prices are re-read every refresh, not baked into the row:
+                // one unit changing hands moves them.
+                var q = Market.QuoteFor(city, product, terms);
+                // How that reads against the rest of the world today — the
+                // same rule the map labels use (Market.Read).
+                var read = Market.Read(q.SellPrice, world.Of(product));
+                var tint = Config.MarketTint(read);
+                // A live supply shock rides along as a days-left tag, so you
+                // can tell a passing panic from the city's standing price.
+                var ev = storyEvents.PriceEventFor(city, product.Id);
+                int daysLeft = ev?.DaysLeftAt(time.TotalMinutes) ?? 0;
+                name.Text = read.OffAverage
+                    ? $"{product.Name}  {(read.Dear ? "▲" : "▼")} {read.Percent}%{(ev != null ? $"  ({daysLeft}d)" : "")}"
+                    : product.Name;
+                Fonts.SetColor(name, tint);
+                var against = $"{read.Percent}% of the {Math.Round(read.WorldAverage)} {product.Name} fetches across the world";
+                name.TooltipText = ev != null
+                    ? $"{city.Name} trades it at {against} — a {(ev.Shortage ? "shortage" : "glut")} with {daysLeft} day{(daysLeft == 1 ? "" : "s")} left in it"
+                    : $"{city.Name} trades it at {against}";
+                prices.Text = $"buy {q.BuyPrice}\nsell {q.SellPrice}";
+                Fonts.SetColor(prices, read.OffAverage ? tint : new Color("#cfd6e4"));
+                debug.Text = $"supply {q.Supply}/{q.MarketSize}   local {Math.Ceiling(city.LocalBaseOf(product.Id))}" +
+                             $"   world {Math.Round(read.WorldAverage)}";
+
+                // What's aboard, and what it cost a unit — the number to hold
+                // this city's sell price against.
                 int have = player.Held(product.Id);
-                held.Text = $"have {have}";
+                held.Text = have > 0 ? $"have {have}\npaid {Math.Round(player.AverageCost(product.Id))}" : "have 0";
                 Fonts.SetColor(held, have > 0 ? new Color("#9fe8a0") : new Color("#666666"));
-                net.Text = delta == 0 ? ""
-                    : delta > 0 ? $"buy {delta}\n-{delta * quote.BuyPrice}"
-                    : $"sell {-delta}\n+{-delta * quote.SellPrice}";
-                Fonts.SetColor(net, delta > 0 ? Config.MarketDearColor : Config.MarketCheapColor);
+                // The staged deal: units, money, and — for a sale — whether
+                // this call was worth making.
+                net.Text = deal.Units == 0 ? ""
+                    : deal.Units > 0 ? $"buy {deal.Units}\n-{deal.Cost}"
+                    : $"sell {-deal.Units}\n+{-deal.Cost}\n{(deal.Profit >= 0 ? "+" : "-")}{Math.Abs(deal.Profit)} profit";
+                Fonts.SetColor(net, deal.Units > 0 || deal.Profit < 0 ? Config.MarketDearColor : Config.MarketCheapColor);
                 if (give != null)
                 {
                     SetEnabled(give, have > 0);
@@ -427,7 +453,9 @@ public partial class CityPopup : PanelContainer
         city.Discovered = true;
         storyEvents.DiscoverAt(city);
         title.Text = city.Name;
-        facts.Text = $"{"coords",-8}{Mathf.RoundToInt(city.X)}, {Mathf.RoundToInt(city.Y)}\n{"size",-8}{city.Size}";
+        facts.Text = $"{"coords",-8}{Mathf.RoundToInt(city.X)}, {Mathf.RoundToInt(city.Y)}\n{"size",-8}{city.Size}\n" +
+                     $"{"makes",-8}{(city.Produces.Count > 0 ? string.Join(", ", ProducedNames(city)) : "nothing")}\n" +
+                     $"{"market",-8}{city.MarketSize} units either way";
         // Only the large cities have a hiring hall; only medium and large
         // ones have a bank.
         bool hiring = city.Size == "large";

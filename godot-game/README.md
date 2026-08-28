@@ -14,7 +14,8 @@ the rules.
 | [docs/world.md](docs/world.md) | map, coordinates, camera rigs/modes, terrain rendering and streaming, terrain queries |
 | [docs/boat.md](docs/boat.md) | the player boat: handling, lean/bob, land collision, the 3D model |
 | [docs/combat.md](docs/combat.md) | cannons, cannonballs, impact effects, targets (enemy-ready), aiming |
-| [docs/trading.md](docs/trading.md) | cities, markets, crew, rations/wages, the game clock, the city popup |
+| [docs/economy.md](docs/economy.md) | who produces what, supply-driven prices, the trade ladder, the world average, cargo cost |
+| [docs/trading.md](docs/trading.md) | cities, story events, VIP deliveries, crew, rations/wages, the game clock, the city popup |
 | [docs/banking.md](docs/banking.md) | city banks: borrowing against honour, interest, due dates, on-time rewards and late penalties |
 | [docs/religion.md](docs/religion.md) | piety, monasteries, alms, monk errands |
 | [docs/ui.md](docs/ui.md) | fonts, HUD, clock, minimap, city labels, the event log, the tweak panel |
@@ -134,18 +135,22 @@ game-config.yml        which terrain file to load, how many small/medium/
                        run — every key required, no code defaults
 map1.terrain           the map, painted in ../terrain-gen (TGN1, gzipped);
                        one cell = one world unit
-data/                  products.json (canonical here) and city-names.json;
+data/                  products.json (canonical here — each good is a staple or a
+                       luxury) and city-names.json;
                        cities themselves are generated on the coast every
                        launch (docs/trading.md)
 shaders/               terrain_plane.gdshader (map texture + tile grid),
                        terrain_chunk.gdshader (vertex-coloured columns)
 docs/                  one markdown doc per subsystem (table above)
-tests/                 xunit tests for the Godot-free core (`dotnet test tests`)
+tests/                 xunit tests for the Godot-free core (`dotnet test tests`);
+                       the economy's are SupplyTests / ProductionTests /
+                       MarketDealTests over EconomyFixtures.cs
 src/Main.cs            wiring, the per-frame loop, the scripted-run flags
 src/core/              Config (world/camera/trading/UI constants), News (NewsEvent
                        + the whole-day clock the daily rules share), GameConfig
                        (game-config.yml), TerrainMap (.terrain parser), City,
-                       GameData (products + the run's cities), GameTime (clock), InputState,
+                       Product, GameData (products + the run's cities), GameTime
+                       (clock), InputState,
                        Tweaks (the [Tweak] registry behind live tuning)
 src/world/             CameraRig + CameraControllers, TerrainPlane, TerrainChunks,
                        Terrain (water/height/collision queries), CityPlacer,
@@ -155,8 +160,10 @@ src/boat/              BoatConfig, Boat (physics, lean, land collision, hittable
 src/combat/            CombatConfig, CombatSystem, Cannon, CannonBattery,
                        Projectiles, Effects, ICombatTarget                → docs/combat.md
 src/enemies/           EnemyShips — the stationary hostile fleet (docs/enemies.md)
-src/trading/           Player, Crew, Upkeep, Market, StoryEvents, Vips — pure rules
-                                                                          → docs/trading.md
+src/trading/           the economy — Production, Supply, MarketDeal, WorldPrices,
+                       Market                                          → docs/economy.md
+                       everything else it trades in — Player, Crew, Upkeep,
+                       StoryEvents, Vips, Docking; pure rules           → docs/trading.md
 src/banking/           Loans — city banks, interest, due dates, late
                        penalties; pure rules                              → docs/banking.md
 src/religion/          Monasteries — piety, alms, monk errands; pure rules
@@ -178,8 +185,12 @@ C# with `Nullable` on, 4-space indent, one class per file, `partial` only
 where Godot needs it (Node subclasses). World/camera/trading/UI constants go
 in `core/Config.cs`; boat and combat knobs go in their own `*Config.cs` as
 `[Tweak]` statics. Keep the rules files (`GameTime`, `Crew`, `Player`,
-`Upkeep`, `Market`, `StoryEvents`) and the world-building ones
+`Upkeep`, `Supply`, `Production`, `MarketDeal`, `WorldPrices`, `Market`,
+`StoryEvents`) and the world-building ones
 (`GameConfig`, `TerrainMap`, `City`, `CityPlacer`) free of Godot types —
-pure, testable code, and `tests/` compiles them straight from `src/`. New gameplay systems get their own `src/<name>/` folder and
+pure, testable code, and `tests/` compiles them straight from `src/`. Where a
+rule needs something Godot-tainted, it takes a narrow interface instead of the
+class (`ITrader`, which `Player` implements for `MarketDeal`) so it stays
+testable. New gameplay systems get their own `src/<name>/` folder and
 `docs/<name>.md`, and are wired in `Main.cs`; don't make the trading code
 reach into combat or vice versa — both talk to the boat/world, not each other.

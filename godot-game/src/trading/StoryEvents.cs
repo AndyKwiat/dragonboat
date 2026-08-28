@@ -2,8 +2,10 @@ using System;
 using System.Collections.Generic;
 
 // Story events: happenings out in the world, always tied to a city. The only
-// kind so far is a price swing: one product a city trades goes low or high
-// (a multiplier on the product's BASE price) until the event expires. The
+// kind so far is a supply shock: one product a city trades is suddenly short
+// (dear) or glutted (cheap) — the event shoves the city's stock level hard
+// one way when it rolls, and the market's own 10%-a-day decay walks it back
+// while the event runs, so the swing fades instead of switching off. The
 // world always carries the city-scaled StoryEventCount of them; when one lapses a
 // fresh one is rolled at a random city. Expiries always land on a midnight,
 // so Update() is a single compare until the clock crosses one — only then
@@ -26,10 +28,10 @@ public abstract class StoryEvent
 public sealed class ProductPriceStoryEvent : StoryEvent
 {
     public Product Product = null!;
-    public double PriceMultiplier;   // of base price: low or high, never 1
+    public bool Shortage;   // true = stock shoved negative (dear), false = a glut (cheap)
 
     public override string Description =>
-        $"{Product.Name} prices are very {(PriceMultiplier > 1 ? "high" : "low")} in {City.Name}";
+        $"{Product.Name} prices are very {(Shortage ? "high" : "low")} in {City.Name}";
 }
 
 // A VIP waits in City for passage to Destination — a city ranked
@@ -176,11 +178,12 @@ public sealed class StoryEvents
         return null;
     }
 
-    // A random city, one of the products it actually trades (rarity-weighted),
-    // high StoryEventHighOddsToOne times as often as low — but never a second
-    // price event on the same product in the same city, so a quote always has
-    // one unambiguous multiplier, and never on a city's speciality, whose
-    // discount is promised to be permanent.
+    // A random city, one of the products it actually stocks (rarity-weighted),
+    // a shortage StoryEventShortageOddsToOne times as often as a glut — but
+    // never a second event on the same product in the same city, so one
+    // shock's decay is never fighting another's. Rolling the event IS the
+    // shock: the city's stock level jumps by StoryEventShockFraction of its
+    // market size there and then, and decays back from that day on.
     private ProductPriceStoryEvent? RollPriceEvent()
     {
         for (int tries = 0; tries < 100; tries++)
@@ -188,15 +191,18 @@ public sealed class StoryEvents
             var city = GameData.Cities[rng.Next(GameData.Cities.Count)];
             if (city.Products.Count == 0) continue;
             var product = GameData.ProductById(PickByRarity(city.Products));
-            if (product == null || city.Specialities.Contains(product.Id)) continue;
+            if (product == null) continue;
             if (PriceEventFor(city, product.Id) != null) continue;
             int days = rng.Next(Config.StoryEventMinDays, Config.StoryEventMaxDays + 1);
+            bool shortage = rng.Next(Config.StoryEventShortageOddsToOne + 1) != 0;
+            int shock = (int)Math.Round(city.MarketSize * Config.StoryEventShockFraction);
+            city.Supply[product.Id] = Supply.Clamp(
+                city.SupplyOf(product.Id) + (shortage ? -shock : shock), city.MarketSize);
             return new ProductPriceStoryEvent
             {
                 City = city,
                 Product = product,
-                PriceMultiplier = rng.Next(Config.StoryEventHighOddsToOne + 1) == 0
-                    ? Config.StoryEventLowMultiplier : Config.StoryEventHighMultiplier,
+                Shortage = shortage,
                 // "days into the future", landing on that day's midnight.
                 ExpiresAtMinutes = GameTime.StartOfDay(time.TotalMinutes) + (long)days * GameTime.MinutesPerDay,
             };

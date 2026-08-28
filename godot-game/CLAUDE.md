@@ -24,6 +24,9 @@ rules change.
 
 ## Conventions
 
+- Prices are never stored: they are derived from a city's settled price and
+  its live supply every time they are read (`docs/economy.md`). If you find
+  yourself caching one, you are probably introducing a bug.
 - Tunables: constants in `src/core/Config.cs`; live-tunable knobs are
   `[Tweak]` statics in `BoatConfig`/`CombatConfig`/`Currents`. Code defaults
   are the source of truth; the in-game dump button writes `tweaks.dump`
@@ -41,9 +44,11 @@ rules change.
   maps are `.terrain` files painted in `../terrain-gen`. One map cell = one
   world unit.
 - `dotnet test tests` runs the xunit suite over the Godot-free core
-  (config, terrain parsing, city placement, docking, bank loans, VIP and
-  monk missions); it
+  (config, terrain parsing, city placement, docking, the economy —
+  production, prices, staged trades — bank loans, VIP and monk missions); it
   compiles those files straight from `src/`, so keep them free of Godot
   types — and add a new rules file to `tests/Tests.csproj` when you write
-  one.
+  one. Rules that need the player or another Godot-tainted class take a
+  small interface instead (see `ITrader` / `MarketDeal`), so they stay
+  testable.
 - Commit messages start with `godot-game: `.

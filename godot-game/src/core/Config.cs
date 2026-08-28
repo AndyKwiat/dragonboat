@@ -101,22 +101,37 @@ public static class Config
     // Price intel under a discovered city's name (see CityLabels.RefreshIntel).
     public const int CityIntelFontPx = 10;
     public const float CityIntelBoxPx = 220f;
+    // How far off the world base price a market has to be before it is worth
+    // a line under the label, and how many lines a city gets at most.
+    public const double CityIntelMinDeviation = 0.2;
+    public const int CityIntelMaxLines = 3;
     public const float CityHitRadiusPx = 26f;
     public const float CityHitPadPx = 10f;
 
-    // Market.
-    public const double MarketBuyMarkup = 1.1;
-    public const double MarketSmallStapleDiscount = 0.6;   // a small city's speciality (its non-rice staple)
-    public const double MarketSpecialityDiscount = 0.75;   // a medium/large city's specialities
-    public static readonly HashSet<string> LuxuryProductIds = new() { "CLOTHES", "FURNITURE", "JEWELRY" };
+    // Market. Prices are supply-driven (src/trading/Supply.cs): a market's
+    // stock runs from -MarketSize (severe shortage, the price at the ceiling)
+    // through 0 (the city's own settled LocalBase price) to +MarketSize (a
+    // glut, the price at the floor). Buying and selling move it one unit at a
+    // time; a tenth of whatever is left decays away every midnight.
+    public static readonly MarketTerms Market = new()
+    {
+        SmallSize = 60, MediumSize = 600, LargeSize = 6000,
+        MaxOfBase = 2.5,      // the shortage ceiling, of the WORLD base price
+        GlutFactor = 0.8,     // the glut floor, of the city's local price
+        BuyMarkup = 1.1,
+        DecayPerDay = 0.9,
+        UniversalProductId = RationsProductId,
+    };
 
     // Story events. Counts are per 100 cities and scaled to the config's
     // city count at launch (GameConfig.ScaledByCities).
     public const int StoryEventCountPer100Cities = 50;
     public const int StoryEventMinDays = 5, StoryEventMaxDays = 10;
-    public const double StoryEventLowMultiplier = 0.5, StoryEventHighMultiplier = 1.5;
-    // High-price events are this many times likelier than low-price ones.
-    public const int StoryEventHighOddsToOne = 3;
+    // How hard an event shoves the city's stock level, as a fraction of its
+    // market size; the daily decay walks it back from there.
+    public const double StoryEventShockFraction = 0.8;
+    // Shortages (dear) are this many times likelier than gluts (cheap).
+    public const int StoryEventShortageOddsToOne = 3;
     // VIP delivery events: a city hosts a passenger bound for another city
     // ranked 6th..10th nearest (never the 5 closest, never beyond the 10th).
     public const int VipEventCountPer100Cities = 10;
@@ -134,9 +149,20 @@ public static class Config
     };
     // Nearest other-city events shown (and discovered) in a city's popup.
     public const int RumourCount = 3;
+    // A city has to be paying at least this many times the base price before
+    // giving the goods away is offered instead of selling them.
+    public const double MarketGiveMinRatio = 1.5;
     public static readonly Color MarketDearColor = new Color("#ff6b6b");
     public static readonly Color MarketCheapColor = new Color("#6bd97a");
     public static readonly Color MarketNormalColor = new Color("#ffffff");
+
+    // How a quote is tinted, from Market.Read: dear is red, cheap is green,
+    // near enough the world average is left plain. One rule, used by both the
+    // market panel and the map labels.
+    public static Color MarketTint(Market.PriceReading r) =>
+        !r.OffAverage ? MarketNormalColor : r.Dear ? MarketDearColor : MarketCheapColor;
+    public static readonly Color MarketProducerColor = new Color("#f0b429");
+    public static readonly Color MarketDebugColor = new Color("#5a5a66");
 
     // Banking (medium and large cities only; rules in src/banking/Loans.cs).
     // Credit is honour x HonourMultiplier, capped by the city's ceiling;

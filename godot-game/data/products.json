@@ -4,54 +4,63 @@
       "id": "RICE",
       "name": "Rice",
       "description": "Basic rice used to feed people. Every port has it.",
+      "class": "staple",
       "basePrice": 5
     },
     {
       "id": "FISH",
       "name": "Fish",
       "description": "Salted river fish, cheap and always in demand.",
+      "class": "staple",
       "basePrice": 20
     },
     {
       "id": "FRUIT",
       "name": "Fruit",
       "description": "Crates of orchard fruit that spoil if you dawdle.",
+      "class": "staple",
       "basePrice": 10
     },
     {
       "id": "WOOD",
       "name": "Wood",
       "description": "Rough timber cut from the forests inland.",
+      "class": "staple",
       "basePrice": 10
     },
     {
       "id": "WOOL",
       "name": "Wool",
       "description": "Raw fleece from the hill country, bundled in bales.",
+      "class": "staple",
       "basePrice": 15
     },
     {
       "id": "CLOTHES",
       "name": "Clothes",
       "description": "Finished garments woven and dyed in the guild houses.",
+      "class": "luxury",
       "basePrice": 30
     },
     {
       "id": "SAFFRON",
       "name": "Saffron",
       "description": "Hand-picked crimson threads, worth their weight in trouble.",
+      "class": "luxury",
       "basePrice": 38
     },
     {
       "id": "FURNITURE",
       "name": "Furniture",
       "description": "Lacquered cabinets and chairs, bulky but prized.",
+      "class": "luxury",
       "basePrice": 45
     },
     {
       "id": "JEWELRY",
       "name": "Jewelry",
       "description": "Jade and gold worked into rings, beads and clasps.",
+      "class": "luxury",
       "basePrice": 60
     }
   ]

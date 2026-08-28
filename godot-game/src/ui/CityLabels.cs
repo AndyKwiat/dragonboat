@@ -1,11 +1,13 @@
 using Godot;
+using System;
 using System.Collections.Generic;
 
 // Overlay drawing a name label for every city on screen, plus the
 // hit-testing for hover/click: a hit is "within CityHitRadiusPx of the city
 // centre, OR inside the label box padded by CityHitPadPx". Labels hang off
-// the top of the city block. Under the name, discovered price intel: one
-// line per product the player knows trades off base price (see RefreshIntel).
+// the top of the city block. Under the name, discovered price intel: the
+// few products the player knows are furthest off base price, and any
+// supply shock they have heard about (see RefreshIntel).
 public partial class CityLabels : Control
 {
     private sealed class Entry
@@ -22,15 +24,16 @@ public partial class CityLabels : Control
 
     private readonly List<Entry> entries = new();
     private StoryEvents storyEvents = null!;
+    private WorldPrices world = null!;
     private GameTime time = null!;
     private Loans loans = null!;
     private Monasteries religion = null!;
     private Player player = null!;
 
-    public void Init(List<City> cities, StoryEvents storyEvents, GameTime time, Loans loans,
-        Monasteries religion, Player player)
+    public void Init(List<City> cities, StoryEvents storyEvents, WorldPrices world, GameTime time,
+        Loans loans, Monasteries religion, Player player)
     {
-        this.storyEvents = storyEvents; this.time = time; this.loans = loans;
+        this.storyEvents = storyEvents; this.world = world; this.time = time; this.loans = loans;
         this.religion = religion; this.player = player;
         MouseFilter = MouseFilterEnum.Ignore;
         SetAnchorsPreset(LayoutPreset.FullRect);
@@ -70,39 +73,40 @@ public partial class CityLabels : Control
         }
     }
 
-    // What the player knows about a city's prices, one line per product:
-    // a discovered story event shows its price and days left; otherwise a
-    // discovered city shows its permanent off-base (structural) prices. An
-    // undiscovered event on a discovered city stays hidden — the player
-    // hasn't seen that market since it started. Call when knowledge or the
-    // events change (popup opened, midnight pass), not per frame.
+    // What the player knows about a city's prices, one line per product. Now
+    // that every market's price is its own (distance from the producers sets
+    // where it rests, live stock swings it around that), listing all nine
+    // would bury the label — so a discovered city shows only the products
+    // furthest from what they fetch across the world (WorldPrices.Of),
+    // most extreme first, and only those past CityIntelMinDeviation. A discovered supply shock always shows,
+    // with its days left, even where the city itself was never visited. Call
+    // when knowledge or the events change (popup opened, midnight pass), not
+    // per frame.
     public void RefreshIntel()
     {
+        var terms = Config.Market;
         foreach (var e in entries)
         {
             var lines = new List<string>();
+            var scored = new List<(double Off, string Line)>();
             foreach (var id in e.City.Products)
             {
                 var product = GameData.ProductById(id);
                 if (product == null) continue;
                 var ev = storyEvents.PriceEventFor(e.City, id);
-                Quote q;
-                string tail = "";
-                if (ev != null && ev.Discovered)
-                {
-                    q = Market.QuoteFor(e.City, product, ev);
-                    tail = $" {ev.DaysLeftAt(time.TotalMinutes)}d";
-                }
-                else if (e.City.Discovered && ev == null)
-                {
-                    q = Market.QuoteFor(e.City, product);
-                    if (q.SellPrice == product.BasePrice) continue;
-                }
-                else continue;
-                bool dear = q.SellPrice > product.BasePrice;
-                var color = dear ? Config.MarketDearColor : Config.MarketCheapColor;
-                lines.Add($"[center][color=#{color.ToHtml(false)}]{product.Name} {q.SellPrice} {(dear ? "▲" : "▼")}{tail}[/color][/center]");
+                bool known = ev != null && ev.Discovered;
+                if (!known && !(e.City.Discovered && ev == null)) continue;
+                var q = Market.QuoteFor(e.City, product, terms);
+                var read = Market.Read(q.SellPrice, world.Of(product));
+                double off = Math.Abs(read.Percent / 100.0 - 1);
+                if (!known && off < Config.CityIntelMinDeviation) continue;
+                var color = read.Dear ? Config.MarketDearColor : Config.MarketCheapColor;
+                var tail = known ? $" {ev!.DaysLeftAt(time.TotalMinutes)}d" : "";
+                scored.Add((known ? double.MaxValue : off,
+                    $"[center][color=#{color.ToHtml(false)}]{product.Name} {q.SellPrice} {(read.Dear ? "▲" : "▼")}{tail}[/color][/center]"));
             }
+            scored.Sort((a, b) => b.Off.CompareTo(a.Off));
+            for (int i = 0; i < scored.Count && i < Config.CityIntelMaxLines; i++) lines.Add(scored[i].Line);
             // Under the price intel: a debt tag, so you know from the deck
             // that this city's bank is waiting for its money.
             if (loans.LoanAt(e.City) is Loan loan)

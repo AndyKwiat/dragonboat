@@ -4,9 +4,15 @@ using System.Collections.Generic;
 // The player's purse and cargo. Money never goes below 0 (buys are capped by
 // the purse, wages stop at zero); a product count never goes below 0 and the
 // hold never holds more than the crew can carry.
-public sealed class Player
+//
+// The hold also knows what it cost (see `basis`). Trading in a market goes
+// through MarketDeal, which calls ApplyStaged here — this class holds the
+// cargo and the money but none of the market arithmetic.
+public sealed class Player : ITrader
 {
-    public int Money;
+    // A property, not a field, so ITrader can name it — the market's deal
+    // layer reads the purse through that interface.
+    public int Money { get; set; }
     // Goodwill earned by giving goods away (GiveAway). Starts at 0 and,
     // unlike money, may go negative.
     public int Honour;
@@ -15,6 +21,12 @@ public sealed class Player
     public int Piety;
     public int CrewCount;
     public readonly Dictionary<string, int> Inventory = new();
+    // What the units currently aboard cost, per product — the running total
+    // paid for them, so the hold knows its own book value. Units leave at the
+    // average price they went on at (Consume), so this stays proportional to
+    // the count however the cargo was accumulated, and a sale can be shown as
+    // a profit or a loss rather than just a pile of coins (AverageCost).
+    private readonly Dictionary<string, double> basis = new();
     // VIP passengers aboard, each bound for a city and stamped with the day
     // they came aboard. They take no cargo space, but the reward for landing
     // one decays by the day and they jump ship if kept too long (Vips).
@@ -24,10 +36,40 @@ public sealed class Player
     {
         Money = Config.StartingMoney;
         CrewCount = Crew.Clamp(Config.Crew.Starting, Config.Crew);
-        foreach (var kv in Config.StartingInventory) if (kv.Value > 0) Inventory[kv.Key] = kv.Value;
+        // The hold you start with is booked at base price — you did not buy
+        // it anywhere, so there is no better figure to call it in at.
+        foreach (var kv in Config.StartingInventory)
+            if (kv.Value > 0)
+            {
+                Inventory[kv.Key] = kv.Value;
+                basis[kv.Key] = kv.Value * (GameData.ProductById(kv.Key)?.BasePrice ?? 0);
+            }
     }
 
     public int Held(string id) => Inventory.TryGetValue(id, out var n) ? n : 0;
+
+    // What was paid for everything of this product aboard, and what that
+    // works out at per unit — the number to hold a sell price against.
+    public double BasisOf(string id) => basis.TryGetValue(id, out var v) ? v : 0;
+
+    public double AverageCost(string id)
+    {
+        int n = Held(id);
+        return n <= 0 ? 0 : BasisOf(id) / n;
+    }
+
+    // What the whole hold cost, for the purse line.
+    public int CargoValue()
+    {
+        double total = 0;
+        foreach (var v in basis.Values) total += v;
+        return (int)Math.Round(total);
+    }
+
+    private void SetBasis(string id, double value)
+    {
+        if (Held(id) <= 0 || value <= 0) basis.Remove(id); else basis[id] = value;
+    }
 
     public int TotalUnits()
     {
@@ -55,28 +97,42 @@ public sealed class Player
         if (n <= 0) return 0;
         Money -= n * unitPrice;
         Inventory[id] = Held(id) + n;
+        SetBasis(id, BasisOf(id) + n * (double)unitPrice);
         return n;
     }
 
     // Move a staged market position from oldDelta to newDelta units relative
-    // to some baseline (positive = bought at buyPrice, negative = sold at
-    // sellPrice). The old leg is undone at the exact price it was struck, so
-    // sliding a deal back to zero refunds it to the coin — removing a buy is
-    // not a sell. The caller keeps newDelta within the hold and the purse.
-    public void Restage(string id, int oldDelta, int newDelta, int buyPrice, int sellPrice)
+    // to some baseline (positive = bought, negative = sold), where costOld and
+    // costNew are what the city's price ladder says each position costs —
+    // signed, so a sale is negative (Supply.CostOf). Only the difference
+    // changes hands, and both ends are priced off the SAME ladder anchored at
+    // the stock level the market was at when the row opened, so sliding a deal
+    // back to zero refunds it to the coin: removing a buy is not a sell, and
+    // the buy/sell markup never bites while you are still making up your mind.
+    // The caller keeps newDelta within the hold, the purse and the market.
+    // ITrader: apply one step of a staged market deal. MarketDeal works out
+    // what the step is worth (it owns the anchoring that makes sliding out
+    // and back exact); all that happens here is that the units, the money and
+    // the hold's book value move to what it says.
+    public void ApplyStaged(string id, int units, int cost, double basis)
     {
-        if (oldDelta > 0) { Consume(id, oldDelta); Money += oldDelta * buyPrice; }
-        else if (oldDelta < 0) { Inventory[id] = Held(id) - oldDelta; Money += oldDelta * sellPrice; }
-        if (newDelta > 0) { Inventory[id] = Held(id) + newDelta; Money -= newDelta * buyPrice; }
-        else if (newDelta < 0) { Consume(id, -newDelta); Money -= newDelta * sellPrice; }
+        if (units > 0) Inventory[id] = Held(id) + units;
+        else if (units < 0) Consume(id, -units);
+        Money -= cost;
+        SetBasis(id, basis);
     }
 
+    // Units always leave at the average price they went on at, so whatever
+    // takes them — a sale, a gift, the crew's dinner — the book value of
+    // what's left stays true.
     public int Consume(string id, int qty)
     {
         int n = Math.Min(Math.Max(0, qty), Held(id));
         if (n == 0) return 0;
-        int left = Held(id) - n;
+        int had = Held(id);
+        int left = had - n;
         if (left == 0) Inventory.Remove(id); else Inventory[id] = left;
+        SetBasis(id, left == 0 ? 0 : BasisOf(id) * left / had);
         return n;
     }
 

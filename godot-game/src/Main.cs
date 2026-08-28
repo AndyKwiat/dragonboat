@@ -50,10 +50,16 @@ public partial class Main : Node3D
     private TweakPanel tweakPanel = null!;
 
     private Docking docking = null!;   // auto-docking: hull against a city opens its market
+    // What every product fetches across the world, re-fixed each midnight;
+    // the market panel and the map labels quote prices against it.
+    private WorldPrices worldPrices = null!;
     private readonly DayTurn midnight = new();   // VIP passengers' daily pass
     private int lastRoster = int.MinValue;       // passengers/errands aboard, for the map tags
     private float fastForwardSec;   // how long Shift has been held, for the fast-forward ramp
     private bool combatCam;         // the edge cam was entered automatically by combat
+    // Set when _Ready gave up on the world (see the producer check): Quit()
+    // only lands at the end of the frame, so _Process must not run meanwhile.
+    private bool fatal;
 
     // Test hooks.
     private string? screenshotPath;
@@ -109,7 +115,12 @@ public partial class Main : Node3D
         var worldRng = args.TryGetValue("seed", out var seed) ? new Random(int.Parse(seed)) : new Random();
         var cities = CityPlacer.Place(map, CityPlacer.SizesFor(GameConfig.Current),
             CityPlacer.ParseNames(FileAccess.GetFileAsString(Config.CityNamesPath)), worldRng);
-        GameData.SetCities(cities, worldRng);
+        // Production is dealt and distance priced here. A world that cannot
+        // support an economy — a good too few cities make, or a market left
+        // inconsistent — is fatal: say so loudly rather than sail into it.
+        var problems = GameData.SetCities(cities, worldRng, map.Width);
+        if (problems.Count > 0) { Die("this world has no economy to trade in", problems); return; }
+        worldPrices = new WorldPrices(GameData.Cities, GameData.Products, Config.Market);
         terrainQuery = new Terrain(map);
 
         // The world: terrain plane (ground/water) + streamed raised chunks + boat.
@@ -202,7 +213,7 @@ public partial class Main : Node3D
         var ui = new CanvasLayer();
         AddChild(ui);
         cityLabels = new CityLabels();
-        cityLabels.Init(GameData.Cities, storyEvents, time, loans, religion, player);
+        cityLabels.Init(GameData.Cities, storyEvents, worldPrices, time, loans, religion, player);
         ui.AddChild(cityLabels);
         vectors = new VectorOverlay();
         vectors.Init(boat);
@@ -217,7 +228,7 @@ public partial class Main : Node3D
         minimap.Init(map, terrain.Texture);
         ui.AddChild(minimap);
         cityPopup = new CityPopup();
-        cityPopup.Init(player, time, storyEvents, loans, religion);
+        cityPopup.Init(player, time, storyEvents, worldPrices, loans, religion);
         ui.AddChild(cityPopup);
         // The bank window sits on top of the market panel it was opened from;
         // the event log is the world talking back while you sail (banking.md).
@@ -493,8 +504,35 @@ public partial class Main : Node3D
         CameraRig.Clamp(state, view, map.WorldW, map.WorldH);
     }
 
+    // The world's prices moved: re-fix the market-size-weighted world average
+    // every quote is shown against, then rebuild the open market and the
+    // map's price intel. The rebuild matters — a market row anchors its deal
+    // on the stock level it opened at (trading/MarketDeal.cs), so a row that
+    // outlived a change to that level would be pricing against a stale world.
+    private void RefreshMarkets()
+    {
+        worldPrices.Refresh(GameData.Cities, GameData.Products, Config.Market);
+        cityPopup.Rebuild();
+        cityLabels.RefreshIntel();
+    }
+
+    // Give up on the run with a banner that survives a wall of Godot output.
+    // Quit() only lands at the end of the frame, so `fatal` stops _Process
+    // touching the half-built world in the meantime.
+    private void Die(string headline, List<string> detail)
+    {
+        GD.PrintErr(new string('=', 72));
+        GD.PrintErr($"FATAL: {headline}.");
+        foreach (var line in detail) GD.PrintErr($"    {line}");
+        GD.PrintErr("Raise smallCities / mediumCities / largeCities in game-config.yml.");
+        GD.PrintErr(new string('=', 72));
+        fatal = true;
+        GetTree().Quit(1);
+    }
+
     public override void _Process(double delta)
     {
+        if (fatal) return;
         float dt = Math.Min((float)delta, 0.1f);
         var view = View;
         foreach (var k in heldKeys) input.Keys.Add(k);
@@ -645,7 +683,14 @@ public partial class Main : Node3D
         int today = Days.Of(time.TotalMinutes);
         var news = loans.Update(today, lost => player.Honour -= lost);
         if (midnight.Turned(today))
+        {
             news.AddRange(Vips.Update(player.VipPassengers, today, Config.Vips, lost => player.Honour -= lost));
+            // Every market drifts a tenth of the way back to normal: the rest
+            // of the coast's traders, working while you sailed. Prices and the
+            // sliders' anchors move with it, so an open market is rebuilt.
+            Market.DecayAll(GameData.Cities, Config.Market);
+            RefreshMarkets();
+        }
         // Monasteries run on the same beat: monks out of time walk away, and
         // the houses' errands come and go (src/religion).
         news.AddRange(religion.Update(today, lost => player.Piety -= lost));
@@ -670,7 +715,7 @@ public partial class Main : Node3D
         // Story events roll over at midnight; an open market menu has prices
         // and days-left tags baked into its rows, and the map labels show
         // days-left intel, so rebuild both.
-        if (storyEvents.Update()) { cityPopup.Rebuild(); cityLabels.RefreshIntel(); }
+        if (storyEvents.Update()) RefreshMarkets();
         clock.Update();
         eventLog.Update(dt, view);
         minimap.Update(state, view, rig);
