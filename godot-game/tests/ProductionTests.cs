@@ -174,9 +174,10 @@ public class ProductionTests
         for (int i = 0; i < 3; i++)
             Assert.True(cities[i].LocalBaseOf("WOOL") < cities[3].LocalBaseOf("WOOL"),
                 $"producer p{i} did not settle below the non-producer");
-        // p1 is the nearest to the goods of all, so it is the run's floor.
+        // p1 is the nearest to the goods of all, so it is the run's floor;
+        // p3 is the furthest, so it takes the full markup.
         Assert.Equal(15, cities[1].LocalBaseOf("WOOL"), 6);
-        Assert.Equal(30, cities[3].LocalBaseOf("WOOL"), 6);
+        Assert.Equal(15 * (1 + Production.LocalMaxMarkup), cities[3].LocalBaseOf("WOOL"), 6);
         // p0 and p2 sit at the same halved distance, so at the same price.
         Assert.Equal(cities[0].LocalBaseOf("WOOL"), cities[2].LocalBaseOf("WOOL"), 6);
     }
