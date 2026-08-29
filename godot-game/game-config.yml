@@ -1,7 +1,7 @@
 # Game configuration, read once at launch (src/core/GameConfig.cs).
 # Every key is required — nothing here has a code default.
 
-# Terrain file exported by ../terrain-gen (TGN1, raw or gzipped), relative
+# Terrain file exported by ../terrain-gen (TGN1 or TGN2, raw or gzipped), relative
 # to this folder. One map cell = one world unit (~1 m).
 terrainFile: map1.terrain
 

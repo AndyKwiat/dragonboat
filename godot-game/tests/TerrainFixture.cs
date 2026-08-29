@@ -1,23 +1,42 @@
 using System;
+using System.Collections.Generic;
 using System.IO;
 using System.IO.Compression;
+using System.Text;
 
 namespace DragonboatGame.Tests;
 
-// Builds .terrain files (the ../terrain-gen TGN1 format) in memory for tests.
+// Builds .terrain files (the ../terrain-gen TGN1/TGN2 format) in memory for tests.
 public static class TerrainFixture
 {
-    public static byte[] Encode(int size, byte[] tiles, float worldSize = 1024f, string magic = "TGN1")
+    // A version-2 file: header, heights, tiles, then the marker section. Pass
+    // `magic: "TGN1"` (and no markers) for a version-1 file.
+    public static byte[] Encode(int size, byte[] tiles, float worldSize = 1024f, string magic = "TGN2",
+                                IEnumerable<TerrainMarker>? markers = null)
     {
         int n = size * size;
-        var bytes = new byte[16 + n * 4 + n];
-        for (int i = 0; i < 4; i++) bytes[i] = (byte)magic[i];
-        BitConverter.GetBytes((uint)size).CopyTo(bytes, 4);
-        BitConverter.GetBytes(0u).CopyTo(bytes, 8);
-        BitConverter.GetBytes(worldSize).CopyTo(bytes, 12);
-        for (int i = 0; i < n; i++) BitConverter.GetBytes(1.5f * i).CopyTo(bytes, 16 + i * 4);
-        tiles.CopyTo(bytes, 16 + n * 4);
-        return bytes;
+        using var ms = new MemoryStream();
+        using var w = new BinaryWriter(ms, Encoding.UTF8);
+        foreach (char c in magic) w.Write((byte)c);
+        w.Write((uint)size);
+        w.Write(0u);
+        w.Write(worldSize);
+        for (int i = 0; i < n; i++) w.Write(1.5f * i);
+        w.Write(tiles, 0, n);
+        if (magic != "TGN1")
+        {
+            var list = new List<TerrainMarker>(markers ?? Array.Empty<TerrainMarker>());
+            w.Write((uint)list.Count);
+            foreach (var m in list)
+            {
+                w.Write(m.X); w.Write(m.Y); w.Write(m.R);
+                var tag = Encoding.UTF8.GetBytes(m.Tag);
+                w.Write((ushort)tag.Length);
+                w.Write(tag);
+            }
+        }
+        w.Flush();
+        return ms.ToArray();
     }
 
     public static byte[] Gzip(byte[] bytes)

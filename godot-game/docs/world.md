@@ -20,12 +20,22 @@ priceEvents: 20             # story events held at a time, by kind — supply
 vipEvents: 4                # shocks and VIP offers; 0 = none (trading.md)
 ```
 
-The terrain file is painted in `../terrain-gen` and exported in its `TGN1`
-format (spec: `../terrain-gen/src/core/fileFormat.ts`): magic `TGN1`, uint32
-LE size (cells per side, a power of two), uint32 flags, float32 worldSize,
-then size² float32 heights and size² uint8 tile ids, row-major top to bottom,
-the whole file usually gzipped (`TerrainMap.Parse` gunzips transparently).
-The heightmap is **ignored for now**; only the tile ids are used.
+The terrain file is painted in `../terrain-gen` and exported in its `TGN`
+format (spec: `../terrain-gen/docs/FILE_FORMAT.md`). The 4-byte magic *is* the
+version: `TGN1` is uint32 LE size (cells per side, a power of two), uint32
+flags, float32 worldSize, then size² float32 heights and size² uint8 tile ids,
+row-major top to bottom; `TGN2` is byte-identical up to there and appends a
+marker section. The whole file is usually gzipped (`TerrainMap.Parse` gunzips
+transparently) and both versions load. The heightmap is **ignored for now**;
+only the tile ids are used.
+
+**Markers** (`TGN2`) are labelled circles the painter drops on the map: a
+centre and radius in cells — the same coordinate space as the tiles, so also
+world units — and a free-text tag of 1…100 characters. They are not rasterized
+into the tile grid; `TerrainMap.Markers` holds them in file order (later ones
+paint on top) and `MarkerAt(x, y)` returns the topmost circle covering a
+point, or null. A `TGN1` file loads with an empty marker list. Nothing in the
+game reads them yet.
 
 Tile ids: 0 water, 1 sand, 2 grass, 3 forest, 4 rock — plus 5 city, which is
 not in the file: `CityPlacer` stamps it into the loaded map at launch (see

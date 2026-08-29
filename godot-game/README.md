@@ -138,7 +138,7 @@ game-config.yml        which terrain file to load, how many small/medium/
                        large cities to generate, how thick the currents
                        run, how many story events of each kind are live —
                        every key required, no code defaults
-map1.terrain           the map, painted in ../terrain-gen (TGN1, gzipped);
+map1.terrain           the map, painted in ../terrain-gen (TGN2, gzipped);
                        one cell = one world unit
 data/                  products.json (canonical here — each good is a staple or a
                        luxury) and city-names.json;
