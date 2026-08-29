@@ -5,20 +5,26 @@
 import { TILE_COLORS } from "../core/types";
 import { HEIGHT_MAX, HEIGHT_MIN } from "../core/paint";
 import type { Bbox } from "../core/paint";
+import type { Marker } from "../core/markers";
 
-export type ViewMode = "tiles" | "height";
+export type ViewMode = "tiles" | "height" | "markers";
 
 export interface MapView2DHost {
   size: number;
   tiles: Uint8Array;
   height: Float32Array;
+  markers: readonly Marker[];
   onStroke(kind: "start" | "move" | "end", x: number, y: number): void;
+  /** Pointer moved without a stroke in progress (map px). */
+  onHover?(x: number, y: number): void;
 }
 
 const H_MIN = HEIGHT_MIN, H_MAX = HEIGHT_MAX; // greyscale spans the full valid range
 /** In height mode the tile map shows through the greyscale at this opacity
  *  so tile borders stay visible while sculpting. */
 const TILE_GHOST = 0.3;
+/** Markers smaller than this on screen (css px) are drawn/hit at this size. */
+export const MARKER_MIN_SCREEN_PX = 6;
 
 export class MapView2D {
   mode: ViewMode = "tiles";
@@ -34,6 +40,8 @@ export class MapView2D {
   private lastClient = { x: 0, y: 0 };
   private cursor: { x: number; y: number } | null = null;
   private spaceDown = false;
+  /** Index into host.markers that the cursor is over (marker mode only). */
+  hover = -1;
 
   constructor(canvas: HTMLCanvasElement, host: MapView2DHost) {
     this.canvas = canvas;
@@ -63,7 +71,16 @@ export class MapView2D {
     this.fit();
   }
 
-  setMode(m: ViewMode): void { this.mode = m; this.dirtyAll = true; }
+  setMode(m: ViewMode): void {
+    // markers mode shows the tile raster; the marker overlay is drawn on top every frame
+    const raster = m === "height" ? "height" : "tiles";
+    if (raster !== (this.mode === "height" ? "height" : "tiles")) this.dirtyAll = true;
+    this.mode = m;
+  }
+  /** Map px per css px; the hit radius floor for tiny markers is derived from this. */
+  get zoom(): number { return this.scale / devicePixelRatio; }
+  /** Smallest marker radius (map px) that is still comfortably clickable. */
+  get minMarkerHit(): number { return MARKER_MIN_SCREEN_PX / this.zoom; }
   markDirty(b: Bbox | null): void {
     if (!b) { this.dirtyAll = true; return; }
     if (this.dirtyAll) return;
@@ -113,6 +130,8 @@ export class MapView2D {
       this.lastClient = { x: e.clientX, y: e.clientY };
     } else if (this.painting) {
       this.host.onStroke("move", m.x, m.y);
+    } else {
+      this.host.onHover?.(m.x, m.y);
     }
   };
   private onUp = (e: PointerEvent): void => {
@@ -145,7 +164,7 @@ export class MapView2D {
     if (w <= 0 || h <= 0) return;
     const img = this.bctx.createImageData(w, h);
     const d = img.data, size = this.host.size;
-    if (this.mode === "tiles") {
+    if (this.mode !== "height") {
       const t = this.host.tiles;
       for (let y = 0; y < h; y++) {
         let src = (b.y0 + y) * size + b.x0, dst = y * w * 4;
@@ -185,7 +204,8 @@ export class MapView2D {
     ctx.lineWidth = 1 / this.scale;
     ctx.strokeStyle = "rgba(255,255,255,0.25)";
     ctx.strokeRect(0, 0, this.host.size, this.host.size);
-    if (this.cursor) {
+    this.drawMarkers(ctx);
+    if (this.cursor && this.mode !== "markers") {
       ctx.beginPath();
       ctx.arc(this.cursor.x, this.cursor.y, this.brushRadius, 0, Math.PI * 2);
       ctx.lineWidth = 1.5 / this.scale;
@@ -195,5 +215,56 @@ export class MapView2D {
       ctx.lineWidth = 0.75 / this.scale;
       ctx.stroke();
     }
+    if (this.cursor && this.mode === "markers" && this.hover < 0) {
+      // preview ring for a marker that would be placed here
+      ctx.beginPath();
+      ctx.arc(this.cursor.x, this.cursor.y, Math.max(this.brushRadius, this.minMarkerHit), 0, Math.PI * 2);
+      ctx.setLineDash([4 / this.scale, 4 / this.scale]);
+      ctx.lineWidth = 1 / this.scale;
+      ctx.strokeStyle = "rgba(255,220,80,0.8)";
+      ctx.stroke();
+      ctx.setLineDash([]);
+    }
   };
+
+  /** Circles + labels; labels are screen-sized so they stay legible at any zoom. */
+  private drawMarkers(ctx: CanvasRenderingContext2D): void {
+    const ms = this.host.markers;
+    if (ms.length === 0) return;
+    const active = this.mode === "markers";
+    const alpha = active ? 1 : 0.55;
+    const minR = this.minMarkerHit;
+    for (let i = 0; i < ms.length; i++) {
+      const m = ms[i];
+      const hot = active && i === this.hover;
+      ctx.beginPath();
+      ctx.arc(m.x, m.y, Math.max(m.r, minR), 0, Math.PI * 2);
+      ctx.fillStyle = hot ? "rgba(255,220,80,0.35)" : `rgba(255,190,40,${0.18 * alpha})`;
+      ctx.fill();
+      ctx.lineWidth = (hot ? 2 : 1.5) / this.scale;
+      ctx.strokeStyle = `rgba(255,${hot ? 240 : 200},60,${alpha})`;
+      ctx.stroke();
+      if (m.r < minR) { // true (tiny) radius as a dot inside the inflated ring
+        ctx.beginPath(); ctx.arc(m.x, m.y, m.r, 0, Math.PI * 2); ctx.fill();
+      }
+    }
+    // labels in screen space
+    ctx.save();
+    ctx.setTransform(1, 0, 0, 1, 0, 0);
+    const px = 12 * devicePixelRatio;
+    ctx.font = `${px}px system-ui, sans-serif`;
+    ctx.textBaseline = "middle";
+    for (let i = 0; i < ms.length; i++) {
+      const m = ms[i];
+      const sx = m.x * this.scale + this.tx, sy = m.y * this.scale + this.ty;
+      if (sx < -200 || sy < -50 || sx > this.canvas.width + 200 || sy > this.canvas.height + 50) continue;
+      const off = Math.max(m.r, minR) * this.scale + 4 * devicePixelRatio;
+      const w = ctx.measureText(m.tag).width;
+      ctx.fillStyle = `rgba(10,18,28,${0.75 * alpha})`;
+      ctx.fillRect(sx + off - 3, sy - px * 0.7, w + 6, px * 1.4);
+      ctx.fillStyle = `rgba(255,230,140,${alpha})`;
+      ctx.fillText(m.tag, sx + off, sy);
+    }
+    ctx.restore();
+  }
 }

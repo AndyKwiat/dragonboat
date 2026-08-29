@@ -2,13 +2,42 @@
  *  "before" the first time it touches it; "after" is captured on commit.
  *  Undo/redo swap chunk contents back in. Memory-capped, oldest dropped. */
 
+import type { Marker } from "./markers";
+import { cloneMarkers } from "./markers";
+
 export const CHUNK = 64;
 
 export type PaintLayer = "tiles" | "height";
+export type Layer = PaintLayer | "markers";
 type Buf = Uint8Array | Float32Array;
 
 interface ChunkPair { idx: number; before: Buf; after: Buf }
 export interface StrokeEntry { layer: PaintLayer; chunks: ChunkPair[]; bytes: number }
+/** Marker edits snapshot the whole (small) list before/after. */
+export interface MarkerEntry { layer: "markers"; before: Marker[]; after: Marker[]; bytes: number }
+export type HistoryEntry = StrokeEntry | MarkerEntry;
+
+/** Build a marker history entry from before/after lists (null if identical). */
+export function markerEntry(before: readonly Marker[], after: readonly Marker[]): MarkerEntry | null {
+  if (before.length === after.length && before.every((m, i) => {
+    const a = after[i]; return m.x === a.x && m.y === a.y && m.r === a.r && m.tag === a.tag;
+  })) return null;
+  const b = cloneMarkers(before), a = cloneMarkers(after);
+  let bytes = 0;
+  for (const m of [...b, ...a]) bytes += 24 + m.tag.length * 2;
+  return { layer: "markers", before: b, after: a, bytes };
+}
+
+export interface HistoryTarget { tiles: Uint8Array; height: Float32Array; markers: Marker[] }
+
+function applyEntry(e: HistoryEntry, t: HistoryTarget, size: number, undo: boolean): void {
+  if (e.layer === "markers") {
+    t.markers.length = 0;
+    t.markers.push(...cloneMarkers(undo ? e.before : e.after));
+    return;
+  }
+  for (const c of e.chunks) pasteChunk(t[e.layer], size, c.idx, undo ? c.before : c.after);
+}
 
 function copyChunk(arr: Buf, size: number, chunkIdx: number): Buf {
   const perRow = size / CHUNK;
@@ -62,12 +91,12 @@ export class StrokeRecorder {
 }
 
 export class History {
-  private undoStack: StrokeEntry[] = [];
-  private redoStack: StrokeEntry[] = [];
+  private undoStack: HistoryEntry[] = [];
+  private redoStack: HistoryEntry[] = [];
   private bytes = 0;
   constructor(private maxBytes = 256 * 1024 * 1024) {}
 
-  push(entry: StrokeEntry): void {
+  push(entry: HistoryEntry): void {
     this.undoStack.push(entry);
     this.bytes += entry.bytes;
     for (const e of this.redoStack) this.bytes -= e.bytes;
@@ -80,18 +109,18 @@ export class History {
   get canUndo(): boolean { return this.undoStack.length > 0; }
   get canRedo(): boolean { return this.redoStack.length > 0; }
 
-  undo(arrs: Record<PaintLayer, Buf>, size: number): StrokeEntry | null {
+  undo(target: HistoryTarget, size: number): HistoryEntry | null {
     const e = this.undoStack.pop();
     if (!e) return null;
-    for (const c of e.chunks) pasteChunk(arrs[e.layer], size, c.idx, c.before);
+    applyEntry(e, target, size, true);
     this.redoStack.push(e);
     return e;
   }
 
-  redo(arrs: Record<PaintLayer, Buf>, size: number): StrokeEntry | null {
+  redo(target: HistoryTarget, size: number): HistoryEntry | null {
     const e = this.redoStack.pop();
     if (!e) return null;
-    for (const c of e.chunks) pasteChunk(arrs[e.layer], size, c.idx, c.after);
+    applyEntry(e, target, size, false);
     this.undoStack.push(e);
     return e;
   }

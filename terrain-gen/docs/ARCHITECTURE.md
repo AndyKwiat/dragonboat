@@ -7,6 +7,13 @@ Two flat arrays are the whole document, mutated in place by painting:
 - `height: Float32Array(size*size)` — world units, clamped to [`HEIGHT_MIN`=1, `HEIGHT_MAX`=100] by every brush
 - `tiles: Uint8Array(size*size)` — `Tile` ids (see `src/core/types.ts`)
 
+Plus a third, non-pixel layer:
+
+- `markers: Marker[]` — labelled circles (`{x, y, r, tag}` in map px; see
+  `src/core/markers.ts`). Not rasterized: they are drawn as an overlay by
+  the 2D view and stored as their own section in the file. Tags are
+  mandatory, 1–100 chars, whitespace-collapsed.
+
 Both the 2D view and the 3D textures reference these same arrays; nothing
 is copied on edit.
 
@@ -22,6 +29,16 @@ is copied on edit.
 - `App.stampPath` interpolates stamps along the pointer path at ~r/4
   spacing so fast strokes don't leave gaps.
 
+## Markers (`src/core/markers.ts`, pure)
+
+`hitMarker` picks the topmost (last-placed) marker whose disc contains a
+point, with a `minHit` floor so markers smaller than ~6 screen px stay
+clickable when zoomed out. `resampleMarkers` scales x/y/r on resolution
+change. `App.onMarkerStroke` drives the interaction: click empty map =
+place (`prompt` for the tag), click a marker = edit its tag (empty =
+delete), drag = move. Every one of those commits a `markerEntry` to the
+same history stack the brushes use.
+
 ## Undo / redo (`src/core/history.ts`, pure)
 
 Chunked snapshots: a `StrokeRecorder` copies each 64×64 chunk the *first*
@@ -31,6 +48,11 @@ stacks of these entries with a byte cap (256 MB, oldest dropped). *Clear* is
 just a stroke that touches every chunk. Undoing an entry from the other
 layer switches the 2D view to that layer so the change is visible.
 
+Marker edits do not fit the chunk model (the list is tiny and unindexed),
+so a `MarkerEntry` snapshots the whole before/after list. `History` holds
+both entry kinds; `undo`/`redo` take `{tiles, height, markers}` and mutate
+the marker array **in place** so the App's reference stays valid.
+
 ## 2D view (`src/ui/mapView2d.ts`)
 
 A map-sized backing `<canvas>` holds the rasterized image (tile palette or
@@ -39,6 +61,11 @@ underneath at 30% so borders stay visible while sculpting). Brushes report a dir
 only that region is re-rasterized (`putImageData`) on the next frame. The
 visible canvas draws the backing canvas under a pan/zoom transform (nearest
 sampling when zoomed in) plus the brush cursor ring.
+
+Markers mode reuses the tile raster and draws markers on top every frame:
+discs in map space, labels in screen space (constant 12 px) so they stay
+legible at any zoom. Markers are dimmed in tiles/height mode, and the
+hovered one is highlighted.
 
 ## 3D view (`src/render/terrainRenderer.ts`)
 
@@ -82,10 +109,15 @@ immediately (the renderer recreates textures when the size changes).
 
 ## File format (`src/core/fileFormat.ts`, pure)
 
-`encodeTerrain` / `decodeTerrain` produce/parse the raw `TGN1` binary
-(16-byte header, then `f32[size²]` heights, then `u8[size²]` tiles; see
-README for the table). `decode` validates magic, power-of-two size and
-exact byte length. `gzip`/`gunzip` wrap the web-streams
+`encodeTerrain` / `decodeTerrain` produce/parse the raw binary. **The magic
+is the version**: `TGN1` (heights + tiles) and `TGN2` (those, plus an
+appended marker section). `decode` reads both — a v1 file yields an empty
+marker list — and `encode` always writes v2, so loading an old map and
+saving upgrades it. `decode` validates magic, power-of-two size, exact byte
+length, per-marker bounds, tag UTF-8 and radius. The full spec lives in
+`docs/FILE_FORMAT.md` (written to be handed to other repos); keep it in
+sync when the format changes, and append new sections behind a new magic
+rather than reordering old ones. `gzip`/`gunzip` wrap the web-streams
 `CompressionStream`, used by `App.save`/`App.load`; load sniffs the gzip
 magic so both raw and compressed files open. Loading replaces the arrays
 and resets history/views the same way a resolution change does.

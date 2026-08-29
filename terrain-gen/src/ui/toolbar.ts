@@ -5,11 +5,12 @@ import { TILE_COLORS } from "../core/types";
 export type HeightTool = "raise" | "lower" | "smooth";
 
 export interface ToolState {
-  mode: "tiles" | "height";
+  mode: "tiles" | "height" | "markers";
   tile: number;          // selected tile id
   tileBrush: number;     // radius, map px
   heightBrush: number;   // radius, map px
   heightTool: HeightTool;
+  markerRadius: number;  // radius, map px, for newly placed markers
   strength: number;      // 1..100
   size: number;          // map resolution (power of two)
   voxel: boolean;        // 3D voxel look
@@ -34,6 +35,7 @@ export function buildToolbar(root: HTMLElement, st: ToolState, cb: ToolbarCallba
     <div class="tb-group" id="tb-mode">
       <button data-mode="tiles" class="tb-btn">Tiles</button>
       <button data-mode="height" class="tb-btn">Height</button>
+      <button data-mode="markers" class="tb-btn">Markers</button>
     </div>
     <div class="tb-group" id="tb-tiles">
       ${TILE_COLORS.map((c, i) => `<button class="swatch" data-tile="${i}" title="${TILE_NAMES[i]}" style="background:rgb(${c.join(",")})"></button>`).join("")}
@@ -46,10 +48,14 @@ export function buildToolbar(root: HTMLElement, st: ToolState, cb: ToolbarCallba
       <label>size <input type="range" id="h-size" min="1" max="800" step="1"><span id="h-size-v"></span></label>
       <label>strength <input type="range" id="h-str" min="1" max="100" step="1"><span id="h-str-v"></span></label>
     </div>
+    <div class="tb-group" id="tb-markers">
+      <label>radius <input type="range" id="m-size" min="1" max="800" step="1"><span id="m-size-v"></span></label>
+      <span class="tb-hint">click = place, click marker = edit (empty tag deletes), drag = move</span>
+    </div>
     <div class="tb-group">
       <button id="tb-undo" class="tb-btn" title="Cmd/Ctrl+Z">Undo</button>
       <button id="tb-redo" class="tb-btn" title="Shift+Cmd/Ctrl+Z">Redo</button>
-      <button id="tb-clear" class="tb-btn" title="Fill the whole map with the current tile / flatten heights">Clear</button>
+      <button id="tb-clear" class="tb-btn" title="Fill the whole map with the current tile / flatten heights / remove all markers">Clear</button>
     </div>
     <div class="tb-group">
       <label>resolution <select id="tb-res">${[512, 1024, 2048, 4096, 8192].map((n) => `<option value="${n}">${n}</option>`).join("")}</select></label>
@@ -65,7 +71,7 @@ export function buildToolbar(root: HTMLElement, st: ToolState, cb: ToolbarCallba
     <div class="tb-group tb-status"><span id="tb-3d">3D: up to date</span></div>
   `;
   const q = <T extends HTMLElement>(sel: string) => root.querySelector(sel) as T;
-  const tileSize = q<HTMLInputElement>("#tile-size"), hSize = q<HTMLInputElement>("#h-size"), hStr = q<HTMLInputElement>("#h-str");
+  const tileSize = q<HTMLInputElement>("#tile-size"), hSize = q<HTMLInputElement>("#h-size"), hStr = q<HTMLInputElement>("#h-str"), mSize = q<HTMLInputElement>("#m-size");
 
   const res = q<HTMLSelectElement>("#tb-res");
   const voxel = q<HTMLInputElement>("#tb-voxel");
@@ -75,6 +81,8 @@ export function buildToolbar(root: HTMLElement, st: ToolState, cb: ToolbarCallba
     root.querySelectorAll<HTMLButtonElement>("[data-mode]").forEach((b) => b.classList.toggle("active", b.dataset.mode === st.mode));
     q("#tb-tiles").style.display = st.mode === "tiles" ? "" : "none";
     q("#tb-height").style.display = st.mode === "height" ? "" : "none";
+    q("#tb-markers").style.display = st.mode === "markers" ? "" : "none";
+    mSize.value = String(st.markerRadius); q("#m-size-v").textContent = String(st.markerRadius);
     root.querySelectorAll<HTMLButtonElement>("[data-tile]").forEach((b) => b.classList.toggle("active", Number(b.dataset.tile) === st.tile));
     root.querySelectorAll<HTMLButtonElement>("[data-htool]").forEach((b) => b.classList.toggle("active", b.dataset.htool === st.heightTool));
     tileSize.value = String(st.tileBrush); q("#tile-size-v").textContent = String(st.tileBrush);
@@ -89,6 +97,7 @@ export function buildToolbar(root: HTMLElement, st: ToolState, cb: ToolbarCallba
   root.querySelectorAll<HTMLButtonElement>("[data-htool]").forEach((b) => b.onclick = () => { st.heightTool = b.dataset.htool as HeightTool; sync(); });
   tileSize.oninput = () => { st.tileBrush = Number(tileSize.value); sync(); cb.onBrushChange(); };
   hSize.oninput = () => { st.heightBrush = Number(hSize.value); sync(); cb.onBrushChange(); };
+  mSize.oninput = () => { st.markerRadius = Number(mSize.value); sync(); cb.onBrushChange(); };
   hStr.oninput = () => { st.strength = Number(hStr.value); sync(); };
   res.onchange = () => cb.onResize(Number(res.value));
   voxel.onchange = () => { st.voxel = voxel.checked; cb.onVoxelChange(); };

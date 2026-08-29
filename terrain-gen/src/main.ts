@@ -7,10 +7,12 @@ import { OrbitControls } from "three/addons/controls/OrbitControls.js";
 import { Tile } from "./core/types";
 import { HEIGHT_MIN, circleBbox, fillHeight, fillTiles, paintHeight, paintTiles, smoothHeight } from "./core/paint";
 import type { Bbox } from "./core/paint";
-import { History, StrokeRecorder } from "./core/history";
+import { History, StrokeRecorder, markerEntry } from "./core/history";
+import type { HistoryEntry, PaintLayer } from "./core/history";
 import { resampleHeight, resampleTiles } from "./core/resample";
+import { DEFAULT_MARKER_RADIUS, MAX_TAG_LENGTH, cloneMarkers, hitMarker, makeMarker, normalizeTag, resampleMarkers } from "./core/markers";
+import type { Marker } from "./core/markers";
 import { decodeTerrain, encodeTerrain, gunzip, gzip, isGzip } from "./core/fileFormat";
-import type { PaintLayer } from "./core/history";
 import { TerrainRenderer } from "./render/terrainRenderer";
 import { MapView2D } from "./ui/mapView2d";
 import { buildToolbar } from "./ui/toolbar";
@@ -26,7 +28,8 @@ class App {
   size = MAP_SIZE;
   height!: Float32Array;
   tiles!: Uint8Array;
-  tool: ToolState = { mode: "tiles", tile: 2, tileBrush: 80, heightBrush: 160, heightTool: "raise", strength: 30, size: MAP_SIZE, voxel: false };
+  markers: Marker[] = [];
+  tool: ToolState = { mode: "tiles", tile: 2, tileBrush: 80, heightBrush: 160, heightTool: "raise", markerRadius: DEFAULT_MARKER_RADIUS, strength: 30, size: MAP_SIZE, voxel: false };
   history = new History();
   map!: MapView2D;
   toolbar!: ReturnType<typeof buildToolbar>;
@@ -41,6 +44,8 @@ class App {
   // stroke state
   private rec: StrokeRecorder | null = null;
   private last: { x: number; y: number } | null = null;
+  // marker drag state
+  private mdrag: { idx: number; before: Marker[]; start: { x: number; y: number }; moved: boolean } | null = null;
 
   constructor() {
     // start flat: BASE_HEIGHT everywhere, all water
@@ -71,8 +76,9 @@ class App {
     // ---- 2D editor ----
     const app = this;
     this.map = new MapView2D(document.getElementById("map2d") as HTMLCanvasElement, {
-      get size() { return app.size; }, get tiles() { return app.tiles; }, get height() { return app.height; },
+      get size() { return app.size; }, get tiles() { return app.tiles; }, get height() { return app.height; }, get markers() { return app.markers; },
       onStroke: (k, x, y) => this.onStroke(k, x, y),
+      onHover: (x, y) => { if (this.tool.mode === "markers" && !this.mdrag) this.map.hover = hitMarker(this.markers, x, y, this.map.minMarkerHit); },
     });
     this.toolbar = buildToolbar(document.getElementById("toolbar")!, this.tool, {
       onModeChange: () => { this.map.setMode(this.tool.mode); this.syncBrush(); },
@@ -119,11 +125,14 @@ class App {
     this.camera.updateProjectionMatrix();
   }
 
-  private get brushRadius(): number { return this.tool.mode === "tiles" ? this.tool.tileBrush : this.tool.heightBrush; }
+  private get brushRadius(): number {
+    return this.tool.mode === "tiles" ? this.tool.tileBrush : this.tool.mode === "height" ? this.tool.heightBrush : this.tool.markerRadius;
+  }
   private syncBrush(): void { this.map.brushRadius = this.brushRadius; }
   private nudgeBrush(d: number): void {
     if (this.tool.mode === "tiles") this.tool.tileBrush = Math.max(1, Math.min(800, this.tool.tileBrush + d));
-    else this.tool.heightBrush = Math.max(1, Math.min(800, this.tool.heightBrush + d));
+    else if (this.tool.mode === "height") this.tool.heightBrush = Math.max(1, Math.min(800, this.tool.heightBrush + d));
+    else this.tool.markerRadius = Math.max(1, Math.min(800, this.tool.markerRadius + d));
     this.toolbar.sync(); this.syncBrush();
   }
   private get layer(): PaintLayer { return this.tool.mode === "tiles" ? "tiles" : "height"; }
@@ -131,6 +140,7 @@ class App {
 
   // ---------- painting ----------
   private onStroke(kind: "start" | "move" | "end", x: number, y: number): void {
+    if (this.tool.mode === "markers") { this.onMarkerStroke(kind, x, y); return; }
     if (kind === "start") {
       this.rec = new StrokeRecorder(this.layer, this.arr(this.layer), this.size);
       this.last = null;
@@ -177,6 +187,50 @@ class App {
     this.touch3d();
   }
 
+  // ---------- markers ----------
+  /** Click empty space = place (prompts for a tag); click a marker = edit its
+   *  tag (empty = delete); drag a marker = move. All undoable. */
+  private onMarkerStroke(kind: "start" | "move" | "end", x: number, y: number): void {
+    if (kind === "start") {
+      const idx = hitMarker(this.markers, x, y, this.map.minMarkerHit);
+      this.mdrag = { idx, before: cloneMarkers(this.markers), start: { x, y }, moved: false };
+      this.map.hover = idx;
+      return;
+    }
+    if (!this.mdrag) return;
+    const d = this.mdrag;
+    if (d.idx >= 0) {
+      // drag-to-move; a small wobble still counts as a click
+      if (Math.hypot(x - d.start.x, y - d.start.y) * this.map.zoom > 3) d.moved = true;
+      if (d.moved) { const m = this.markers[d.idx]; m.x = x; m.y = y; }
+    }
+    if (kind !== "end") return;
+    this.mdrag = null;
+    if (d.idx < 0) {
+      if (x < 0 || y < 0 || x >= this.size || y >= this.size) return;
+      const raw = prompt(`Marker tag (1–${MAX_TAG_LENGTH} chars):`, "");
+      if (raw === null) return;
+      const tag = normalizeTag(raw);
+      if (tag === null) { alert(`Tag must be 1–${MAX_TAG_LENGTH} characters.`); return; }
+      this.markers.push(makeMarker(d.start.x, d.start.y, this.tool.markerRadius, tag));
+    } else if (!d.moved) {
+      const m = this.markers[d.idx];
+      const raw = prompt("Edit tag (empty to delete):", m.tag);
+      if (raw === null) return;
+      const tag = normalizeTag(raw);
+      if (tag === null) this.markers.splice(d.idx, 1);
+      else m.tag = tag;
+    }
+    this.commitMarkers(d.before);
+    this.map.hover = hitMarker(this.markers, x, y, this.map.minMarkerHit);
+  }
+
+  private commitMarkers(before: Marker[]): void {
+    const e = markerEntry(before, this.markers);
+    if (e) this.history.push(e);
+    this.toolbar.setHistory(this.history.canUndo, this.history.canRedo);
+  }
+
   private endStroke(): void {
     const entry = this.rec?.commit() ?? null;
     this.rec = null; this.last = null;
@@ -184,8 +238,14 @@ class App {
     this.toolbar.setHistory(this.history.canUndo, this.history.canRedo);
   }
 
-  private applyHistory(entry: { layer: PaintLayer; chunks: { idx: number }[] } | null): void {
+  private applyHistory(entry: HistoryEntry | null): void {
     if (!entry) return;
+    if (entry.layer === "markers") {
+      this.map.hover = -1;
+      if (this.tool.mode !== "markers") { this.tool.mode = "markers"; this.toolbar.sync(); this.map.setMode("markers"); this.syncBrush(); }
+      this.toolbar.setHistory(this.history.canUndo, this.history.canRedo);
+      return;
+    }
     // dirty bbox = union of chunk rects
     const perRow = this.size / 64;
     let b: Bbox | null = null;
@@ -195,16 +255,26 @@ class App {
       b = b ? { x0: Math.min(b.x0, cb.x0), y0: Math.min(b.y0, cb.y0), x1: Math.max(b.x1, cb.x1), y1: Math.max(b.y1, cb.y1) } : cb;
     }
     // switch the 2D view to the layer being restored so the change is visible
-    if (entry.layer !== this.layer) { this.tool.mode = entry.layer; this.toolbar.sync(); this.map.setMode(entry.layer); this.syncBrush(); }
+    if (entry.layer !== this.tool.mode) { this.tool.mode = entry.layer; this.toolbar.sync(); this.map.setMode(entry.layer); this.syncBrush(); }
     this.map.markDirty(b);
     this.touch3d();
     this.toolbar.setHistory(this.history.canUndo, this.history.canRedo);
   }
-  undo(): void { this.applyHistory(this.history.undo({ tiles: this.tiles, height: this.height }, this.size)); }
-  redo(): void { this.applyHistory(this.history.redo({ tiles: this.tiles, height: this.height }, this.size)); }
+  private get historyTarget() { return { tiles: this.tiles, height: this.height, markers: this.markers }; }
+  undo(): void { this.applyHistory(this.history.undo(this.historyTarget, this.size)); }
+  redo(): void { this.applyHistory(this.history.redo(this.historyTarget, this.size)); }
 
-  /** Fill the whole map: current tile (tiles mode) or flat 0 (height mode). Undoable. */
+  /** Fill the whole map: current tile (tiles mode), flat 0 (height mode) or
+   *  remove every marker (markers mode). Undoable. */
   clear(): void {
+    if (this.tool.mode === "markers") {
+      if (this.markers.length && !confirm(`Remove all ${this.markers.length} markers?`)) return;
+      const before = cloneMarkers(this.markers);
+      this.markers.length = 0;
+      this.map.hover = -1;
+      this.commitMarkers(before);
+      return;
+    }
     const rec = new StrokeRecorder(this.layer, this.arr(this.layer), this.size);
     rec.touch(0, 0, this.size, this.size);
     if (this.tool.mode === "tiles") fillTiles(this.tiles, this.tool.tile);
@@ -223,6 +293,7 @@ class App {
     if (size === this.size || (size & (size - 1)) !== 0) return;
     this.height = resampleHeight(this.height, this.size, size);
     this.tiles = resampleTiles(this.tiles, this.size, size);
+    this.markers = resampleMarkers(this.markers, this.size, size);
     this.size = size;
     this.tool.size = size;
     this.history.clear();
@@ -236,7 +307,7 @@ class App {
   /** Download the map as a gzipped binary .terrain file. */
   async save(): Promise<void> {
     this.toolbar.set3dStatus("saving…");
-    const raw = encodeTerrain({ size: this.size, worldSize: WORLD_SIZE, height: this.height, tiles: this.tiles });
+    const raw = encodeTerrain({ size: this.size, worldSize: WORLD_SIZE, height: this.height, tiles: this.tiles, markers: this.markers });
     const bytes = typeof CompressionStream !== "undefined" ? await gzip(raw) : raw;
     const blob = new Blob([bytes as BlobPart], { type: "application/octet-stream" });
     const a = document.createElement("a");
@@ -258,6 +329,8 @@ class App {
       const t = decodeTerrain(bytes);
       this.height = t.height as Float32Array<ArrayBuffer>;
       this.tiles = t.tiles as Uint8Array<ArrayBuffer>;
+      this.markers = t.markers;
+      this.map.hover = -1;
       this.size = t.size;
       this.tool.size = t.size;
       this.history.clear();
@@ -265,7 +338,7 @@ class App {
       this.toolbar.setHistory(false, false);
       this.map.resetSize();
       this.upload3d();
-      this.toolbar.set3dStatus(`loaded ${file.name} (${t.size}²)`);
+      this.toolbar.set3dStatus(`loaded ${file.name} (${t.size}², ${t.markers.length} markers)`);
     } catch (err) {
       alert(`Could not load ${file.name}: ${(err as Error).message}`);
     }

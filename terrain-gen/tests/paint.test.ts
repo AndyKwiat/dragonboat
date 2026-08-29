@@ -73,10 +73,10 @@ describe("history", () => {
     expect(entry.chunks.length).toBeGreaterThanOrEqual(1);
     hist.push(entry);
     expect(hist.canUndo).toBe(true);
-    hist.undo({ tiles, height }, size);
+    hist.undo({ tiles, height, markers: [] }, size);
     expect(tiles[70 * size + 70]).toBe(0);
     expect(hist.canRedo).toBe(true);
-    hist.redo({ tiles, height }, size);
+    hist.redo({ tiles, height, markers: [] }, size);
     expect(tiles[70 * size + 70]).toBe(4);
   });
   test("a stroke that changes nothing commits null", () => {
@@ -95,7 +95,7 @@ describe("history", () => {
       paintHeight(height, size, 4, 4, 3, 1 + i);
       hist.push(rec.commit()!);
     }
-    let n = 0; while (hist.undo({ tiles, height }, size)) n++;
+    let n = 0; while (hist.undo({ tiles, height, markers: [] }, size)) n++;
     expect(n).toBeLessThanOrEqual(3);
     expect(n).toBeGreaterThanOrEqual(1);
   });
