@@ -21,6 +21,10 @@ public partial class Main : Node3D
     private Boat boat = null!;
     private CombatSystem combat = null!;
     private EnemyShips enemies = null!;
+    private AiBoats aiBoats = null!;
+    // Set by --scenario: a stripped-down test world (src/scenarios). Null in
+    // every normal launch, and every `scenario` check below is a no-op then.
+    private Scenario? scenario;
     private InputState input = null!;
     private CameraRig rig = null!;
     private readonly Dictionary<string, CameraRig> rigs = new();
@@ -114,16 +118,44 @@ public partial class Main : Node3D
         // cities are placed fresh on the coast every launch.
         GameConfig.Current = GameConfig.Parse(FileAccess.GetFileAsString(GameConfig.Path));
         GameData.Load();
-        map = TerrainMap.Parse(FileAccess.GetFileAsBytes("res://" + GameConfig.Current.TerrainFile));
+        // --scenario=name loads scenarios/name.yml instead of the usual
+        // world: a different map, and whatever of the world it leaves out
+        // (src/scenarios/Scenario.cs). Without the flag nothing changes.
+        if (args.TryGetValue("scenario", out var scenarioName))
+        {
+            var path = Scenario.PathOf(scenarioName);
+            if (!FileAccess.FileExists(path))
+            {
+                Die($"no scenario named '{scenarioName}'", new List<string> { $"expected {path}" },
+                    "Scenarios live in scenarios/*.yml — see docs/scenarios.md.");
+                return;
+            }
+            scenario = Scenario.Parse(scenarioName, FileAccess.GetFileAsString(path));
+            GD.Print($"Scenario '{scenario.Name}': {scenario.TerrainFile}, " +
+                     $"{(scenario.Cities ? "cities" : "no cities")}, {(scenario.Currents ? "currents" : "no currents")}, " +
+                     $"{(scenario.EnemyFleet ? "enemy fleet" : "no enemy fleet")}, {scenario.Boats.Count} AI boat(s)");
+        }
+        map = TerrainMap.Parse(FileAccess.GetFileAsBytes("res://" + (scenario?.TerrainFile ?? GameConfig.Current.TerrainFile)));
         // --seed makes a run reproducible: same cities, same enemy fleet.
         var worldRng = args.TryGetValue("seed", out var seed) ? new Random(int.Parse(seed)) : new Random();
-        var cities = CityPlacer.Place(map, CityPlacer.SizesFor(GameConfig.Current),
-            CityPlacer.ParseNames(FileAccess.GetFileAsString(Config.CityNamesPath)), worldRng);
+        // A scenario may ask for an empty coast: no cities, so no economy,
+        // no labels, no docking and nothing to trade with.
+        var cities = scenario is { Cities: false }
+            ? new List<City>()
+            : CityPlacer.Place(map, CityPlacer.SizesFor(GameConfig.Current),
+                CityPlacer.ParseNames(FileAccess.GetFileAsString(Config.CityNamesPath)), worldRng);
         // Production is dealt and distance priced here. A world that cannot
         // support an economy — a good too few cities make, or a market left
         // inconsistent — is fatal: say so loudly rather than sail into it.
+        // A world with no cities at all was asked for and has no economy to
+        // be wrong about, so it is not held to that.
         var problems = GameData.SetCities(cities, worldRng, map.Width);
-        if (problems.Count > 0) { Die("this world has no economy to trade in", problems); return; }
+        if (cities.Count > 0 && problems.Count > 0)
+        {
+            Die("this world has no economy to trade in", problems,
+                "Raise smallCities / mediumCities / largeCities in game-config.yml.");
+            return;
+        }
         worldPrices = new WorldPrices(GameData.Cities, GameData.Products, Config.Market);
         terrainQuery = new Terrain(map);
 
@@ -135,7 +167,7 @@ public partial class Main : Node3D
         chunks.Init(map);
         AddChild(chunks);
         var currents = new Currents();
-        currents.Init(map, terrainQuery);
+        currents.Init(map, terrainQuery, scenario is { Currents: false } ? 0 : null);
         AddChild(currents);
         boat = new Boat();
         PlaceBoatStart(cities, worldRng);
@@ -179,7 +211,15 @@ public partial class Main : Node3D
         enemies = new EnemyShips();
         AddChild(enemies);
         enemies.Init(map, terrainQuery, combat, boat, worldRng,
-            () => player.Honour += EnemyShips.KillHonour);
+            () => player.Honour += EnemyShips.KillHonour,
+            scenario is { EnemyFleet: false } ? 0 : null);
+
+        // The AI fleet: self-sailing non-player boats (src/ai). Only a
+        // scenario ever puts any in it, so a normal launch has none.
+        aiBoats = new AiBoats();
+        aiBoats.Init(terrainQuery);
+        AddChild(aiBoats);
+        SpawnScenarioBoats();
 
         input = new InputState();
         AddChild(input);
@@ -216,7 +256,7 @@ public partial class Main : Node3D
         religion = new Monasteries(GameData.Cities, Config.Religion, worldRng);
         var monasteryNames = new List<string>();
         foreach (var h in religion.Houses) monasteryNames.Add($"{h.City.Name} ({h.City.X:0},{h.City.Y:0})");
-        GD.Print($"Monasteries in {string.Join(", ", monasteryNames)}");
+        if (monasteryNames.Count > 0) GD.Print($"Monasteries in {string.Join(", ", monasteryNames)}");
         docking = new Docking(Config.CityDockCooldownSec);
 
         // UI overlays, in draw order (labels under the panels, popup on top).
@@ -272,9 +312,17 @@ public partial class Main : Node3D
     }
 
     // The boat starts on open water off a random large city's shore,
-    // pointing out to sea (any city if no large one has a usable shore).
+    // pointing out to sea (any city if no large one has a usable shore) —
+    // or, in a scenario, on the marker the scenario named.
     private void PlaceBoatStart(List<City> cities, Random rng)
     {
+        if (scenario?.PlayerMarker is string tag)
+        {
+            var marker = scenario.Marker(map, tag);
+            boat.X = marker.X; boat.Y = marker.Y;
+            GD.Print($"Player boat starts on marker '{marker.Tag}' at {marker.X:0},{marker.Y:0}");
+            return;
+        }
         // A random large city first, then the rest as fallbacks.
         var large = cities.FindAll(c => c.Size == "large");
         var order = new List<City>();
@@ -291,6 +339,20 @@ public partial class Main : Node3D
         throw new Exception("No city has a usable shore for the boat to start on");
     }
 
+    // A scenario's AI boats, one per named marker, each facing the player's
+    // start so they begin the run looking at the thing they will chase.
+    private void SpawnScenarioBoats()
+    {
+        if (scenario == null) return;
+        foreach (var spec in scenario.Boats)
+        {
+            var marker = scenario.Marker(map, spec.Marker);
+            float heading = Mathf.Atan2(boat.Y - marker.Y, boat.X - marker.X);
+            aiBoats.Spawn(marker.X, marker.Y, heading, spec.State);
+            GD.Print($"AI boat ({spec.State.ToString().ToLower()}) on marker '{marker.Tag}' at {marker.X:0},{marker.Y:0}");
+        }
+    }
+
     // `--key=value` pairs after `--` on the command line, for scripted runs.
     private static Dictionary<string, string> ParseArgs()
     {
@@ -305,6 +367,8 @@ public partial class Main : Node3D
         return args;
     }
 
+    // --scenario=name      load scenarios/name.yml instead of the usual world
+    //                      (a test map, no cities, AI boats — src/scenarios)
     // --seed=N             fixed world RNG: same cities and fleet every run
     // The window fills the screen unless --screenshot or --size is given.
     // --screenshot[=path]  save the viewport after --frames (default 90) and quit
@@ -539,12 +603,12 @@ public partial class Main : Node3D
     // Give up on the run with a banner that survives a wall of Godot output.
     // Quit() only lands at the end of the frame, so `fatal` stops _Process
     // touching the half-built world in the meantime.
-    private void Die(string headline, List<string> detail)
+    private void Die(string headline, List<string> detail, string? advice = null)
     {
         GD.PrintErr(new string('=', 72));
         GD.PrintErr($"FATAL: {headline}.");
         foreach (var line in detail) GD.PrintErr($"    {line}");
-        GD.PrintErr("Raise smallCities / mediumCities / largeCities in game-config.yml.");
+        if (advice != null) GD.PrintErr(advice);
         GD.PrintErr(new string('=', 72));
         fatal = true;
         GetTree().Quit(1);
@@ -682,6 +746,8 @@ public partial class Main : Node3D
             combat.FireAtGround(boat.X + fo.X, boat.Y + fo.Y);
         // Enemy logic pauses with the menu, out of range, or past LOD 1.
         enemies.Update(menuOpen ? 0 : gameDt, boat, groundView);
+        // AI boats sail on the same game clock, and pause with the menu too.
+        aiBoats.Update(menuOpen ? 0 : gameDt, boat);
 
         // Combat camera: fighting reads better from the edge cam. The first
         // shot fired with an enemy in cannon range flips follow → edge, and
@@ -782,7 +848,8 @@ public partial class Main : Node3D
                      $"boat at ({boat.X:F1}, {boat.Y:F1}) heading {Mathf.RadToDeg(boat.Heading):F0}° speed {boat.Speed:F1}; " +
                      $"sails {(boat.SailsUp ? "up" : "down")} stamina {crewStamina.Level:F2} " +
                      $"wind {wind.Force:F0}@{wind.BearingDeg:F0}°; " +
-                     $"shots {combat.Projectiles.Shots} hits {combat.Projectiles.Hits}");
+                     $"shots {combat.Projectiles.Shots} hits {combat.Projectiles.Hits}" +
+                     (aiBoats.Count > 0 ? "; " + aiBoats.Report() : ""));
             screenshotPath = null;
             GetTree().Quit();
         }

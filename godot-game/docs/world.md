@@ -34,8 +34,9 @@ centre and radius in cells — the same coordinate space as the tiles, so also
 world units — and a free-text tag of 1…100 characters. They are not rasterized
 into the tile grid; `TerrainMap.Markers` holds them in file order (later ones
 paint on top) and `MarkerAt(x, y)` returns the topmost circle covering a
-point, or null. A `TGN1` file loads with an empty marker list. Nothing in the
-game reads them yet.
+point, or null. A `TGN1` file loads with an empty marker list. The game
+itself does not read markers; test scenarios spawn boats on them
+([scenarios.md](scenarios.md)).
 
 Tile ids: 0 water, 1 sand, 2 grass, 3 forest, 4 rock — plus 5 city, which is
 not in the file: `CityPlacer` stamps it into the loaded map at launch (see

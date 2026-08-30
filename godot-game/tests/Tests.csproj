@@ -12,6 +12,8 @@
     <Compile Include="../src/core/GameConfig.cs" />
     <Compile Include="../src/core/TerrainMap.cs" />
     <Compile Include="../src/core/City.cs" />
+    <Compile Include="../src/ai/AiState.cs" />
+    <Compile Include="../src/scenarios/Scenario.cs" />
     <Compile Include="../src/core/Product.cs" />
     <Compile Include="../src/core/News.cs" />
     <Compile Include="../src/world/CityPlacer.cs" />

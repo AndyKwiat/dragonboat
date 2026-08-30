@@ -19,6 +19,8 @@ the rules.
 | [docs/banking.md](docs/banking.md) | city banks: borrowing against honour, interest, due dates, on-time rewards and late penalties |
 | [docs/religion.md](docs/religion.md) | piety, monasteries, alms, monk errands |
 | [docs/ui.md](docs/ui.md) | fonts, HUD, clock, minimap, city labels, the event log, the tweak panel |
+| [docs/ai.md](docs/ai.md) | boats that sail themselves: AI states, helm orders, and how the legacy fleet stays out of it |
+| [docs/scenarios.md](docs/scenarios.md) | stripped-down test worlds (`./pathingTest.sh`): a test map, no cities, boats on named markers |
 
 ## Running
 
@@ -26,6 +28,7 @@ the rules.
 ./build.sh          # dotnet build — after any code change (~1 s incremental)
 ./run.sh            # Godot --path .  (extra args pass through, e.g. ./run.sh -- --screenshot=x.png)
 ./buildAndRun.sh    # both
+./pathingTest.sh    # the pathing test scenario instead of the game (docs/scenarios.md)
 ```
 
 `./run.sh` with no window flags opens the game windowed at the full size of
@@ -72,8 +75,8 @@ adding an attribute; keep names unique across config classes.
 
 User args after `--` drive a run without a human, which is how changes are
 verified (`dotnet test tests` covers the Godot-free core — the config,
-the .terrain parser, city placement, docking, the loan, passenger and
-monastery rules;
+the .terrain parser, city placement, docking, scenario definitions, the
+loan, passenger and monastery rules;
 everything else is checked by scripted runs — look at the screenshots, and at the line
 the run prints: boat position/heading/speed, shots and hits):
 
@@ -105,6 +108,7 @@ $G --path . -- --screenshot=screenshots/monk.png --seed=7 --monk=5 --deliver    
 | `--center=x,y` | focus point in world units (free mode) |
 | `--city[=Name]` | open the market of the city the boat starts off, or a named one (names are dealt fresh each run) |
 | `--seed=N` | fixed world RNG — the same cities, sizes, names and enemy fleet every run |
+| `--scenario=name` | load `scenarios/name.yml` instead of the usual world: a test map, no cities, AI boats on markers (docs/scenarios.md) |
 | `--hold=W,D` | keys held down for the whole run |
 | `--press=Key@frame,...` | one-shot key presses on those frames (`--hold` never counts as a press; `Escape` closes the market) |
 | `--start=x,y[,deg]` | put the boat here, heading in degrees (0 = east, 90 = south) |
@@ -140,6 +144,9 @@ game-config.yml        which terrain file to load, how many small/medium/
                        every key required, no code defaults
 map1.terrain           the map, painted in ../terrain-gen (TGN2, gzipped);
                        one cell = one world unit
+pathingTest.terrain    a small test map for the AI bench, markers p0-p3
+scenarios/             test-world definitions (--scenario=name), e.g.
+                       pathing.yml behind ./pathingTest.sh
 data/                  products.json (canonical here — each good is a staple or a
                        luxury) and city-names.json;
                        cities themselves are generated on the coast every
@@ -161,11 +168,17 @@ src/world/             CameraRig + CameraControllers, TerrainPlane, TerrainChunk
                        Terrain (water/height/collision queries), CityPlacer,
                        Currents                                          → docs/world.md
 src/boat/              BoatConfig, Boat (physics, lean, land collision, hittable),
-                       BoatModel (hull/masts/sails), Sailing (wind + crew
-                       stamina; pure rules)                               → docs/boat.md
+                       BoatModel (hull/masts/sails), HelmOrder (what a helm
+                       is told, from the keys or from an AI), Sailing (wind +
+                       crew stamina; pure rules)                          → docs/boat.md
 src/combat/            CombatConfig, CombatSystem, Cannon, CannonBattery,
                        Projectiles, Effects, ICombatTarget                → docs/combat.md
-src/enemies/           EnemyShips — the stationary hostile fleet (docs/enemies.md)
+src/enemies/           EnemyShips — the moored hostile fleet; the dumb
+                       boats, deliberately left alone by src/ai   → docs/ai.md
+src/ai/                AiState, AiBoat, AiBoats — non-player boats that sail
+                       themselves; only a scenario spawns any    → docs/ai.md
+src/scenarios/         Scenario — scenarios/*.yml, the stripped-down test
+                       worlds behind --scenario                  → docs/scenarios.md
 src/trading/           the economy — Production, Supply, MarketDeal, WorldPrices,
                        Market                                          → docs/economy.md
                        everything else it trades in — Player, Crew, Upkeep,
@@ -193,7 +206,7 @@ in `core/Config.cs`; boat and combat knobs go in their own `*Config.cs` as
 `[Tweak]` statics. Keep the rules files (`GameTime`, `Crew`, `Player`,
 `Upkeep`, `Supply`, `Production`, `MarketDeal`, `WorldPrices`, `Market`,
 `StoryEvents`) and the world-building ones
-(`GameConfig`, `TerrainMap`, `City`, `CityPlacer`) free of Godot types —
+(`GameConfig`, `TerrainMap`, `City`, `CityPlacer`, `Scenario`, `AiState`) free of Godot types —
 pure, testable code, and `tests/` compiles them straight from `src/`. Where a
 rule needs something Godot-tainted, it takes a narrow interface instead of the
 class (`ITrader`, which `Player` implements for `MarketDeal`) so it stays

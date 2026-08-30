@@ -157,6 +157,9 @@ public sealed class StoryEvents
     // cities ranked VipMinRank..VipMaxRank by distance from it.
     private VipDeliveryStoryEvent? RollVipEvent()
     {
+        // A world with no cities at all (a test scenario) has nothing to
+        // roll an event about.
+        if (GameData.Cities.Count == 0) return null;
         for (int tries = 0; tries < 100; tries++)
         {
             var city = GameData.Cities[rng.Next(GameData.Cities.Count)];
@@ -186,6 +189,9 @@ public sealed class StoryEvents
     // market size there and then, and decays back from that day on.
     private ProductPriceStoryEvent? RollPriceEvent()
     {
+        // A world with no cities at all (a test scenario) has nothing to
+        // roll an event about.
+        if (GameData.Cities.Count == 0) return null;
         for (int tries = 0; tries < 100; tries++)
         {
             var city = GameData.Cities[rng.Next(GameData.Cities.Count)];

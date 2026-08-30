@@ -42,6 +42,10 @@ public partial class Boat : Node3D, ICombatTarget
 
     public Node3D TargetNode => this;
 
+    // Hull colour, so an AI boat reads as somebody else's (src/ai/AiBoat.cs).
+    // Set before the node enters the tree; the model is built in _Ready.
+    public Color Hull = BoatConfig.HullColor;
+
     public void Init(Terrain terrain)
     {
         this.terrain = terrain;
@@ -49,7 +53,7 @@ public partial class Boat : Node3D, ICombatTarget
 
     public override void _Ready()
     {
-        model = new BoatModel(BoatConfig.Length, BoatConfig.HullColor);
+        model = new BoatModel(BoatConfig.Length, Hull);
         AddChild(model);
         model.SetSails(SailsUp);
         // The shadow is a sibling, not a child: it must stay flat on the
@@ -66,12 +70,19 @@ public partial class Boat : Node3D, ICombatTarget
         model?.SetSails(up);
     }
 
-    public void Update(float dt, InputState input)
+    // The player's helm: WASD / arrows off the keyboard.
+    public void Update(float dt, InputState input) =>
+        Update(dt, new HelmOrder(input.Down(Key.W, Key.Up), input.Down(Key.S, Key.Down),
+                                 input.Down(Key.A, Key.Left), input.Down(Key.D, Key.Right)));
+
+    // One physics step against a set of helm orders, whoever gave them — the
+    // keyboard above, or an AI boat's state machine (src/ai/AiBoat.cs).
+    public void Update(float dt, HelmOrder helm)
     {
-        bool forward = input.Down(Key.W, Key.Up);
-        bool back = input.Down(Key.S, Key.Down);
-        bool left = input.Down(Key.A, Key.Left);
-        bool right = input.Down(Key.D, Key.Right);
+        bool forward = helm.Ahead;
+        bool back = helm.Astern;
+        bool left = helm.Port;
+        bool right = helm.Starboard;
 
         float cosH = Mathf.Cos(Heading), sinH = Mathf.Sin(Heading);
         // Velocity in the hull frame: along the keel and abeam (+ = to starboard).

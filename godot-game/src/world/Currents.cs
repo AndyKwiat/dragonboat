@@ -31,14 +31,16 @@ public partial class Currents : Node3D
     private readonly List<Current> currents = new();
     private TerrainMap map = null!;
 
-    public void Init(TerrainMap map, Terrain terrain)
+    // `count` overrides how many zones to lay down; null takes the number
+    // from game-config.yml's currentDensity (a test scenario passes 0).
+    public void Init(TerrainMap map, Terrain terrain, int? count = null)
     {
         this.map = map;
         var rng = new Random();   // fresh layout every run
         const float dx = 0f, dy = 1f;   // south
-        int count = GameConfig.Current.CurrentCount((long)map.Width * map.Height);
+        count ??= GameConfig.Current.CurrentCount((long)map.Width * map.Height);
         int tries = 0;
-        while (currents.Count < count && tries++ < count * 50)
+        while (currents.Count < count.Value && tries++ < count.Value * 50)
         {
             float x = (float)rng.NextDouble() * map.WorldW;
             float y = (float)rng.NextDouble() * map.WorldH;

@@ -1,0 +1,16 @@
+# Pathing test scenario — run it with ./pathingTest.sh (or --scenario=pathing).
+#
+# A bare world for developing the boat AI (docs/ai.md): the small hand-painted
+# pathingTest map, no cities, no currents and no hostile fleet, so the only
+# things moving on the water are the boats under test. Marker tags come from
+# the map itself (painted in ../terrain-gen); see docs/scenarios.md.
+
+terrain: pathingTest.terrain
+
+cities: false        # no coastal cities, no economy, no docking
+currents: false      # nothing pushing a boat off its course but its own helm
+enemyFleet: false    # the legacy moored fleet stays out of the way
+
+player: p0           # the player boat starts on this marker
+boats: p1, p2        # one AI boat per marker, in the default state
+ai: idle             # ...which is: lie to and do nothing (the pathing baseline)

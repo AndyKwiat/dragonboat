@@ -145,11 +145,15 @@ public partial class EnemyShips : Node3D
     private Random rng = null!;
     private Boat player = null!;
 
-    public void Init(TerrainMap map, Terrain terrain, CombatSystem combat, Boat player, Random rng, Action onKill)
+    // `count` overrides the fleet size; null is the normal Count (a test
+    // scenario that wants an empty sea passes 0).
+    public void Init(TerrainMap map, Terrain terrain, CombatSystem combat, Boat player, Random rng, Action onKill,
+        int? count = null)
     {
         Name = "EnemyShips";
         this.map = map; this.terrain = terrain; this.rng = rng; this.player = player;
-        while (ships.Count < Count)
+        int wanted = count ?? Count;
+        while (ships.Count < wanted)
         {
             if (FindSpawn(new Rect2()) is not (float x, float y)) break;
             var ship = new EnemyShip { OnSunk = onKill };

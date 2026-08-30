@@ -9,13 +9,18 @@ rules change.
 
 - `./build.sh` compiles (dotnet). `./run.sh` runs — needs
   `/Applications/Godot_mono.app`, and always run from this directory.
+- `./pathingTest.sh` runs the AI/pathing test scenario instead of the game
+  (`scenarios/pathing.yml`, `docs/scenarios.md`): a small test map, no
+  cities, boats on the map's markers. It takes the same flags as a scripted
+  run, without the `--`.
 - `dotnet test tests` covers the Godot-free core; everything else is
   verified with scripted runs + screenshots:
   `./run.sh -- --screenshot=x.png --frames=120 --size=2560x1600` plus the
   other test hooks (`--city`, `--start=x,y,deg`, `--hold=W`,
   `--press=Key@frame`, `--seed=N` for a reproducible world, `--set`,
   `--mode`, `--center`, `--zoom`, `--dump-tweaks`, `--honour`, `--loan`,
-  `--bank`, `--vip`, `--deliver`, `--monastery`, `--monk`, `--alms`, `--sails`, `--stamina`; see
+  `--bank`, `--vip`, `--deliver`, `--monastery`, `--monk`, `--alms`, `--sails`, `--stamina`,
+  `--scenario`; see
   `ParseArgs` in `src/Main.cs`). The run's final printed line (boat position/heading/speed,
   shots/hits) is useful for asserting movement without pixels.
 - The window is hidpi: screenshots come out at 2× the logical size. A plain
