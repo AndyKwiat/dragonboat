@@ -22,6 +22,8 @@ public partial class Main : Node3D
     private CombatSystem combat = null!;
     private EnemyShips enemies = null!;
     private AiBoats aiBoats = null!;
+    private NavMesh nav = null!;
+    private NavMeshOverlay navOverlay = null!;
     // Set by --scenario: a stripped-down test world (src/scenarios). Null in
     // every normal launch, and every `scenario` check below is a no-op then.
     private Scenario? scenario;
@@ -158,6 +160,12 @@ public partial class Main : Node3D
         }
         worldPrices = new WorldPrices(GameData.Cities, GameData.Products, Config.Market);
         terrainQuery = new Terrain(map);
+        // The nav mesh is baked from the tiles here, AFTER the cities are
+        // placed: stamping a city writes City tiles into the map and can
+        // close a creek. Nothing steers by it yet — N draws it (docs/nav.md).
+        var navClock = System.Diagnostics.Stopwatch.StartNew();
+        nav = NavMeshBuilder.Build(map, NavConfig.CellSize, NavConfig.ClearanceCells);
+        GD.Print($"{NavMeshBuilder.Describe(nav)}, {navClock.ElapsedMilliseconds} ms");
 
         // The world: terrain plane (ground/water) + streamed raised chunks + boat.
         terrain = new TerrainPlane();
@@ -169,6 +177,9 @@ public partial class Main : Node3D
         var currents = new Currents();
         currents.Init(map, terrainQuery, scenario is { Currents: false } ? 0 : null);
         AddChild(currents);
+        navOverlay = new NavMeshOverlay();
+        navOverlay.Init(nav);
+        AddChild(navOverlay);
         boat = new Boat();
         PlaceBoatStart(cities, worldRng);
         boat.Init(terrainQuery);
@@ -375,6 +386,7 @@ public partial class Main : Node3D
     // --zoom=Z             starting zoom (px per world unit)
     // --rig=name           starting camera rig
     // --vectors            start with the velocity/force overlay on (F toggles)
+    // --nav                start with the nav-mesh overlay on (N toggles)
     // --mode=follow|edge|free  starting camera mode
     // --center=x,y         focus point (free mode)
     // --city[=Name]        open the market of the start city (or a named one)
@@ -412,6 +424,7 @@ public partial class Main : Node3D
             active.Enable(new CameraState(boat.X, boat.Y, active.State.Zoom));
         }
         if (args.ContainsKey("vectors")) vectors.Toggle();
+        if (args.ContainsKey("nav")) navOverlay.Toggle();
         if (args.TryGetValue("fire", out var fire))
         {
             var at = fire.IndexOf('@');
@@ -639,6 +652,8 @@ public partial class Main : Node3D
         if (input.Pressed.Contains(Key.T)) tweakPanel.Toggle();
         // F shows the boat's velocity and force vectors.
         if (input.Pressed.Contains(Key.F)) vectors.Toggle();
+        // N shows the nav mesh over the water (docs/nav.md).
+        if (input.Pressed.Contains(Key.N)) navOverlay.Toggle();
         // P (debug) lists every product's price under every city label.
         if (input.Pressed.Contains(Key.P)) cityLabels.ToggleDebugPrices();
         // [ / ] in that mode: one product at a time.

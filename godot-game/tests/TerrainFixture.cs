@@ -46,6 +46,46 @@ public static class TerrainFixture
         return output.ToArray();
     }
 
+    // A map painted as ASCII art, one char per cell: '.' water, '#' grass,
+    // 'R' rock, 'C' city. Rows are y, characters are x — so a fixture reads
+    // on screen exactly as it sits on the map, which is worth a great deal
+    // when the thing under test is a grid algorithm.
+    public static TerrainMap FromAscii(params string[] rows)
+    {
+        int h = rows.Length, w = h == 0 ? 0 : rows[0].Length;
+        var tiles = new byte[w * h];
+        for (int y = 0; y < h; y++)
+        {
+            if (rows[y].Length != w) throw new ArgumentException($"row {y} is {rows[y].Length} cells, not {w}");
+            for (int x = 0; x < w; x++)
+                tiles[y * w + x] = rows[y][x] switch
+                {
+                    '.' => TerrainMap.Water,
+                    '#' => TerrainMap.Grass,
+                    'R' => TerrainMap.Rock,
+                    'C' => TerrainMap.City,
+                    var c => throw new ArgumentException($"unknown map character '{c}'"),
+                };
+        }
+        return new TerrainMap(w, h, tiles);
+    }
+
+    // Land everywhere except a horizontal band of `width` water rows whose
+    // top edge is row `top`: one straight channel of known width, which is
+    // what the nav mesh's clearance and alignment rules are measured against.
+    public static TerrainMap Channel(int size, int width, int top)
+    {
+        var tiles = new byte[size * size];
+        Array.Fill(tiles, (byte)TerrainMap.Grass);
+        for (int y = top; y < Math.Min(top + width, size); y++)
+            for (int x = 0; x < size; x++)
+                tiles[y * size + x] = TerrainMap.Water;
+        return new TerrainMap(size, size, tiles);
+    }
+
+    // Nothing but water, edge to edge.
+    public static TerrainMap OpenSea(int size) => new TerrainMap(size, size, new byte[size * size]);
+
     // A map with an island of grass in the middle of the water: a square of
     // `land` cells centred in a `size`-cell map, so every edge is coast.
     public static TerrainMap Island(int size, int land)

@@ -6,7 +6,8 @@ Files: `src/ai/AiState.cs`, `src/ai/AiBoat.cs`, `src/ai/AiBoats.cs`,
 **Status: the bench, not the brain.** The scaffolding is in — AI boats exist,
 they are real boats, they have a state, and there is a scenario that spawns
 them. The one state they have is `Idle`, which does nothing. Pathing comes
-next.
+next, and it will search the nav mesh baked over the water at load
+([nav.md](nav.md), press **N** to see it); nothing reads that mesh yet.
 
 ## An AI boat is a boat
 

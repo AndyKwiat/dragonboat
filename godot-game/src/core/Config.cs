@@ -45,6 +45,9 @@ public static class Config
     // water, sand, grass, forest, rock, city
     public static readonly float[] TerrainHeights = { 0, 0.3f, 0.8f, 1f, 1.4f, 2.4f };
 
+    // The nav mesh's knobs are NOT here: they live in nav/NavConfig.cs, which
+    // is free of Godot types so the tests can compile the builder (docs/nav.md).
+
     // Terrain streaming (see TerrainChunks.cs).
     public const int CellsPerChunk = 32;
     public const int MaxVisibleChunks = 110;
