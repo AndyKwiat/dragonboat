@@ -17,6 +17,12 @@ public enum AiState
     // water moves her. The state a scenario boat starts in unless it says
     // otherwise, and the baseline the pathing states are measured against.
     Idle,
+
+    // Making a passage: a route was planned across the nav mesh
+    // (src/nav/NavPath.cs, docs/nav.md) at spawn, and the boat steers from
+    // waypoint to waypoint under oars until it arrives, then falls back to
+    // Idle. A scenario names the destination marker: `boats: p1:voyage>p2`.
+    Voyage,
 }
 
 public static class AiStates

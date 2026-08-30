@@ -19,7 +19,7 @@ using System.Collections.Generic;
 //     currents: false                # lay down current zones? (default true)
 //     enemyFleet: false              # spawn the legacy hostile fleet? (default true)
 //     player: p0                     # marker tag to start the player boat on
-//     boats: p1, p2:idle             # AI boats, one per marker, `tag[:state]`
+//     boats: p1:voyage>p2, p3        # AI boats: `tag[:state[>destination]]`
 //     ai: idle                       # default state for boats without one
 //
 // No Godot types: Main reads the file text and hands it to Parse.
@@ -27,7 +27,13 @@ public sealed class ScenarioBoat
 {
     public string Marker { get; }
     public AiState State { get; }
-    public ScenarioBoat(string marker, AiState state) { Marker = marker; State = state; }
+    // Marker tag this boat is bound for, if its state is going somewhere.
+    public string? Destination { get; }
+
+    public ScenarioBoat(string marker, AiState state, string? destination = null)
+    {
+        Marker = marker; State = state; Destination = destination;
+    }
 }
 
 public sealed class Scenario
@@ -86,9 +92,25 @@ public sealed class Scenario
                 var parts = entry.Split(':');
                 if (parts.Length > 2 || parts[0].Trim().Length == 0)
                     throw new Exception($"{Where("boats")} '{entry}' is not a marker tag or tag:state");
-                var state = parts.Length == 1 ? fallbackState
-                    : AiStates.Parse(parts[1]) ?? throw new Exception($"{Where("boats")} '{parts[1]}' is not an AI state (expected {AiStates.Names})");
-                boats.Add(new ScenarioBoat(parts[0].Trim(), state));
+                var state = fallbackState;
+                string? destination = null;
+                if (parts.Length == 2)
+                {
+                    // `state>destination`: where a boat that goes somewhere is bound.
+                    var bound = parts[1].Split('>');
+                    if (bound.Length > 2) throw new Exception($"{Where("boats")} '{entry}' has more than one destination");
+                    state = AiStates.Parse(bound[0])
+                        ?? throw new Exception($"{Where("boats")} '{bound[0]}' is not an AI state (expected {AiStates.Names})");
+                    if (bound.Length == 2)
+                    {
+                        destination = bound[1].Trim();
+                        if (destination.Length == 0)
+                            throw new Exception($"{Where("boats")} '{entry}' names no destination after '>'");
+                    }
+                }
+                if (state == AiState.Voyage && destination == null)
+                    throw new Exception($"{Where("boats")} '{entry}' is a voyage with no destination (write '{parts[0].Trim()}:voyage>tag')");
+                boats.Add(new ScenarioBoat(parts[0].Trim(), state, destination));
             }
         values.TryGetValue("player", out var player);
         return new Scenario(name, terrain, Flag("cities", true), Flag("currents", true), Flag("enemyFleet", true),

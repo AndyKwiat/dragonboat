@@ -11,6 +11,8 @@ cities: false        # no coastal cities, no economy, no docking
 currents: false      # nothing pushing a boat off its course but its own helm
 enemyFleet: false    # the legacy moored fleet stays out of the way
 
-player: p0           # the player boat starts on this marker
-boats: p1, p2        # one AI boat per marker, in the default state
-ai: idle             # ...which is: lie to and do nothing (the pathing baseline)
+player: p0                        # the player boat starts on this marker
+# One AI boat per marker: `tag[:state[>destination]]`. These two make the
+# same passage in opposite directions, so they pass each other on the way.
+boats: p1:voyage>p2, p2:voyage>p1
+ai: idle                          # the state for a boat that names none

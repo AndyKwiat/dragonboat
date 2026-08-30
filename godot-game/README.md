@@ -19,8 +19,8 @@ the rules.
 | [docs/banking.md](docs/banking.md) | city banks: borrowing against honour, interest, due dates, on-time rewards and late penalties |
 | [docs/religion.md](docs/religion.md) | piety, monasteries, alms, monk errands |
 | [docs/ui.md](docs/ui.md) | fonts, HUD, clock, minimap, city labels, the event log, the tweak panel |
-| [docs/ai.md](docs/ai.md) | boats that sail themselves: AI states, helm orders, and how the legacy fleet stays out of it |
-| [docs/nav.md](docs/nav.md) | the water nav mesh: clearance, water bodies, the quadtree, and the N overlay |
+| [docs/ai.md](docs/ai.md) | boats that sail themselves: AI states, making a passage, helm orders, and how the legacy fleet stays out of it |
+| [docs/nav.md](docs/nav.md) | the water nav mesh: clearance, water bodies, the quadtree, A* routes, and the N overlay |
 | [docs/scenarios.md](docs/scenarios.md) | stripped-down test worlds (`./pathingTest.sh`): a test map, no cities, boats on named markers |
 
 ## Running
@@ -55,7 +55,7 @@ opens the project picker and hangs a scripted run.
 | C | cycle camera mode (follow / edge / free) |
 | V | cycle camera rig (isometric / perspective) |
 | T | toggle the live tweak panel (sliders for every `[Tweak]` value) |
-| N | debug: draw the nav mesh over the water — one quad per node, coloured by node size (docs/nav.md) |
+| N | debug: draw the nav mesh over the water, and the routes the AI boats are steering along (docs/nav.md) |
 | P | debug: every city label lists every product's price, % of the world average and `(P)` on the cities that produce it; `[` / `]` there narrow it to one product and step through them |
 | Esc | close the bank or monastery window, then the city popup |
 
@@ -78,7 +78,7 @@ adding an attribute; keep names unique across config classes.
 User args after `--` drive a run without a human, which is how changes are
 verified (`dotnet test tests` covers the Godot-free core — the config,
 the .terrain parser, city placement, docking, scenario definitions, the
-water nav mesh, the loan, passenger and monastery rules;
+water nav mesh and the routes over it, the loan, passenger and monastery rules;
 everything else is checked by scripted runs — look at the screenshots, and at the line
 the run prints: boat position/heading/speed, shots and hits):
 
@@ -178,11 +178,12 @@ src/combat/            CombatConfig, CombatSystem, Cannon, CannonBattery,
                        Projectiles, Effects, ICombatTarget                → docs/combat.md
 src/enemies/           EnemyShips — the moored hostile fleet; the dumb
                        boats, deliberately left alone by src/ai   → docs/ai.md
-src/ai/                AiState, AiBoat, AiBoats — non-player boats that sail
+src/ai/                AiState, AiBoat, AiBoats, Helmsman (point-to-helm-
+                       orders), RouteOverlay — non-player boats that sail
                        themselves; only a scenario spawns any    → docs/ai.md
-src/nav/               NavConfig, NavMesh, NavMeshBuilder (Godot-free) and
-                       NavMeshOverlay — the water nav mesh, baked at load
-                       and drawn with N                          → docs/nav.md
+src/nav/               NavConfig, NavMesh, NavMeshBuilder, NavPath (A* +
+                       string-pull; all Godot-free) and NavMeshOverlay — the
+                       water nav mesh, baked at load             → docs/nav.md
 src/scenarios/         Scenario — scenarios/*.yml, the stripped-down test
                        worlds behind --scenario                  → docs/scenarios.md
 src/trading/           the economy — Production, Supply, MarketDeal, WorldPrices,

@@ -24,6 +24,7 @@ public partial class Main : Node3D
     private AiBoats aiBoats = null!;
     private NavMesh nav = null!;
     private NavMeshOverlay navOverlay = null!;
+    private RouteOverlay routeOverlay = null!;
     // Set by --scenario: a stripped-down test world (src/scenarios). Null in
     // every normal launch, and every `scenario` check below is a no-op then.
     private Scenario? scenario;
@@ -228,9 +229,14 @@ public partial class Main : Node3D
         // The AI fleet: self-sailing non-player boats (src/ai). Only a
         // scenario ever puts any in it, so a normal launch has none.
         aiBoats = new AiBoats();
-        aiBoats.Init(terrainQuery);
+        aiBoats.Init(terrainQuery, nav);
         AddChild(aiBoats);
         SpawnScenarioBoats();
+        // N shows the nav mesh and, on top of it, the routes the AI boats
+        // are actually steering along.
+        routeOverlay = new RouteOverlay();
+        routeOverlay.Init(aiBoats);
+        AddChild(routeOverlay);
 
         input = new InputState();
         AddChild(input);
@@ -358,9 +364,17 @@ public partial class Main : Node3D
         foreach (var spec in scenario.Boats)
         {
             var marker = scenario.Marker(map, spec.Marker);
-            float heading = Mathf.Atan2(boat.Y - marker.Y, boat.X - marker.X);
-            aiBoats.Spawn(marker.X, marker.Y, heading, spec.State);
-            GD.Print($"AI boat ({spec.State.ToString().ToLower()}) on marker '{marker.Tag}' at {marker.X:0},{marker.Y:0}");
+            // A boat with somewhere to go starts pointing at it; one with
+            // nowhere to go faces the player's start.
+            Vector2? destination = spec.Destination == null
+                ? null
+                : new Vector2(scenario.Marker(map, spec.Destination).X, scenario.Marker(map, spec.Destination).Y);
+            var face = destination ?? new Vector2(boat.X, boat.Y);
+            float heading = Mathf.Atan2(face.Y - marker.Y, face.X - marker.X);
+            var ai = aiBoats.Spawn(marker.X, marker.Y, heading, spec.State, destination);
+            string bound = ai.Route == null ? "" :
+                $", bound for '{spec.Destination}' by {ai.Route.Waypoints.Count - 1} leg(s), {ai.Route.Length():0} units";
+            GD.Print($"AI boat ({ai.State.ToString().ToLower()}) on marker '{marker.Tag}' at {marker.X:0},{marker.Y:0}{bound}");
         }
     }
 
@@ -424,7 +438,7 @@ public partial class Main : Node3D
             active.Enable(new CameraState(boat.X, boat.Y, active.State.Zoom));
         }
         if (args.ContainsKey("vectors")) vectors.Toggle();
-        if (args.ContainsKey("nav")) navOverlay.Toggle();
+        if (args.ContainsKey("nav")) { navOverlay.Toggle(); routeOverlay.Toggle(); }
         if (args.TryGetValue("fire", out var fire))
         {
             var at = fire.IndexOf('@');
@@ -652,8 +666,8 @@ public partial class Main : Node3D
         if (input.Pressed.Contains(Key.T)) tweakPanel.Toggle();
         // F shows the boat's velocity and force vectors.
         if (input.Pressed.Contains(Key.F)) vectors.Toggle();
-        // N shows the nav mesh over the water (docs/nav.md).
-        if (input.Pressed.Contains(Key.N)) navOverlay.Toggle();
+        // N shows the nav mesh over the water, and the AI's routes over that.
+        if (input.Pressed.Contains(Key.N)) { navOverlay.Toggle(); routeOverlay.Toggle(); }
         // P (debug) lists every product's price under every city label.
         if (input.Pressed.Contains(Key.P)) cityLabels.ToggleDebugPrices();
         // [ / ] in that mode: one product at a time.

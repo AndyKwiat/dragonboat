@@ -35,7 +35,7 @@ A scenario is a file in `scenarios/`, named after the flag that loads it
 | `currents` | `true` | lay down current zones? `false` = nothing shoves a boat off its course |
 | `enemyFleet` | `true` | spawn the legacy moored fleet (`src/enemies`)? |
 | `player` | *(none)* | marker tag to start the player boat on; without it the boat starts off a city's shore as usual, which needs `cities: true` |
-| `boats` | *(none)* | AI boats, one per marker: `p1, p2:idle` — `tag` or `tag:state` |
+| `boats` | *(none)* | AI boats, one per marker: `tag`, `tag:state`, or `tag:state>destination` — e.g. `p1:voyage>p2, p3` |
 | `ai` | `idle` | the state boats in `boats` start in when they don't name one |
 
 An unknown key is an error rather than a silent default: a typo in a scenario
@@ -56,14 +56,18 @@ carry: a scenario that silently spawned nothing would be a test that silently
 passed. Tags need not be unique; the last one painted wins, the same rule the
 file format uses for overlapping markers.
 
-AI boats spawn with their sails struck, facing the player's start.
+AI boats spawn with their sails struck. One with somewhere to go starts
+pointing at it; one with nowhere to go faces the player's start. A
+destination is a marker tag like any other, so `p1:voyage>p2` sends the boat
+on `p1` to `p2` ([ai.md](ai.md)).
 
 ## The pathing scenario
 
 `scenarios/pathing.yml` — `pathingTest.terrain` (1024², a network of rivers
-through grassland), no cities, no currents, no fleet, the player on `p0` and
-an idle AI boat on `p1` and `p2`. It is the bench the boat AI
-([ai.md](ai.md)) is built on.
+through grassland), no cities, no currents, no fleet, the player on `p0`, and
+AI boats on `p1` and `p2` each bound for the other's marker, so they make the
+same winding passage in opposite directions and pass each other on the way.
+It is the bench the boat AI ([ai.md](ai.md)) is built on.
 
 A scripted run's last printed line ends with a line per AI boat — state,
 position, heading, speed — so a pathing run can be asserted on without

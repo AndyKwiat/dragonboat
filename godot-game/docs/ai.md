@@ -1,13 +1,27 @@
 # AI: boats that sail themselves
 
 Files: `src/ai/AiState.cs`, `src/ai/AiBoat.cs`, `src/ai/AiBoats.cs`,
-`src/boat/HelmOrder.cs`; run it with [`./pathingTest.sh`](scenarios.md).
+`src/ai/Helmsman.cs`, `src/ai/RouteOverlay.cs`, `src/boat/HelmOrder.cs`;
+run it with [`./pathingTest.sh`](scenarios.md).
 
-**Status: the bench, not the brain.** The scaffolding is in — AI boats exist,
-they are real boats, they have a state, and there is a scenario that spawns
-them. The one state they have is `Idle`, which does nothing. Pathing comes
-next, and it will search the nav mesh baked over the water at load
-([nav.md](nav.md), press **N** to see it); nothing reads that mesh yet.
+**Status: it sails a passage.** An AI boat can be given a destination and
+will find its own way there across the water, round every headland, and lie
+to when it arrives. What it does not do yet is anything *about* anything —
+no chasing, no fleeing, no trading, no re-planning when the world changes.
+
+```bash
+./build.sh
+./pathingTest.sh --nav --mode=free --center=919,50 --zoom=2
+```
+
+Free cam because the AI boats start at markers `p1`/`p2`, well away from the
+player at `p0`; pan with WASD or by dragging, wheel to zoom, **N** toggles the
+mesh and the routes, and **Shift** fast-forwards (a passage is ~30 game
+seconds). The launch console says where each boat is bound:
+
+```
+AI boat (voyage) on marker 'p1' at 919,50, bound for 'p2' by 21 leg(s), 1234 units
+```
 
 ## An AI boat is a boat
 
@@ -34,10 +48,61 @@ state** rather than as a flag threaded through an old one.
 
 | state | |
 |---|---|
-| `idle` | Lies to: sails struck, no orders given, no thrust. She goes nowhere unless the water moves her. The baseline every pathing state is measured against. |
+| `idle` | Lies to: sails struck, no orders given, no thrust. She goes nowhere unless the water moves her. |
+| `voyage` | Makes a passage to a named destination, then falls back to `idle`. |
 
-Scenarios name the state a boat starts in (`boats: p1:idle`), so a test map
-can hold several boats doing different things at once.
+Scenarios name the state a boat starts in, and where a state that goes
+somewhere is bound — `boats: p1:voyage>p2, p3` — so a test map can hold
+several boats doing different things at once. That line is the whole
+interface: retasking the boats is editing a yml file, not changing code, and
+it is read at launch so it needs no rebuild.
+
+## Making a passage
+
+`Voyage` is three small pieces, none of which knows about the others:
+
+1. **The route.** At spawn, `NavPath.Find` runs A* over the nav mesh
+   ([nav.md](nav.md)) from the boat to its destination and string-pulls the
+   result straight. Searching *nodes* is why this is cheap — the open sea is
+   a handful of leaves, so a crossing is dozens of hops, not thousands. A
+   destination in another body of water, or too far from any of it, is not a
+   silent failure: the boat says so on the console and lies to instead.
+2. **The helm.** `Helmsman` turns "I am here, pointing there, and I want to
+   be over *there*" into helm orders: turn the short way round, pull ahead
+   unless the target is so far off the bow that rowing would only take us
+   further from it, and count a waypoint reached within a boat length. It is
+   pure geometry with no Godot and no boat in it, so "does it turn the short
+   way round?" is a question with a test rather than an opinion.
+3. **The passage.** `AiBoat.Sail` drops every waypoint already astern — a
+   fast boat can pass more than one in a frame, and the first is its own
+   starting point — steers for the next, and on the last one strikes the oars
+   and returns to `idle`.
+
+Boats voyage **under oars**, sails struck. Under canvas the wind would shove
+them about before they had any say in where they went, and the oars answer
+the helm at any speed — including turning on the spot, which is what a river
+bend needs. Teaching the AI to sail is a later state, not a flag on this one.
+
+**What it does not do.** It plans once, at spawn, and never re-plans: nothing
+on these maps moves the land, but a boat knocked off its route by a current
+would follow it back rather than think again. It stops a boat length short of
+its destination, by design (`Helmsman.ArriveRadius`) — aiming finer just
+makes a boat circle a spot it has already reached. And it steers between
+waypoints without looking at the shore: the route is clear of land by
+construction, but the boat's own turning circle is not part of that promise,
+so a hull can still brush a bank on a tight bend. `Boat.CollideWithLand`
+catches it, exactly as it does for the player.
+
+**Seeing it.** **N** draws the nav mesh and, on top of it, each boat's
+remaining route as a yellow line with a tick at every waypoint and an orange
+cross on the leg it is steering for right now (`RouteOverlay`, rebuilt every
+frame while it is up). A scripted run's last line carries the same thing
+without pixels:
+
+```
+ai boats voyage@(862.0, 72.3) 162° 42.7 leg 1/21, 1174 to go; ...
+ai boats idle@(396.7, 541.7) 90° 0.0 arrived (22 legs); ...
+```
 
 ## The legacy fleet is not this
 

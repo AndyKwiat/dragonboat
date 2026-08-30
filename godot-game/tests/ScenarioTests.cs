@@ -48,6 +48,30 @@ public class ScenarioTests
     }
 
     [Fact]
+    public void ABoatCanBeGivenSomewhereToGo()
+    {
+        var s = Scenario.Parse("bare", Minimal + "boats: p1:voyage>p2, p3\n");
+        Assert.Equal(AiState.Voyage, s.Boats[0].State);
+        Assert.Equal("p2", s.Boats[0].Destination);
+        Assert.Equal(AiStates.Default, s.Boats[1].State);
+        Assert.Null(s.Boats[1].Destination);
+    }
+
+    // A voyage to nowhere would be a boat that silently does nothing, which
+    // is exactly the failure a scenario is meant to make loud.
+    [Fact]
+    public void RejectsAVoyageWithNoDestination()
+    {
+        Assert.ThrowsAny<Exception>(() => Scenario.Parse("bare", Minimal + "boats: p1:voyage\n"));
+        Assert.ThrowsAny<Exception>(() => Scenario.Parse("bare", Minimal + "boats: p1:voyage>\n"));
+        Assert.ThrowsAny<Exception>(() => Scenario.Parse("bare", Minimal + "ai: voyage\nboats: p1\n"));
+    }
+
+    [Fact]
+    public void RejectsMoreThanOneDestination() =>
+        Assert.ThrowsAny<Exception>(() => Scenario.Parse("bare", Minimal + "boats: p1:voyage>p2>p3\n"));
+
+    [Fact]
     public void RejectsAnUnknownAiState()
     {
         Assert.ThrowsAny<Exception>(() => Scenario.Parse("bare", Minimal + "ai: rampage\n"));
@@ -111,7 +135,13 @@ public class ScenarioTests
         Assert.Equal(2, s.Boats.Count);
         var map = TerrainMap.Parse(System.IO.File.ReadAllBytes(GameConfigTests.RepoFile(s.TerrainFile)));
         Assert.Equal("p0", s.Marker(map, s.PlayerMarker!).Tag);
-        foreach (var b in s.Boats) Assert.Equal(b.Marker, s.Marker(map, b.Marker).Tag);
+        foreach (var b in s.Boats)
+        {
+            Assert.Equal(b.Marker, s.Marker(map, b.Marker).Tag);
+            // Every destination it names has to exist on the map too, or the
+            // boat would spawn with nowhere to go.
+            if (b.Destination != null) Assert.Equal(b.Destination, s.Marker(map, b.Destination).Tag);
+        }
     }
 
     [Fact]

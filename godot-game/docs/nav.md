@@ -4,10 +4,10 @@ Files: `src/nav/NavConfig.cs`, `src/nav/NavMesh.cs`, `src/nav/NavMeshBuilder.cs`
 (all Godot-free and in `dotnet test tests`), `src/nav/NavMeshOverlay.cs`.
 Look at it with **N**, or `--nav` at launch.
 
-**Status: a partition, not a pilot.** The mesh is baked when a map loads and
-drawn on demand. **Nothing steers by it yet** — no pathfinding, no change to
-how any boat behaves. It is the structure a pathfinder will search
-([ai.md](ai.md)), built and made visible first so it can be judged.
+The mesh is baked when a map loads. `NavPath.Find` searches it with A* and
+straightens the result, which is how an AI boat gets from one side of the map
+to the other ([ai.md](ai.md)); **N** draws both the mesh and the routes.
+Nothing else reads it, and no player-facing behaviour depends on it.
 
 The problem it solves: the game knows only "is this one tile water?", and
 `map1.terrain` has **26 million** water tiles. Nothing can search that. The
@@ -107,7 +107,28 @@ either — `CollisionRadiusScale` is a live `[Tweak]` restored from
 quietly change the world's navigation. They are not `[Tweak]`s themselves
 because the mesh is baked once at load, so dragging one would do nothing.
 
-## What a pathfinder gets
+## Finding a way across it
+
+`NavPath.Find(nav, fromX, fromY, toX, toY)` returns a `NavRoute` — the world
+points to steer through — or null when there is no way at all.
+
+A* over the **nodes**, with straight-line distance as both cost and
+heuristic, so the result is a shortest path through the graph. Searching
+nodes rather than cells is the whole reason the mesh exists: crossing `map1`
+is dozens of hops instead of hundreds of thousands. The raw result is a chain
+of **portal midpoints**, the middle of each shared edge, which is safe but
+zigzags — it visits the middle of every edge whether the turn was needed or
+not. A **string-pull** then drops every waypoint the boat can see straight
+past, which is what turns a staircase across open water into a line. Line of
+sight is sampled at a quarter of a cell and refuses to cut a diagonal corner,
+so a route never squeezes through a gap no boat can use.
+
+Both ends are snapped onto the mesh (`NearestNode`), because boats sit where
+the mesh is not. A destination that is *on* land or up a creek too tight for
+the mesh gets a route to the water beside it, with `ReachesDestination`
+false, rather than a route that pretends.
+
+## What else a caller gets
 
 `NodeAtWorld` / `NodeAt` (−1 off the mesh), `NeighboursOf` (a CSR span),
 `WorldRect` / `Centre`, `BodyAtWorld` / `SameBody` / `BodySize`, and

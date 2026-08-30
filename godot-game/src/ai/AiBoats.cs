@@ -12,20 +12,41 @@ public partial class AiBoats : Node3D
     public int Count => boats.Count;
 
     private Terrain terrain = null!;
+    private NavMesh nav = null!;
 
-    public void Init(Terrain terrain)
+    public void Init(Terrain terrain, NavMesh nav)
     {
         Name = "AiBoats";
         this.terrain = terrain;
+        this.nav = nav;
     }
 
-    // Put a boat on the water. Sails are struck: an AI boat under canvas
-    // would be shoved about by the wind before it has any say in where it
-    // goes, which is not the baseline the pathing work wants.
-    public AiBoat Spawn(float x, float y, float heading, AiState state)
+    // Put a boat on the water. Sails are struck: under canvas the wind would
+    // shove her about before she has any say in where she goes, and the oars
+    // answer the helm at any speed — including turning on the spot, which is
+    // what a river bend needs.
+    public AiBoat Spawn(float x, float y, float heading, AiState state, Vector2? destination = null)
     {
-        var boat = new AiBoat { X = x, Y = y, Heading = heading, State = state, Hull = AiBoat.BlueHull, SailsUp = false };
+        var boat = new AiBoat
+        {
+            X = x, Y = y, Heading = heading, State = state,
+            Hull = AiBoat.BlueHull, SailsUp = false, Destination = destination,
+        };
         boat.Init(terrain);
+        if (destination is Vector2 to)
+        {
+            boat.Route = NavPath.Find(nav, x, y, to.X, to.Y);
+            if (boat.Route == null)
+            {
+                GD.PushWarning($"AI boat at {x:0},{y:0}: no route to {to.X:0},{to.Y:0} — lying to instead");
+                boat.State = AiState.Idle;
+            }
+        }
+        else if (state == AiState.Voyage)
+        {
+            GD.PushWarning($"AI boat at {x:0},{y:0}: voyage with nowhere to go — lying to instead");
+            boat.State = AiState.Idle;
+        }
         AddChild(boat);
         boats.Add(boat);
         return boat;
@@ -45,7 +66,14 @@ public partial class AiBoats : Node3D
         if (boats.Count == 0) return "";
         var parts = new List<string>();
         foreach (var b in boats)
-            parts.Add($"{b.State.ToString().ToLowerInvariant()}@({b.X:F1}, {b.Y:F1}) {Mathf.RadToDeg(b.Heading):F0}° {b.Speed:F1}");
+        {
+            var where = $"{b.State.ToString().ToLowerInvariant()}@({b.X:F1}, {b.Y:F1}) {Mathf.RadToDeg(b.Heading):F0}° {b.Speed:F1}";
+            if (b.Route != null)
+                where += b.Arrived
+                    ? $" arrived ({b.Route.Waypoints.Count} legs)"
+                    : $" leg {b.Leg}/{b.Route.Waypoints.Count - 1}, {b.DistanceToGo():F0} to go";
+            parts.Add(where);
+        }
         return $"ai boats {string.Join("; ", parts)}";
     }
 }
