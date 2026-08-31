@@ -104,6 +104,29 @@ ai boats voyage@(862.0, 72.3) 162° 42.7 leg 1/21, 1174 to go; ...
 ai boats idle@(396.7, 541.7) 90° 0.0 arrived (22 legs); ...
 ```
 
+## Solid to gunfire
+
+An AI boat is a target like any other: `Boat` implements `ICombatTarget`, so
+an `AiBoat` inherits the hull box and `TakeHit` for nothing. But a cannonball
+is only ever tested against the targets the combat system has been **told
+about** — `Projectiles.Update` walks `CombatSystem`'s registered list and
+nothing else — so `AiBoats.Spawn` has to call `combat.AddTarget`. It once did
+not, and the result was the worst kind of bug: shells passed clean through
+the hull and splashed in the water beyond, which is pixel-for-pixel what a
+near miss looks like, while the reticle sat happily on the boat (aiming
+raycasts the *ground*, not hulls). `scenarios/gunnery.yml` is the bench that
+catches it coming back.
+
+A hit flashes the hull and counts on the HUD's `shots N hits M`. It does not
+sink her: AI boats have no `HitsToSink`, no wreck and no respawn, unlike the
+hostile fleet. They are a test bench, and one that vanished mid-passage would
+take the pathing test with it.
+
+Worth knowing when you try it by hand: a voyaging boat is doing 42 units a
+second and a shell is most of a second in the air, so clicking *on* one lands
+the ball where she was. You have to lead her. The red hostile ships never
+move, which is why they feel so much easier to hit.
+
 ## The legacy fleet is not this
 
 The hostile ships (`src/enemies/EnemyShips.cs`) are

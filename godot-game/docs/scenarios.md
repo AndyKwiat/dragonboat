@@ -77,6 +77,14 @@ looking at pixels:
 ... shots 0 hits 0; ai boats idle@(918.6, 50.1) 167° 0.0; idle@(396.2, 528.9) -136° -0.0
 ```
 
+## The gunnery scenario
+
+`scenarios/gunnery.yml` — the same map with a single idle AI boat parked on
+`p0`, the marker the player starts on, so a scripted shot can be aimed at a
+hull that stays put. It is the regression bench for AI boats being solid to
+cannon fire ([ai.md](ai.md)); the file itself carries the two commands and
+the `hits 1` / `hits 0` they must print.
+
 ## Adding one
 
 Write `scenarios/<name>.yml`, paint the markers it needs into a `.terrain`

@@ -229,7 +229,7 @@ public partial class Main : Node3D
         // The AI fleet: self-sailing non-player boats (src/ai). Only a
         // scenario ever puts any in it, so a normal launch has none.
         aiBoats = new AiBoats();
-        aiBoats.Init(terrainQuery, nav);
+        aiBoats.Init(terrainQuery, nav, combat);
         AddChild(aiBoats);
         SpawnScenarioBoats();
         // N shows the nav mesh and, on top of it, the routes the AI boats

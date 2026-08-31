@@ -13,12 +13,14 @@ public partial class AiBoats : Node3D
 
     private Terrain terrain = null!;
     private NavMesh nav = null!;
+    private CombatSystem combat = null!;
 
-    public void Init(Terrain terrain, NavMesh nav)
+    public void Init(Terrain terrain, NavMesh nav, CombatSystem combat)
     {
         Name = "AiBoats";
         this.terrain = terrain;
         this.nav = nav;
+        this.combat = combat;
     }
 
     // Put a boat on the water. Sails are struck: under canvas the wind would
@@ -33,6 +35,13 @@ public partial class AiBoats : Node3D
             Hull = AiBoat.BlueHull, SailsUp = false, Destination = destination,
         };
         boat.Init(terrain);
+        // Solid to gunfire. A Boat is already an ICombatTarget — it has the
+        // hull box and TakeHit — but nothing can hit what the combat system
+        // has never been told about, and a ball is only ever tested against
+        // its registered targets (src/combat/Projectiles.cs). Without this
+        // line a shell sails straight through the hull and splashes in the
+        // water beyond, which looks exactly like a hit and is not one.
+        combat.AddTarget(boat);
         if (destination is Vector2 to)
         {
             boat.Route = NavPath.Find(nav, x, y, to.X, to.Y);
