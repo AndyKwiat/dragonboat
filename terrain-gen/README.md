@@ -31,9 +31,19 @@ tile down. Undo history is cleared on resize.
 
 ## Save / load
 
-**Save** (or `Cmd/Ctrl+S`) downloads `map-<size>.terrain`, a gzipped binary
-file; **Load** opens one (raw or gzipped) and replaces the map, switching
-resolution to the file's. Format (`src/core/fileFormat.ts`, little-endian):
+**Load** opens a `.terrain` file (raw or gzipped) and replaces the map,
+switching resolution to the file's. **Save** (or `Cmd/Ctrl+S`) writes
+straight back over the file you opened or last saved to, so repainting a map
+the game already loads is open, paint, save — no re-picking a destination and
+no `map (3).terrain` in Downloads. **Save As…** asks where to put it and
+makes that the file Save writes to from then on; with nothing open yet, Save
+falls back to Save As.
+
+That round trip needs the File System Access API (Chromium today). Where it
+is missing, Save As downloads the file and Load falls back to the plain file
+input — the old behaviour, unchanged.
+
+Format (`src/core/fileFormat.ts`, little-endian):
 
 | offset | type | field |
 |---|---|---|

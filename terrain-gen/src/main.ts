@@ -89,6 +89,8 @@ class App {
       onResize: (n) => this.resize(n),
       onVoxelChange: () => this.terrain.setVoxel(this.tool.voxel),
       onSave: () => void this.save(),
+      onSaveAs: () => void this.saveAs(),
+      onOpen: () => void this.open(),
       onLoad: (f) => void this.load(f),
     });
     addEventListener("keydown", (e: KeyboardEvent) => {
@@ -304,15 +306,63 @@ class App {
   }
 
   // ---------- save / load ----------
-  /** Download the map as a gzipped binary .terrain file. */
-  async save(): Promise<void> {
-    this.toolbar.set3dStatus("saving…");
+  /** Handle of the file this map was last opened from / saved to, when the
+   *  browser supports the File System Access API. */
+  private fileHandle: FileSystemFileHandle | null = null;
+  private fileName = `map-${MAP_SIZE}.terrain`;
+
+  /** Serialize the map, gzipped when the browser can. */
+  private async encode(): Promise<Uint8Array> {
     const raw = encodeTerrain({ size: this.size, worldSize: WORLD_SIZE, height: this.height, tiles: this.tiles, markers: this.markers });
-    const bytes = typeof CompressionStream !== "undefined" ? await gzip(raw) : raw;
+    return typeof CompressionStream !== "undefined" ? await gzip(raw) : raw;
+  }
+
+  /** Write over the file we opened / saved last; falls back to Save As. */
+  async save(): Promise<void> {
+    if (!this.fileHandle) return this.saveAs();
+    this.toolbar.set3dStatus("saving…");
+    try {
+      const bytes = await this.encode();
+      const w = await this.fileHandle.createWritable();
+      await w.write(bytes as unknown as BufferSource);
+      await w.close();
+      this.toolbar.set3dStatus(`saved ${this.fileName} (${(bytes.length / 1048576).toFixed(1)} MB)`);
+    } catch (err) {
+      this.toolbar.set3dStatus(`save failed: ${(err as Error).message}`);
+    }
+  }
+
+  /** Ask for a destination (defaulting to .terrain) and write there. */
+  async saveAs(): Promise<void> {
+    const bytes = await this.encode();
+    const picker = (window as any).showSaveFilePicker as
+      | ((o: unknown) => Promise<FileSystemFileHandle>) | undefined;
+    if (picker) {
+      let handle: FileSystemFileHandle;
+      try {
+        handle = await picker({
+          suggestedName: this.fileName,
+          types: [{ description: "Terrain map", accept: { "application/octet-stream": [".terrain"] } }],
+        });
+      } catch { return; } // user cancelled
+      this.toolbar.set3dStatus("saving…");
+      try {
+        const w = await handle.createWritable();
+        await w.write(bytes as unknown as BufferSource);
+        await w.close();
+        this.fileHandle = handle;
+        this.fileName = handle.name;
+        this.toolbar.set3dStatus(`saved ${this.fileName} (${(bytes.length / 1048576).toFixed(1)} MB)`);
+      } catch (err) {
+        this.toolbar.set3dStatus(`save failed: ${(err as Error).message}`);
+      }
+      return;
+    }
+    // No picker API: plain download, extension baked into the name.
     const blob = new Blob([bytes as BlobPart], { type: "application/octet-stream" });
     const a = document.createElement("a");
     a.href = URL.createObjectURL(blob);
-    a.download = `map-${this.size}.terrain`;
+    a.download = this.fileName;
     document.body.appendChild(a); // some browsers ignore clicks on detached anchors
     a.click();
     a.remove();
@@ -320,9 +370,24 @@ class App {
     this.toolbar.set3dStatus(`saved ${(bytes.length / 1048576).toFixed(1)} MB`);
   }
 
+  /** Open a .terrain file, keeping its handle so Save can write back to it. */
+  async open(): Promise<void> {
+    const picker = (window as any).showOpenFilePicker as
+      | ((o: unknown) => Promise<FileSystemFileHandle[]>) | undefined;
+    if (!picker) { this.toolbar.pickFile(); return; }
+    let handle: FileSystemFileHandle;
+    try {
+      [handle] = await picker({
+        multiple: false,
+        types: [{ description: "Terrain map", accept: { "application/octet-stream": [".terrain", ".terrain.gz"] } }],
+      });
+    } catch { return; } // user cancelled
+    await this.load(await handle.getFile(), handle);
+  }
+
   /** Replace the whole map with a .terrain file (raw or gzipped). Undoable
    *  history is dropped because the resolution may change. */
-  async load(file: File): Promise<void> {
+  async load(file: File, handle: FileSystemFileHandle | null = null): Promise<void> {
     try {
       let bytes: Uint8Array = new Uint8Array(await file.arrayBuffer());
       if (isGzip(bytes)) bytes = await gunzip(bytes);
@@ -338,6 +403,8 @@ class App {
       this.toolbar.setHistory(false, false);
       this.map.resetSize();
       this.upload3d();
+      this.fileHandle = handle;
+      this.fileName = file.name;
       this.toolbar.set3dStatus(`loaded ${file.name} (${t.size}², ${t.markers.length} markers)`);
     } catch (err) {
       alert(`Could not load ${file.name}: ${(err as Error).message}`);

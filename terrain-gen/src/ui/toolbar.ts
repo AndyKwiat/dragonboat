@@ -25,7 +25,9 @@ export interface ToolbarCallbacks {
   onResize(size: number): void;
   onVoxelChange(): void;
   onSave(): void;
+  onSaveAs(): void;
   onLoad(file: File): void;
+  onOpen(): void;
 }
 
 const TILE_NAMES = ["water", "sand", "grass", "forest", "rock"];
@@ -64,7 +66,8 @@ export function buildToolbar(root: HTMLElement, st: ToolState, cb: ToolbarCallba
       <label><input type="checkbox" id="tb-voxel"> voxel 3D</label>
     </div>
     <div class="tb-group">
-      <button id="tb-save" class="tb-btn" title="Download the map as a binary .terrain file (gzipped)">Save</button>
+      <button id="tb-save" class="tb-btn" title="Save over the current file (Cmd/Ctrl+S)">Save</button>
+      <button id="tb-save-as" class="tb-btn" title="Write the map to a new binary .terrain file (gzipped)">Save As…</button>
       <button id="tb-load" class="tb-btn" title="Open a .terrain file">Load</button>
       <input type="file" id="tb-file" accept=".terrain,.terrain.gz,application/octet-stream" style="display:none">
     </div>
@@ -103,7 +106,8 @@ export function buildToolbar(root: HTMLElement, st: ToolState, cb: ToolbarCallba
   voxel.onchange = () => { st.voxel = voxel.checked; cb.onVoxelChange(); };
   const file = q<HTMLInputElement>("#tb-file");
   q("#tb-save").onclick = cb.onSave;
-  q("#tb-load").onclick = () => { file.value = ""; file.click(); };
+  q("#tb-save-as").onclick = cb.onSaveAs;
+  q("#tb-load").onclick = () => cb.onOpen();
   file.onchange = () => { const f = file.files?.[0]; if (f) cb.onLoad(f); };
   q("#tb-undo").onclick = cb.onUndo;
   q("#tb-redo").onclick = cb.onRedo;
@@ -117,5 +121,7 @@ export function buildToolbar(root: HTMLElement, st: ToolState, cb: ToolbarCallba
       (q("#tb-redo") as HTMLButtonElement).disabled = !canRedo;
     },
     set3dStatus(text: string) { q("#tb-3d").textContent = text; },
+    /** Fall back to the hidden <input type=file> when the picker API is absent. */
+    pickFile() { file.value = ""; file.click(); },
   };
 }
