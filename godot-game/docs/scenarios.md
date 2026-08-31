@@ -12,6 +12,7 @@ test dropped on named spots.
 
 ```bash
 ./pathingTest.sh                          # the pathing scenario, windowed
+./battleTest.sh                           # the battle scenario, windowed
 ./pathingTest.sh --screenshot=x.png --frames=300 --mode=free --center=512,512 --zoom=1
 ./run.sh -- --scenario=pathing            # the same thing the long way round
 ```
@@ -35,8 +36,9 @@ A scenario is a file in `scenarios/`, named after the flag that loads it
 | `currents` | `true` | lay down current zones? `false` = nothing shoves a boat off its course |
 | `enemyFleet` | `true` | spawn the legacy moored fleet (`src/enemies`)? |
 | `player` | *(none)* | marker tag to start the player boat on; without it the boat starts off a city's shore as usual, which needs `cities: true` |
-| `boats` | *(none)* | AI boats, one per marker: `tag`, `tag:state`, or `tag:state>destination` — e.g. `p1:voyage>p2, p3` |
-| `ai` | `idle` | the state boats in `boats` start in when they don't name one |
+| `boats` | *(none)* | AI boats, one per marker: `tag[:order[>destination]][@team]` — e.g. `p1:voyage>p2, ai0:protect@1, p3` |
+| `ai` | `idle` | the order boats in `boats` start with when they don't name one |
+| `team` | `1` | the side boats take when they don't name one; the player is always 0 |
 
 An unknown key is an error rather than a silent default: a typo in a scenario
 would otherwise quietly give you a different test from the one you wrote.
@@ -76,6 +78,23 @@ looking at pixels:
 ```
 ... shots 0 hits 0; ai boats idle@(918.6, 50.1) 167° 0.0; idle@(396.2, 528.9) -136° -0.0
 ```
+
+## The battle scenario
+
+`scenarios/battle.yml` — `battleTest.terrain` (512², one lake in forest), no
+cities, no currents, no legacy fleet, the player on marker `player` and one
+AI boat on `ai0`. `./battleTest.sh` runs it.
+
+Both hulls are armed and both are targets — every boat carries
+`CombatConfig.PlayerMounts`. `ai0` has **protect** orders: it guards the spot it spawns on, comes for the
+player when the player gets too close, fights, and goes home ([ai.md](ai.md)).
+Only a boat whose order can fight is given guns, so the idle boat in the
+gunnery scenario stays unarmed and that bench's shot tally stays the
+player's.
+
+The two markers are 291 units apart and a cannon reaches
+`MuzzleSpeed² / Gravity` ≈ 163, so nobody starts in range of anybody: the
+first thing a fighting AI has to decide is whether to close.
 
 ## The gunnery scenario
 

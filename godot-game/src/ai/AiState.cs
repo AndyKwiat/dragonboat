@@ -1,37 +1,41 @@
 using System;
 
-// What a non-player boat under AI control is currently trying to do.
+// What a boat is doing this instant. The bottom of two levels: an AiOrder
+// (src/ai/AiOrder.cs) is the standing assignment and decides which of these
+// the boat should be in; the state itself only names the behaviour, and its
+// data lives in AiMemory.
 //
-// This is the dial the pathing work turns: every AI boat is in exactly one
-// state, the state alone decides the helm orders it gives itself each frame
-// (src/ai/AiBoat.cs), and new behaviour arrives as a new state rather than
-// as a flag threaded through the old one. Scenarios name the state a boat
-// starts in (`boats: p1:idle`).
+// It is a plain enum because that is all it has to be: the transitions live
+// in the orders and tactics, not in a switch over this, so there is nowhere
+// to hang per-state data and no reason to make it a class. It is what the
+// run's report line prints and what docs/ai.md documents.
 //
 // The game's own hostile fleet (src/enemies/EnemyShips.cs) is NOT an AI boat
-// and has no state: those hulls are moored, never move, and are deliberately
-// left exactly as they were — see docs/ai.md.
+// and has no state: those hulls are moored and deliberately left alone.
 public enum AiState
 {
-    // Lies to: sails struck, no helm orders, no thrust. Drifts only if the
-    // water moves her. The state a scenario boat starts in unless it says
-    // otherwise, and the baseline the pathing states are measured against.
+    // Lies to: no helm orders, no thrust. Drifts only if the water moves her.
     Idle,
 
-    // Making a passage: a route was planned across the nav mesh
-    // (src/nav/NavPath.cs, docs/nav.md) at spawn, and the boat steers from
-    // waypoint to waypoint under oars until it arrives, then falls back to
-    // Idle. A scenario names the destination marker: `boats: p1:voyage>p2`.
-    Voyage,
+    // Making a passage along a route from the nav mesh (docs/nav.md), whether
+    // that is a voyage to somewhere new or the way back to her station.
+    Sailing,
+
+    // Lying at her station, guarding it, waiting for something to happen.
+    Holding,
+
+    // Closing on a target that is too far off to shoot at.
+    Pursuing,
+
+    // In the fight: stopped, turning to keep the enemy on her beam, guns
+    // free. There is no separate "firing" state — whether a shot actually
+    // goes is decided by the battery every frame, not by the state machine.
+    Engaging,
 }
 
 public static class AiStates
 {
     public const AiState Default = AiState.Idle;
 
-    // Parse a scenario's state name ("idle"); null if it names no state.
-    public static AiState? Parse(string name) =>
-        Enum.TryParse<AiState>(name.Trim(), ignoreCase: true, out var s) && Enum.IsDefined(s) ? s : null;
-
-    public static string Names => string.Join(", ", Enum.GetNames<AiState>()).ToLowerInvariant();
+    public static string Name(AiState s) => s.ToString().ToLowerInvariant();
 }

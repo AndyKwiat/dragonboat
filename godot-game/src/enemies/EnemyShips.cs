@@ -22,6 +22,10 @@ public partial class EnemyShip : Node3D, ICombatTarget
 {
     public float X, Y, Heading;
     public int HitsTaken;
+    // The legacy fleet is hostile to the player's side by definition. Nothing
+    // consults this yet — these hulls pick no targets — but it keeps "whose
+    // side is this?" answerable for every vessel afloat.
+    public int Team = 1;
     public CannonBattery Guns = null!;
     public bool Sunk { get; private set; }
     // Set by the manager: called the moment the ship goes down (honour).

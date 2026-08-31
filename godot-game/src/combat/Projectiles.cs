@@ -14,6 +14,7 @@ public partial class Projectiles : Node3D
         public BlobShadow Shadow = null!;
         public Vector3 Velocity;
         public Node3D? Owner;
+        public CannonBattery Battery = null!;   // who fired it, for their own tally
     }
 
     public int Shots, Hits;
@@ -63,7 +64,8 @@ public partial class Projectiles : Node3D
     public void Fire(Cannon cannon, Vector3 target)
     {
         var start = cannon.GlobalPosition;
-        var owner = cannon.GetParent<CannonBattery>().Vessel;
+        var battery = cannon.GetParent<CannonBattery>();
+        var owner = battery.Vessel;
         var mi = new MeshInstance3D
         {
             Mesh = Effects.SphereMesh(),
@@ -74,10 +76,11 @@ public partial class Projectiles : Node3D
         AddChild(mi);
         var shadow = new BlobShadow(CombatConfig.BallShadowStrength);
         AddChild(shadow);
-        balls.Add(new Ball { Mesh = mi, Shadow = shadow, Velocity = SolveLaunch(start, target), Owner = owner });
+        balls.Add(new Ball { Mesh = mi, Shadow = shadow, Velocity = SolveLaunch(start, target), Owner = owner, Battery = battery });
         effects.SpawnBurst(start, CombatConfig.MuzzleFlashColor, CombatConfig.MuzzleFlashLife, CombatConfig.MuzzleFlashSize);
         cannon.Reload = CombatConfig.ReloadTime;
         Shots++;
+        battery.Shots++;   // and this battery's own tally, kept apart from the world's
     }
 
     public void Update(float dt, IReadOnlyList<ICombatTarget> targets)
@@ -105,6 +108,7 @@ public partial class Projectiles : Node3D
                 t.TakeHit(p);
                 effects.SpawnBurst(p, CombatConfig.HitFlashColor, CombatConfig.HitFlashLife, CombatConfig.HitFlashSize);
                 Hits++;
+                b.Battery.Hits++;   // and the firer's own tally
                 done = true;
                 break;
             }

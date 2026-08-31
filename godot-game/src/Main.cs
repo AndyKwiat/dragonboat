@@ -109,7 +109,7 @@ public partial class Main : Node3D
         {
             DisplayServer.WindowSetSize((Vector2I)((Vector2)DisplayServer.WindowGetSize() * screenScale));
         }
-        Tweaks.Register(typeof(BoatConfig), typeof(CombatConfig), typeof(Currents));
+        Tweaks.Register(typeof(BoatConfig), typeof(CombatConfig), typeof(Currents), typeof(AiConfig));
         // Tweaks persist: the panel's dump button writes tweaks.dump, and it
         // is applied over the code defaults at every launch (--set on top of
         // that; delete the file to get the defaults back).
@@ -371,12 +371,23 @@ public partial class Main : Node3D
                 : new Vector2(scenario.Marker(map, spec.Destination).X, scenario.Marker(map, spec.Destination).Y);
             var face = destination ?? new Vector2(boat.X, boat.Y);
             float heading = Mathf.Atan2(face.Y - marker.Y, face.X - marker.X);
-            var ai = aiBoats.Spawn(marker.X, marker.Y, heading, spec.State, destination);
+            var order = OrderFor(spec, marker);
+            var ai = aiBoats.Spawn(marker.X, marker.Y, heading, order, spec.Team, destination);
             string bound = ai.Route == null ? "" :
                 $", bound for '{spec.Destination}' by {ai.Route.Waypoints.Count - 1} leg(s), {ai.Route.Length():0} units";
-            GD.Print($"AI boat ({ai.State.ToString().ToLower()}) on marker '{marker.Tag}' at {marker.X:0},{marker.Y:0}{bound}");
+            GD.Print($"AI boat ({spec.Order.ToString().ToLower()}, team {spec.Team}) on marker " +
+                     $"'{marker.Tag}' at {marker.X:0},{marker.Y:0}{bound}");
         }
     }
+
+    // The standing assignment a scenario asked for. A guard's station is the
+    // marker it spawns on (src/ai/ProtectOrder.cs).
+    private static IAiOrder OrderFor(ScenarioBoat spec, TerrainMarker marker) => spec.Order switch
+    {
+        AiOrderKind.Voyage => new VoyageOrder(),
+        AiOrderKind.Protect => new ProtectOrder(marker.X, marker.Y, new StandOffTactic()),
+        _ => new IdleOrder(),
+    };
 
     // `--key=value` pairs after `--` on the command line, for scripted runs.
     private static Dictionary<string, string> ParseArgs()
@@ -784,12 +795,15 @@ public partial class Main : Node3D
         // doesn't flap) flips it back. Free cam is never touched, and any
         // manual mode change cancels the auto-return.
         float combatRange = CombatConfig.MuzzleSpeed * CombatConfig.MuzzleSpeed / CombatConfig.Gravity;
-        if (active == followCamera && combat.PlayerFiredThisFrame && enemies.AnyWithin(boat.X, boat.Y, combatRange))
+        if (active == followCamera && combat.PlayerFiredThisFrame
+            && (enemies.AnyWithin(boat.X, boat.Y, combatRange) || aiBoats.AnyWithin(boat.X, boat.Y, combatRange)))
         {
             SwitchMode("edge");
             combatCam = true;
         }
-        else if (combatCam && active == edgeCamera && !enemies.AnyWithin(boat.X, boat.Y, combatRange * 1.2f))
+        else if (combatCam && active == edgeCamera
+                 && !enemies.AnyWithin(boat.X, boat.Y, combatRange * 1.2f)
+                 && !aiBoats.AnyWithin(boat.X, boat.Y, combatRange * 1.2f))
             SwitchMode("follow");
         if (active != edgeCamera) combatCam = false;
         // Esc closes the window on top first, then the market panel under it.
@@ -858,7 +872,7 @@ public partial class Main : Node3D
         eventLog.Update(dt, view, windDial.Size.Y + 8);
         minimap.Update(state, view, rig);
         string guns = combat.PlayerGuns == null ? "" :
-            $"guns {combat.PlayerGuns.LoadedCount}/{combat.PlayerGuns.Cannons.Count} loaded, shots {combat.Projectiles.Shots}, in air {combat.Projectiles.InFlight}";
+            $"guns {combat.PlayerGuns.LoadedCount}/{combat.PlayerGuns.Cannons.Count} loaded, shots {combat.PlayerGuns.Shots}, in air {combat.Projectiles.InFlight}";
         vectors.Update(rig);
         staminaBar.Update(dt, view, boat.SailsUp);
         windDial.Update(rig, boat.X, boat.Y, view);
@@ -877,7 +891,7 @@ public partial class Main : Node3D
                      $"boat at ({boat.X:F1}, {boat.Y:F1}) heading {Mathf.RadToDeg(boat.Heading):F0}° speed {boat.Speed:F1}; " +
                      $"sails {(boat.SailsUp ? "up" : "down")} stamina {crewStamina.Level:F2} " +
                      $"wind {wind.Force:F0}@{wind.BearingDeg:F0}°; " +
-                     $"shots {combat.Projectiles.Shots} hits {combat.Projectiles.Hits}" +
+                     $"shots {combat.PlayerGuns?.Shots ?? 0} hits {combat.PlayerGuns?.Hits ?? 0} taken {boat.HitsTaken}" +
                      (aiBoats.Count > 0 ? "; " + aiBoats.Report() : ""));
             screenshotPath = null;
             GetTree().Quit();

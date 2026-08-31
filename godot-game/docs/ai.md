@@ -1,27 +1,24 @@
 # AI: boats that sail themselves
 
-Files: `src/ai/AiState.cs`, `src/ai/AiBoat.cs`, `src/ai/AiBoats.cs`,
-`src/ai/Helmsman.cs`, `src/ai/RouteOverlay.cs`, `src/boat/HelmOrder.cs`;
-run it with [`./pathingTest.sh`](scenarios.md).
+Files: `src/ai/*`, `src/boat/HelmOrder.cs`. Run it with
+[`./battleTest.sh`](scenarios.md) (fighting) or
+[`./pathingTest.sh`](scenarios.md) (passages).
 
-**Status: it sails a passage.** An AI boat can be given a destination and
-will find its own way there across the water, round every headland, and lie
-to when it arrives. What it does not do yet is anything *about* anything —
-no chasing, no fleeing, no trading, no re-planning when the world changes.
+**Status: it sails a passage, and it will fight you for a spot.** A boat can
+be told to guard somewhere; it lies there, comes for you when you get too
+close, stops at gunshot range, turns its broadside on and shoots — leading
+the shot — and goes home when you leave. It cannot yet patrol, ram, or think
+about what its friends are doing.
 
 ```bash
 ./build.sh
+./battleTest.sh                                   # then sail at her
 ./pathingTest.sh --nav --mode=free --center=919,50 --zoom=2
 ```
 
-Free cam because the AI boats start at markers `p1`/`p2`, well away from the
-player at `p0`; pan with WASD or by dragging, wheel to zoom, **N** toggles the
-mesh and the routes, and **Shift** fast-forwards (a passage is ~30 game
-seconds). The launch console says where each boat is bound:
-
-```
-AI boat (voyage) on marker 'p1' at 919,50, bound for 'p2' by 21 leg(s), 1234 units
-```
+Note `--mode=free` parks the player boat — the camera owns WASD in free mode,
+so the player never moves and makes a sitting target. Use it to watch; use
+follow mode to be shot at.
 
 ## An AI boat is a boat
 
@@ -40,26 +37,154 @@ state machine, and the physics step below cannot tell which it was given.
 That is the whole seam, and it is why the AI cannot cheat: there is no way
 for it to move a boat except by asking for the same four things.
 
-## States
+## Orders, states and tactics
 
-`AiState` is the dial the AI work turns. A boat is in exactly one state, the
-state alone decides the helm orders, and new behaviour arrives as a **new
-state** rather than as a flag threaded through an old one.
+Three tiers, and only the middle one is a state machine.
 
-| state | |
+| tier | changes | what it is |
+|---|---|---|
+| **Order** | ~never | The standing assignment, set at spawn: `idle`, `voyage`, `protect`. Holds the mission's data — the station it guards, the destination it is bound for, how far it will chase — and every tick decides what the boat should be doing. |
+| **Tactic** | never | *How this boat fights.* The order hands over to it whenever there is a target, and never tells it how. `StandOff` today. |
+| **State** | seconds | What the boat is doing right now: `idle`, `sailing`, `holding`, `pursuing`, `engaging`. A plain enum, because the transitions live in the orders and tactics — there is nothing to hang on it. |
+
+Plus **targeting**, one pass over every contact, run before any of it.
+
+```csharp
+var target = Targeting.Pick(...);                // hysteresis, sees the whole fleet
+var goal   = AiPilot.Decide(situation, memory, order);   // order, or its tactic
+var helm   = AiSteering.For(goal, situation);    // and that is the frame
+```
+
+**Why not a hierarchical state machine.** Nesting to arbitrary depth, with
+entry/exit actions and a transition table, buys flexibility we do not need
+and costs the thing we do: being able to answer "why is it doing that" by
+reading one method. Why not a behaviour tree: the same leaves, more
+machinery, and its real payoff — composing behaviour from data — is not on
+the table for three missions. Why not one flat set of states: because
+`protect` and `patrol` would each need their own pursuing, bearing and
+returning, and every tactic again inside each. The split is what stops that.
+
+**Where the line between an order and a tactic falls.** By what each one
+*owns*, not by which runs first. The order owns whether there is a fight —
+which contacts count, how long to keep one, how far it may be dragged from
+its station, and what to do with nobody to fight. The tactic owns the boat
+while a target exists, and never says "go home". That is why a rammer that
+has overshot and a gunner opening the range need no new states and never
+touch the order: both are just the tactic asking for a different point.
+
+### Everything reduces to a point
+
+A state does not produce helm orders. It produces an `AiGoal` — a point to
+make for, whether to keep way on, and whether the guns are free — and
+`AiSteering` turns that into a `HelmOrder` in a dozen lines. Holding station
+is "make for the station, stopped". Presenting a broadside is "make for a
+point abeam of the enemy, stopped". That is why every rule in here is
+testable as plain geometry, with no game running.
+
+### Adding to it
+
+| you want | you write |
 |---|---|
-| `idle` | Lies to: sails struck, no orders given, no thrust. She goes nowhere unless the water moves her. |
-| `voyage` | Makes a passage to a named destination, then falls back to `idle`. |
+| patrol a route | a `PatrolOrder` — same targeting, sailing a route instead of holding |
+| a journey that does something on arrival | an arrival action on `VoyageOrder` |
+| a boat that rams | a `RamTactic` beside `StandOffTactic` |
+| teammates not doubling up | a filter inside `Targeting.Pick`, which already sees the fleet |
+| a commander handing out orders | an assignment to `boat.Order` — orders are data |
 
-Scenarios name the state a boat starts in, and where a state that goes
-somewhere is bound — `boats: p1:voyage>p2, p3` — so a test map can hold
-several boats doing different things at once. That line is the whole
-interface: retasking the boats is editing a yml file, not changing code, and
-it is read at launch so it needs no rebuild.
+## Sides
+
+One `int Team` on every hull. Two vessels are enemies when their teams
+differ, and that is the whole of the game's diplomacy. The player is team 0,
+so a scenario boat defaults to 1 and starts out hostile; `boats: ai0:protect@2`
+puts one somewhere else.
+
+Worth knowing: a cannonball excludes only the hull that fired it, so two
+boats on the same side **can** shoot each other. Harmless with one AI boat
+afloat; something to decide about when there is a squadron.
+
+## Guarding a spot
+
+`protect` is the first order, and the one the numbers were chosen for.
+
+```
+holding ──enemy inside the engage ring──► pursuing ──in range──► engaging
+   ▲                                          ▲                     │
+   │                                     drifts out                 │
+ arrived ◄── sailing ◄── enemy leaves the disengage ring ◄───────────┘
+```
+
+**The radii are measured from the station, not from the boat.** This is the
+one thing in here that would be a bug if it were the obvious way round. A
+boat measuring from herself would be chasing the very thing that decides
+whether to chase: closing makes the acquire test pass harder, breaking off
+makes it fail, so she locks on, charges, drops, drifts back, and locks on
+again. The station cannot move, so the decision is stable whatever she does.
+`AiEngageMinSec` covers the other direction — a target loitering exactly on
+the disengage ring cannot flicker either.
+
+**She stops to shoot.** Holding a beam at constant range while under way is
+an orbit: it needs a continuous turn at speed÷range, about 25°/s at a hundred
+units, and that is where "can never satisfy both range and bearing" comes
+from. But under oars a boat stops from full speed in well under a second and
+pivots on the spot at about 50°/s, so a beam is less than two seconds away —
+less than one reload. Stop, pivot, hold, fire.
+
+**There is no "firing" state.** Whether a round goes is decided every frame
+by the battery — the best *loaded* cannon that *bears* and can *reach* — and
+never by the state machine. So the bearing windows below only choose which
+word the report prints; state chatter cannot cost a shot, which is why the
+hysteresis can be loose and readable instead of exact.
+
+**The blind arc is real.** The guns sit at 0° and ±90° with a 60°-wide arc
+each, so a broadside bears between 60° and 120° off the bow and **nothing at
+all bears between 120° and 180°**. A boat turning to the far beam would sweep
+her target *through* that blind spot rather than out of it, so she always
+turns to the beam the target is already on. It also means a boat running away
+is safe, which is why a stand-off gunner must never present her stern.
+
+### The knobs
+
+All `[Tweak]`s in `src/ai/AiConfig.cs`, group "AI": press **T** and drag them
+while the fight happens, or `--set=AiFightRange=90` on a scripted run. The
+gunnery facts they are derived from: max range `MuzzleSpeed²/Gravity` = 163
+units, reload 2 s a gun, three guns a broadside and one in the bow.
+
+| knob | start | why |
+|---|---|---|
+| `AiEngageRadius` | 220 | more than gun range, so she starts moving before she can shoot |
+| `AiDisengageRadius` | 380 | must be **larger** than engage, or she drops a target and instantly re-acquires it |
+| `AiEngageMinSec` | 4 | committed for this long whatever the target does |
+| `AiLeashRadius` | 300 | a fast target cannot tow a guard off the thing it guards |
+| `AiFightRange` | 110 | comfortably inside 163, with room for the target to open the range mid-volley |
+| `AiFightFar` | 140 | beyond this she closes again |
+| `AiMinRange` | 30 | inside this she opens the range rather than drifting into a ram |
+| `AiBeamEnterDeg` / `AiBeamHoldDeg` | 18 / 27 | enter the fight well inside the broadside arc, leave a little outside it |
+| `AiFireDwellSec` | 2.5 | longer than a reload, so a volley finishes |
+| `AiStopSpeed` | 6 | back the oars above this while engaging |
+| `AiLeadFraction` | 0.85 | see below |
+
+## Leading the shot
+
+Nothing else in the game leads: the moored fleet fires at where the player
+*is*, which is why it feels accurate against a boat lying still and misses
+everything under way. At a hundred units a ball is a second and a half in the
+air and a rowed boat covers sixty-five units in that time — five hull lengths.
+
+`Gunnery.Solve` iterates the obvious fixed point — aim ahead, which opens the
+range, which lengthens the flight, which lengthens the lead — three times.
+`AiLeadFraction` scales the whole correction, and **0 reproduces the moored
+fleet's naive aim exactly**, which is the control that proves the rest of it
+does anything.
+
+Two honest limits. It predicts a *straight line*, so a boat that turns while
+the ball is in the air dodges it — as it should. And a target fast enough to
+outrun the ball has no exact solution at all: every unit of lead buys it more
+time. Three passes then under-lead rather than running away to the horizon,
+which is the right way to be wrong, because that shot was never going to land.
 
 ## Making a passage
 
-`Voyage` is three small pieces, none of which knows about the others:
+A `voyage` order is three small pieces, none of which knows about the others:
 
 1. **The route.** At spawn, `NavPath.Find` runs A* over the nav mesh
    ([nav.md](nav.md)) from the boat to its destination and string-pulls the
@@ -73,19 +198,20 @@ it is read at launch so it needs no rebuild.
    further from it, and count a waypoint reached within a boat length. It is
    pure geometry with no Godot and no boat in it, so "does it turn the short
    way round?" is a question with a test rather than an opinion.
-3. **The passage.** `AiBoat.Sail` drops every waypoint already astern — a
+3. **The passage.** `VoyageOrder` drops every waypoint already astern — a
    fast boat can pass more than one in a frame, and the first is its own
    starting point — steers for the next, and on the last one strikes the oars
-   and returns to `idle`.
+   and goes back to `idle`.
 
-Boats voyage **under oars**, sails struck. Under canvas the wind would shove
+AI boats sail **under oars**, sails struck. Under canvas the wind would shove
 them about before they had any say in where they went, and the oars answer
 the helm at any speed — including turning on the spot, which is what a river
 bend needs. Teaching the AI to sail is a later state, not a flag on this one.
 
-**What it does not do.** It plans once, at spawn, and never re-plans: nothing
-on these maps moves the land, but a boat knocked off its route by a current
-would follow it back rather than think again. It stops a boat length short of
+**What it does not do.** A voyage plans once, at spawn, and never re-plans:
+nothing on these maps moves the land, but a boat knocked off its route by a
+current would follow it back rather than think again. (A boat *chasing*
+something does re-plan, every `AiRepathSec`, because the target moves.) It stops a boat length short of
 its destination, by design (`Helmsman.ArriveRadius`) — aiming finer just
 makes a boat circle a spot it has already reached. And it steers between
 waypoints without looking at the shore: the route is clear of land by
@@ -96,13 +222,26 @@ catches it, exactly as it does for the player.
 **Seeing it.** **N** draws the nav mesh and, on top of it, each boat's
 remaining route as a yellow line with a tick at every waypoint and an orange
 cross on the leg it is steering for right now (`RouteOverlay`, rebuilt every
-frame while it is up). A scripted run's last line carries the same thing
-without pixels:
+frame while it is up). A scripted run's last line carries the whole state
+without pixels — order and state as separate words, then the target, the
+guns and the damage:
 
 ```
-ai boats voyage@(862.0, 72.3) 162° 42.7 leg 1/21, 1174 to go; ...
-ai boats idle@(396.7, 541.7) 90° 0.0 arrived (22 legs); ...
+protect/holding@(355.8, 198.5) -171° 0.0 tgt none guns 7/7 shots 0 taken 0
+protect/pursuing@(332.5, 183.1) 158° 34.7 tgt 0 r 168 brg +16 blind guns 7/7 shots 0 taken 0
+protect/engaging@(178.0, 173.3) 103° 0.0 tgt 0 r 111 brg +86 los guns 4/7 shots 10 taken 0
+voyage/idle@(396.8, 527.7) 90° 0.0 tgt none taken 0 arrived (22 legs)
 ```
+
+`guns 4/7` frozen at `0/7` would be the "forgot to tick the battery" bug
+showing itself, and `shots` is **this boat's** count: the world's tally in
+`Projectiles` stopped meaning "the player" the moment an AI boat opened fire,
+so every battery keeps its own.
+
+**Do not tune or judge a fight under `--hold=Shift`.** Main gives the *player*
+`TurnRateScale = 1/timeScale` so the helm feels constant per real second; an
+AI boat has no such correction, so fast-forward makes it turn several times
+harder than you do.
 
 ## Solid to gunfire
 

@@ -35,7 +35,7 @@ public class ScenarioTests
     {
         var s = Scenario.Parse("bare", Minimal + "boats: p1, p2\n");
         Assert.Collection(s.Boats,
-            b => { Assert.Equal("p1", b.Marker); Assert.Equal(AiStates.Default, b.State); },
+            b => { Assert.Equal("p1", b.Marker); Assert.Equal(AiOrders.Default, b.Order); },
             b => Assert.Equal("p2", b.Marker));
     }
 
@@ -43,17 +43,17 @@ public class ScenarioTests
     public void ABoatCanNameItsOwnState()
     {
         var s = Scenario.Parse("bare", Minimal + "boats: p1:idle, p2\nai: idle\n");
-        Assert.Equal(AiState.Idle, s.Boats[0].State);
-        Assert.Equal(AiState.Idle, s.Boats[1].State);
+        Assert.Equal(AiOrderKind.Idle, s.Boats[0].Order);
+        Assert.Equal(AiOrderKind.Idle, s.Boats[1].Order);
     }
 
     [Fact]
     public void ABoatCanBeGivenSomewhereToGo()
     {
         var s = Scenario.Parse("bare", Minimal + "boats: p1:voyage>p2, p3\n");
-        Assert.Equal(AiState.Voyage, s.Boats[0].State);
+        Assert.Equal(AiOrderKind.Voyage, s.Boats[0].Order);
         Assert.Equal("p2", s.Boats[0].Destination);
-        Assert.Equal(AiStates.Default, s.Boats[1].State);
+        Assert.Equal(AiOrders.Default, s.Boats[1].Order);
         Assert.Null(s.Boats[1].Destination);
     }
 
@@ -144,12 +144,55 @@ public class ScenarioTests
         }
     }
 
+    // Same check for the battle bench: parses, and every marker it spawns
+    // something on exists in battleTest.terrain.
     [Fact]
-    public void AiStateNamesAreCaseInsensitiveAndClosed()
+    public void TheBattleScenarioMatchesTheBattleMap()
     {
-        Assert.Equal(AiState.Idle, AiStates.Parse("IDLE"));
-        Assert.Equal(AiState.Idle, AiStates.Parse(" idle "));
-        Assert.Null(AiStates.Parse("7"));        // the underlying enum value, not a name
-        Assert.Null(AiStates.Parse("wander"));
+        var s = Scenario.Parse("battle", System.IO.File.ReadAllText(GameConfigTests.RepoFile("scenarios/battle.yml")));
+        Assert.False(s.Cities);
+        Assert.False(s.EnemyFleet);
+        Assert.Equal("player", s.PlayerMarker);
+        var boat = Assert.Single(s.Boats);
+        Assert.Equal("ai0", boat.Marker);
+        Assert.Equal(AiOrderKind.Protect, boat.Order);
+        Assert.Equal(1, boat.Team);          // the other side from the player
+        Assert.Null(boat.Destination);       // a guard stations on its own marker
+        var map = TerrainMap.Parse(System.IO.File.ReadAllBytes(GameConfigTests.RepoFile(s.TerrainFile)));
+        Assert.Equal("player", s.Marker(map, s.PlayerMarker!).Tag);
+        Assert.Equal("ai0", s.Marker(map, boat.Marker).Tag);
+    }
+
+    [Fact]
+    public void AiOrderNamesAreCaseInsensitiveAndClosed()
+    {
+        Assert.Equal(AiOrderKind.Idle, AiOrders.Parse("IDLE"));
+        Assert.Equal(AiOrderKind.Protect, AiOrders.Parse(" protect "));
+        Assert.Null(AiOrders.Parse("7"));        // the underlying enum value, not a name
+        Assert.Null(AiOrders.Parse("wander"));
+        // States are not orders: a scenario naming one would otherwise spawn
+        // a boat stuck in a fighting state with nothing to fight.
+        Assert.Null(AiOrders.Parse("engaging"));
+        Assert.Null(AiOrders.Parse("holding"));
+    }
+
+    [Fact]
+    public void ABoatCanBePutOnASide()
+    {
+        var s = Scenario.Parse("bare", Minimal + "boats: ai0:protect@2, ai1\nteam: 3\n");
+        Assert.Equal(2, s.Boats[0].Team);
+        Assert.Equal(AiOrderKind.Protect, s.Boats[0].Order);
+        Assert.Equal(3, s.Boats[1].Team);        // the `team:` default
+        Assert.Equal(1, Scenario.Parse("bare", Minimal + "boats: ai0\n").Boats[0].Team);
+        Assert.ThrowsAny<Exception>(() => Scenario.Parse("bare", Minimal + "boats: ai0@x\n"));
+    }
+
+    // Protect guards where it spawns, so it needs no destination.
+    [Fact]
+    public void ProtectNeedsNoDestination()
+    {
+        var s = Scenario.Parse("bare", Minimal + "boats: ai0:protect\n");
+        Assert.Equal(AiOrderKind.Protect, s.Boats[0].Order);
+        Assert.Null(s.Boats[0].Destination);
     }
 }

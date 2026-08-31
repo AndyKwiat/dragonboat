@@ -19,7 +19,7 @@ the rules.
 | [docs/banking.md](docs/banking.md) | city banks: borrowing against honour, interest, due dates, on-time rewards and late penalties |
 | [docs/religion.md](docs/religion.md) | piety, monasteries, alms, monk errands |
 | [docs/ui.md](docs/ui.md) | fonts, HUD, clock, minimap, city labels, the event log, the tweak panel |
-| [docs/ai.md](docs/ai.md) | boats that sail themselves: AI states, making a passage, helm orders, and how the legacy fleet stays out of it |
+| [docs/ai.md](docs/ai.md) | boats that sail themselves and fight: orders, states and tactics, guarding a spot, leading a shot, sides |
 | [docs/nav.md](docs/nav.md) | the water nav mesh: clearance, water bodies, the quadtree, A* routes, and the N overlay |
 | [docs/scenarios.md](docs/scenarios.md) | stripped-down test worlds (`./pathingTest.sh`): a test map, no cities, boats on named markers |
 
@@ -30,6 +30,7 @@ the rules.
 ./run.sh            # Godot --path .  (extra args pass through, e.g. ./run.sh -- --screenshot=x.png)
 ./buildAndRun.sh    # both
 ./pathingTest.sh    # the pathing test scenario instead of the game (docs/scenarios.md)
+./battleTest.sh     # the battle test scenario (player + one AI boat on a lake)
 ```
 
 `./run.sh` with no window flags opens the game windowed at the full size of
@@ -78,7 +79,8 @@ adding an attribute; keep names unique across config classes.
 User args after `--` drive a run without a human, which is how changes are
 verified (`dotnet test tests` covers the Godot-free core — the config,
 the .terrain parser, city placement, docking, scenario definitions, the
-water nav mesh and the routes over it, the loan, passenger and monastery rules;
+water nav mesh and the routes over it, the AI's orders, targeting, tactics
+and gunnery, the loan, passenger and monastery rules;
 everything else is checked by scripted runs — look at the screenshots, and at the line
 the run prints: boat position/heading/speed, shots and hits):
 
@@ -148,6 +150,7 @@ game-config.yml        which terrain file to load, how many small/medium/
 map1.terrain           the map, painted in ../terrain-gen (TGN2, gzipped);
                        one cell = one world unit
 pathingTest.terrain    a small test map for the AI bench, markers p0-p3
+battleTest.terrain     a 512² lake for the battle bench, markers player/ai0
 scenarios/             test-world definitions (--scenario=name), e.g.
                        pathing.yml behind ./pathingTest.sh
 data/                  products.json (canonical here — each good is a staple or a
@@ -178,9 +181,12 @@ src/combat/            CombatConfig, CombatSystem, Cannon, CannonBattery,
                        Projectiles, Effects, ICombatTarget                → docs/combat.md
 src/enemies/           EnemyShips — the moored hostile fleet; the dumb
                        boats, deliberately left alone by src/ai   → docs/ai.md
-src/ai/                AiState, AiBoat, AiBoats, Helmsman (point-to-helm-
-                       orders), RouteOverlay — non-player boats that sail
-                       themselves; only a scenario spawns any    → docs/ai.md
+src/ai/                AiOrder/ProtectOrder/VoyageOrder (missions), AiTactic/
+                       StandOffTactic (how to fight), AiState, Targeting,
+                       AiSteering, Helmsman, Gunnery (leading a shot),
+                       AiConfig ([Tweak] knobs), AiBoat/AiBoats, RouteOverlay
+                       — non-player boats that sail themselves and fight;
+                       only a scenario spawns any                → docs/ai.md
 src/nav/               NavConfig, NavMesh, NavMeshBuilder, NavPath (A* +
                        string-pull; all Godot-free) and NavMeshOverlay — the
                        water nav mesh, baked at load             → docs/nav.md

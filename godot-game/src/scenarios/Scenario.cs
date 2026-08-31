@@ -19,20 +19,25 @@ using System.Collections.Generic;
 //     currents: false                # lay down current zones? (default true)
 //     enemyFleet: false              # spawn the legacy hostile fleet? (default true)
 //     player: p0                     # marker tag to start the player boat on
-//     boats: p1:voyage>p2, p3        # AI boats: `tag[:state[>destination]]`
-//     ai: idle                       # default state for boats without one
+//     boats: p1:voyage>p2, ai0:protect@1   # `tag[:order[>destination]][@team]`
+//     ai: idle                       # default order for boats without one
+//     team: 1                        # default side for boats without one
 //
 // No Godot types: Main reads the file text and hands it to Parse.
 public sealed class ScenarioBoat
 {
     public string Marker { get; }
-    public AiState State { get; }
-    // Marker tag this boat is bound for, if its state is going somewhere.
+    // The standing assignment this boat spawns with (src/ai/AiOrder.cs).
+    public AiOrderKind Order { get; }
+    // Marker tag this boat is bound for, if its order is going somewhere.
     public string? Destination { get; }
+    // Whose side it is on; boats on different teams are enemies. The player
+    // is team 0, so a scenario boat defaults to 1 and starts out hostile.
+    public int Team { get; }
 
-    public ScenarioBoat(string marker, AiState state, string? destination = null)
+    public ScenarioBoat(string marker, AiOrderKind order, string? destination = null, int team = 1)
     {
-        Marker = marker; State = state; Destination = destination;
+        Marker = marker; Order = order; Destination = destination; Team = team;
     }
 }
 
@@ -80,27 +85,39 @@ public sealed class Scenario
             if (Array.IndexOf(Keys, key) < 0)
                 throw new Exception($"{Where(key)} is not a scenario key (expected {string.Join(", ", Keys)})");
         if (!values.TryGetValue("terrain", out var terrain)) throw new Exception($"scenario {name}: missing 'terrain'");
-        var fallbackState = AiStates.Default;
+        var fallbackOrder = AiOrders.Default;
         if (values.TryGetValue("ai", out var aiName))
-            fallbackState = AiStates.Parse(aiName) ?? throw new Exception($"{Where("ai")} '{aiName}' is not an AI state (expected {AiStates.Names})");
+            fallbackOrder = AiOrders.Parse(aiName) ?? throw new Exception($"{Where("ai")} '{aiName}' is not an AI order (expected {AiOrders.Names})");
+        int fallbackTeam = 1;
+        if (values.TryGetValue("team", out var teamName) && !int.TryParse(teamName.Trim(), out fallbackTeam))
+            throw new Exception($"{Where("team")} '{teamName}' is not a whole number");
         var boats = new List<ScenarioBoat>();
         if (values.TryGetValue("boats", out var boatList))
             foreach (var spec in boatList.Split(','))
             {
                 var entry = spec.Trim();
                 if (entry.Length == 0) continue;
+                // `@team` comes off the end before anything else is parsed.
+                int team = fallbackTeam;
+                int at = entry.IndexOf('@');
+                if (at >= 0)
+                {
+                    if (!int.TryParse(entry[(at + 1)..].Trim(), out team))
+                        throw new Exception($"{Where("boats")} '{entry}' has no team number after '@'");
+                    entry = entry[..at].Trim();
+                }
                 var parts = entry.Split(':');
                 if (parts.Length > 2 || parts[0].Trim().Length == 0)
-                    throw new Exception($"{Where("boats")} '{entry}' is not a marker tag or tag:state");
-                var state = fallbackState;
+                    throw new Exception($"{Where("boats")} '{entry}' is not a marker tag or tag:order");
+                var order = fallbackOrder;
                 string? destination = null;
                 if (parts.Length == 2)
                 {
-                    // `state>destination`: where a boat that goes somewhere is bound.
+                    // `order>destination`: where a boat that goes somewhere is bound.
                     var bound = parts[1].Split('>');
                     if (bound.Length > 2) throw new Exception($"{Where("boats")} '{entry}' has more than one destination");
-                    state = AiStates.Parse(bound[0])
-                        ?? throw new Exception($"{Where("boats")} '{bound[0]}' is not an AI state (expected {AiStates.Names})");
+                    order = AiOrders.Parse(bound[0])
+                        ?? throw new Exception($"{Where("boats")} '{bound[0]}' is not an AI order (expected {AiOrders.Names})");
                     if (bound.Length == 2)
                     {
                         destination = bound[1].Trim();
@@ -108,16 +125,16 @@ public sealed class Scenario
                             throw new Exception($"{Where("boats")} '{entry}' names no destination after '>'");
                     }
                 }
-                if (state == AiState.Voyage && destination == null)
+                if (AiOrders.NeedsDestination(order) && destination == null)
                     throw new Exception($"{Where("boats")} '{entry}' is a voyage with no destination (write '{parts[0].Trim()}:voyage>tag')");
-                boats.Add(new ScenarioBoat(parts[0].Trim(), state, destination));
+                boats.Add(new ScenarioBoat(parts[0].Trim(), order, destination, team));
             }
         values.TryGetValue("player", out var player);
         return new Scenario(name, terrain, Flag("cities", true), Flag("currents", true), Flag("enemyFleet", true),
             string.IsNullOrWhiteSpace(player) ? null : player!.Trim(), boats);
     }
 
-    private static readonly string[] Keys = { "terrain", "cities", "currents", "enemyFleet", "player", "boats", "ai" };
+    private static readonly string[] Keys = { "terrain", "cities", "currents", "enemyFleet", "player", "boats", "ai", "team" };
 
     // The marker a scenario named, or a loud failure: a scenario that spawns
     // on a tag the map does not carry is a broken test, not a quiet no-op.

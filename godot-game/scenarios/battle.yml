@@ -1,0 +1,26 @@
+# Battle scenario — run it with ./battleTest.sh (or --scenario=battle).
+#
+# The bench for fighting AI: the battleTest map (512², a lake in forest), no
+# cities, no currents and no legacy fleet, so the only two hulls on the water
+# are the player's and one AI boat.
+#
+# Both are targets, and a boat whose order can fight is given the same
+# battery the player carries (CombatConfig.PlayerMounts). An idle boat is
+# deliberately left unarmed.
+#
+# ai0 guards the spot it spawns on: it lies there until the player comes
+# inside AiConfig.AiEngageRadius, closes to fighting range, turns broadside
+# on, shoots, and goes home when the player leaves (docs/ai.md).
+#
+# The markers are 291 units apart and a cannon reaches 163, so nobody starts
+# in range of anybody — closing is the first thing it has to decide.
+
+terrain: battleTest.terrain
+
+cities: false        # no coastal cities, no economy, no docking
+currents: false      # nothing pushes a hull but its own helm
+enemyFleet: false    # the legacy moored fleet stays out of the fight
+
+player: player       # the player boat starts on this marker
+boats: ai0:protect   # one AI boat guarding the spot it spawns on
+team: 1              # ...on the other side from the player, who is team 0

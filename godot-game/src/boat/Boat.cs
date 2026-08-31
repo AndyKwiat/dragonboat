@@ -45,6 +45,10 @@ public partial class Boat : Node3D, ICombatTarget
     // Hull colour, so an AI boat reads as somebody else's (src/ai/AiBoat.cs).
     // Set before the node enters the tree; the model is built in _Ready.
     public Color Hull = BoatConfig.HullColor;
+    // Whose side this hull is on. Boats on different teams are enemies and
+    // nothing else decides hostility (src/ai/Targeting.cs). The player is 0,
+    // so a vessel nobody has assigned is friendly by default.
+    public int Team;
 
     public void Init(Terrain terrain)
     {

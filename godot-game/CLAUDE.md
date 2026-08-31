@@ -9,10 +9,10 @@ rules change.
 
 - `./build.sh` compiles (dotnet). `./run.sh` runs — needs
   `/Applications/Godot_mono.app`, and always run from this directory.
-- `./pathingTest.sh` runs the AI/pathing test scenario instead of the game
-  (`scenarios/pathing.yml`, `docs/scenarios.md`): a small test map, no
-  cities, boats on the map's markers. It takes the same flags as a scripted
-  run, without the `--`.
+- `./pathingTest.sh` and `./battleTest.sh` run a test scenario instead of the
+  game (`scenarios/*.yml`, `docs/scenarios.md`): a small test map, no cities,
+  boats on the map's markers. They take the same flags as a scripted run,
+  without the `--`.
 - `dotnet test tests` covers the Godot-free core; everything else is
   verified with scripted runs + screenshots:
   `./run.sh -- --screenshot=x.png --frames=120 --size=2560x1600` plus the
@@ -52,7 +52,7 @@ rules change.
   (config, terrain parsing, city placement, docking, the economy —
   production, prices, staged trades — bank loans, VIP and monk missions,
   wind and crew stamina, the water nav mesh and its routes,
-  AI steering); it
+  AI orders/targeting/tactics/steering/gunnery); it
   compiles those files straight from `src/`, so keep them free of Godot
   types — and add a new rules file to `tests/Tests.csproj` when you write
   one. Rules that need the player or another Godot-tainted class take a

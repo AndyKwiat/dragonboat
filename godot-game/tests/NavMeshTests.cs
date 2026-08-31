@@ -361,6 +361,17 @@ public class NavMeshTests
         AssertPartitions(nav);
     }
 
+    // The battle bench is a single lake, so everything on it is reachable
+    // from everything else — what a fighting AI will assume.
+    [Fact]
+    public void TheBattleMapIsOneConnectedBody()
+    {
+        var map = TerrainMap.Parse(System.IO.File.ReadAllBytes(GameConfigTests.RepoFile("battleTest.terrain")));
+        var nav = NavMeshBuilder.Build(map, NavConfig.CellSize, NavConfig.ClearanceCells);
+        Assert.Equal(1, nav.BodyCount);
+        AssertPartitions(nav);
+    }
+
     // ...and the negative sibling that documents why the cell is 8: at 16 the
     // same rivers fall apart.
     [Fact]

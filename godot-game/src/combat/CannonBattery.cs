@@ -9,6 +9,10 @@ public partial class CannonBattery : Node3D
     public readonly List<Cannon> Cannons = new();
     // The vessel this battery is mounted on (the node balls must not hit).
     public Node3D Vessel => (Node3D)GetParent();
+    // What this battery has fired and hit. Projectiles.Shots/Hits are the
+    // whole world's tallies, and the moment an AI boat opens fire those stop
+    // meaning "the player" — so every vessel keeps its own count here.
+    public int Shots, Hits;
 
     public CannonBattery(IEnumerable<CombatConfig.Mount> mounts, float vesselLength)
     {
