@@ -43,7 +43,18 @@ public static class AiConfig
     // deliberately short of perfect so a manoeuvring player can spoil it.
     [Tweak("AI", 0, 1.5f, 0.05f)] public static float AiLeadFraction = 0.85f;
 
+    // --- keeping out of each other's way ------------------------------
+    // How much water a boat wants to itself. Two standard hulls reach 8
+    // units from their centres, so anything under 16 is a shove; this leaves
+    // room to lie alongside without touching (src/ai/Traffic.cs).
+    [Tweak("AI", 0, 120, 2)] public static float AiSpacing = 24f;
+
     // --- housekeeping -------------------------------------------------
     [Tweak("AI", 0.1f, 10, 0.1f)] public static float AiRepathSec = 1.5f;   // how often a blind chase re-plans
     [Tweak("AI", 0.05f, 2, 0.05f)] public static float AiLosRefreshSec = 0.25f;  // how often line of sight is retested
+
+    // How far apart boats spawned as a group are placed. Not a [Tweak]:
+    // it is read once, when they are put on the water, and a slider that
+    // did nothing after launch would only mislead.
+    public const float SquadronSpacing = 18f;
 }

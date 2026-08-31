@@ -36,7 +36,7 @@ A scenario is a file in `scenarios/`, named after the flag that loads it
 | `currents` | `true` | lay down current zones? `false` = nothing shoves a boat off its course |
 | `enemyFleet` | `true` | spawn the legacy moored fleet (`src/enemies`)? |
 | `player` | *(none)* | marker tag to start the player boat on; without it the boat starts off a city's shore as usual, which needs `cities: true` |
-| `boats` | *(none)* | AI boats, one per marker: `tag[:order[>destination]][@team]` — e.g. `p1:voyage>p2, ai0:protect@1, p3` |
+| `boats` | *(none)* | AI boats: `tag[:order[>destination]][*count][@team]` — e.g. `p1:voyage>p2, ai0:protect*3@1, p3`. A count greater than one puts a group on the marker, in line astern and spaced so hulls do not start touching; each guard stations where it actually is. |
 | `ai` | `idle` | the order boats in `boats` start with when they don't name one |
 | `team` | `1` | the side boats take when they don't name one; the player is always 0 |
 
@@ -86,8 +86,10 @@ cities, no currents, no legacy fleet, the player on marker `player` and one
 AI boat on `ai0`. `./battleTest.sh` runs it.
 
 Both hulls are armed and both are targets — every boat carries
-`CombatConfig.PlayerMounts`. `ai0` has **protect** orders: it guards the spot it spawns on, comes for the
-player when the player gets too close, fights, and goes home ([ai.md](ai.md)).
+`CombatConfig.PlayerMounts`. `ai0:protect*3` puts **three** boats there in line astern, each guarding the
+spot it spawns on, each coming for the player when the player gets too close,
+and each spreading out rather than piling onto the same bit of water
+([ai.md](ai.md)).
 Only a boat whose order can fight is given guns, so the idle boat in the
 gunnery scenario stays unarmed and that bench's shot tally stays the
 player's.

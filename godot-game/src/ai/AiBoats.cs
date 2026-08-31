@@ -14,6 +14,7 @@ public partial class AiBoats : Node3D
 {
     private readonly List<AiBoat> boats = new();
     private readonly List<AiContact> contacts = new();
+    private readonly List<Berth> taken = new();
     public IReadOnlyList<AiBoat> Boats => boats;
     public int Count => boats.Count;
 
@@ -74,7 +75,22 @@ public partial class AiBoats : Node3D
         contacts.Clear();
         contacts.Add(new AiContact(0, player.Team, player.X, player.Y, player.Vx, player.Vy, player.Heading));
         foreach (var b in boats) contacts.Add(b.AsContact());
-        foreach (var b in boats) b.Think(dt, contacts);
+
+        // Boats decide in a fixed order, and each is told where its consorts
+        // are AND where the ones that have already decided are going. That
+        // second half is what stops two boats converging on a spot neither
+        // has reached yet (src/ai/Traffic.cs).
+        for (int i = 0; i < boats.Count; i++)
+        {
+            taken.Clear();
+            for (int j = 0; j < boats.Count; j++)
+            {
+                if (j == i) continue;
+                taken.Add(new Berth(boats[j].X, boats[j].Y));
+                if (j < i) taken.Add(boats[j].Claim);
+            }
+            boats[i].Think(dt, contacts, taken);
+        }
     }
 
     // Any AI boat within dist of (x, y)? Drives the combat camera, which

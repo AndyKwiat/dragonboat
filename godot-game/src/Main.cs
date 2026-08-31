@@ -22,6 +22,8 @@ public partial class Main : Node3D
     private CombatSystem combat = null!;
     private EnemyShips enemies = null!;
     private AiBoats aiBoats = null!;
+    private readonly BoatCollisions hulls = new();
+    private readonly List<Boat> afloat = new();   // every hull, for the collision pass
     private NavMesh nav = null!;
     private NavMeshOverlay navOverlay = null!;
     private RouteOverlay routeOverlay = null!;
@@ -134,9 +136,11 @@ public partial class Main : Node3D
                 return;
             }
             scenario = Scenario.Parse(scenarioName, FileAccess.GetFileAsString(path));
+            int aiCount = 0;
+            foreach (var b in scenario.Boats) aiCount += b.Count;
             GD.Print($"Scenario '{scenario.Name}': {scenario.TerrainFile}, " +
                      $"{(scenario.Cities ? "cities" : "no cities")}, {(scenario.Currents ? "currents" : "no currents")}, " +
-                     $"{(scenario.EnemyFleet ? "enemy fleet" : "no enemy fleet")}, {scenario.Boats.Count} AI boat(s)");
+                     $"{(scenario.EnemyFleet ? "enemy fleet" : "no enemy fleet")}, {aiCount} AI boat(s)");
         }
         map = TerrainMap.Parse(FileAccess.GetFileAsBytes("res://" + (scenario?.TerrainFile ?? GameConfig.Current.TerrainFile)));
         // --seed makes a run reproducible: same cities, same enemy fleet.
@@ -370,22 +374,30 @@ public partial class Main : Node3D
                 ? null
                 : new Vector2(scenario.Marker(map, spec.Destination).X, scenario.Marker(map, spec.Destination).Y);
             var face = destination ?? new Vector2(boat.X, boat.Y);
-            float heading = Mathf.Atan2(face.Y - marker.Y, face.X - marker.X);
-            var order = OrderFor(spec, marker);
-            var ai = aiBoats.Spawn(marker.X, marker.Y, heading, order, spec.Team, destination);
-            string bound = ai.Route == null ? "" :
-                $", bound for '{spec.Destination}' by {ai.Route.Waypoints.Count - 1} leg(s), {ai.Route.Length():0} units";
-            GD.Print($"AI boat ({spec.Order.ToString().ToLower()}, team {spec.Team}) on marker " +
-                     $"'{marker.Tag}' at {marker.X:0},{marker.Y:0}{bound}");
+            for (int n = 0; n < spec.Count; n++)
+            {
+                // A group is laid out in line astern southward from the
+                // marker, far enough apart that hulls do not start touching.
+                float x = marker.X, y = marker.Y + n * AiConfig.SquadronSpacing;
+                float heading = Mathf.Atan2(face.Y - y, face.X - x);
+                // Each guard stations where it actually is, not where its
+                // consorts are, or they would all crowd one spot for ever.
+                var order = OrderFor(spec, x, y);
+                var ai = aiBoats.Spawn(x, y, heading, order, spec.Team, destination);
+                string bound = ai.Route == null ? "" :
+                    $", bound for '{spec.Destination}' by {ai.Route.Waypoints.Count - 1} leg(s), {ai.Route.Length():0} units";
+                GD.Print($"AI boat ({spec.Order.ToString().ToLower()}, team {spec.Team}) on marker " +
+                         $"'{marker.Tag}' at {x:0},{y:0}{bound}");
+            }
         }
     }
 
     // The standing assignment a scenario asked for. A guard's station is the
     // marker it spawns on (src/ai/ProtectOrder.cs).
-    private static IAiOrder OrderFor(ScenarioBoat spec, TerrainMarker marker) => spec.Order switch
+    private static IAiOrder OrderFor(ScenarioBoat spec, float stationX, float stationY) => spec.Order switch
     {
         AiOrderKind.Voyage => new VoyageOrder(),
-        AiOrderKind.Protect => new ProtectOrder(marker.X, marker.Y, new StandOffTactic()),
+        AiOrderKind.Protect => new ProtectOrder(stationX, stationY, new StandOffTactic()),
         _ => new IdleOrder(),
     };
 
@@ -788,6 +800,12 @@ public partial class Main : Node3D
         enemies.Update(menuOpen ? 0 : gameDt, boat, groundView);
         // AI boats sail on the same game clock, and pause with the menu too.
         aiBoats.Update(menuOpen ? 0 : gameDt, boat);
+        // Now that everyone has moved, stop them sitting inside each other.
+        // Last, so no boat's position is stale by a frame (src/boat/BoatCollisions.cs).
+        afloat.Clear();
+        afloat.Add(boat);
+        foreach (var b in aiBoats.Boats) afloat.Add(b);
+        hulls.Resolve(afloat);
 
         // Combat camera: fighting reads better from the edge cam. The first
         // shot fired with an enemy in cannon range flips follow → edge, and
@@ -891,7 +909,8 @@ public partial class Main : Node3D
                      $"boat at ({boat.X:F1}, {boat.Y:F1}) heading {Mathf.RadToDeg(boat.Heading):F0}° speed {boat.Speed:F1}; " +
                      $"sails {(boat.SailsUp ? "up" : "down")} stamina {crewStamina.Level:F2} " +
                      $"wind {wind.Force:F0}@{wind.BearingDeg:F0}°; " +
-                     $"shots {combat.PlayerGuns?.Shots ?? 0} hits {combat.PlayerGuns?.Hits ?? 0} taken {boat.HitsTaken}" +
+                     $"shots {combat.PlayerGuns?.Shots ?? 0} hits {combat.PlayerGuns?.Hits ?? 0} taken {boat.HitsTaken} " +
+                     $"rams {hulls.Rams}" +
                      (aiBoats.Count > 0 ? "; " + aiBoats.Report() : ""));
             screenshotPath = null;
             GetTree().Quit();

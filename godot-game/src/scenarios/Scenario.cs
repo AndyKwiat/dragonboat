@@ -19,7 +19,7 @@ using System.Collections.Generic;
 //     currents: false                # lay down current zones? (default true)
 //     enemyFleet: false              # spawn the legacy hostile fleet? (default true)
 //     player: p0                     # marker tag to start the player boat on
-//     boats: p1:voyage>p2, ai0:protect@1   # `tag[:order[>destination]][@team]`
+//     boats: p1:voyage>p2, ai0:protect*3@1  # `tag[:order[>dest]][*count][@team]`
 //     ai: idle                       # default order for boats without one
 //     team: 1                        # default side for boats without one
 //
@@ -34,10 +34,14 @@ public sealed class ScenarioBoat
     // Whose side it is on; boats on different teams are enemies. The player
     // is team 0, so a scenario boat defaults to 1 and starts out hostile.
     public int Team { get; }
+    // How many boats to put on this marker. More than one is a group, spaced
+    // apart so they do not start inside one another.
+    public int Count { get; }
 
-    public ScenarioBoat(string marker, AiOrderKind order, string? destination = null, int team = 1)
+    public ScenarioBoat(string marker, AiOrderKind order, string? destination = null, int team = 1, int count = 1)
     {
-        Marker = marker; Order = order; Destination = destination; Team = team;
+        if (count < 1) throw new ArgumentException($"a boat count must be at least 1, got {count}");
+        Marker = marker; Order = order; Destination = destination; Team = team; Count = count;
     }
 }
 
@@ -106,6 +110,15 @@ public sealed class Scenario
                         throw new Exception($"{Where("boats")} '{entry}' has no team number after '@'");
                     entry = entry[..at].Trim();
                 }
+                // `*count` for a group on one marker.
+                int count = 1;
+                int star = entry.IndexOf('*');
+                if (star >= 0)
+                {
+                    if (!int.TryParse(entry[(star + 1)..].Trim(), out count) || count < 1)
+                        throw new Exception($"{Where("boats")} '{entry}' has no boat count after '*'");
+                    entry = entry[..star].Trim();
+                }
                 var parts = entry.Split(':');
                 if (parts.Length > 2 || parts[0].Trim().Length == 0)
                     throw new Exception($"{Where("boats")} '{entry}' is not a marker tag or tag:order");
@@ -127,7 +140,7 @@ public sealed class Scenario
                 }
                 if (AiOrders.NeedsDestination(order) && destination == null)
                     throw new Exception($"{Where("boats")} '{entry}' is a voyage with no destination (write '{parts[0].Trim()}:voyage>tag')");
-                boats.Add(new ScenarioBoat(parts[0].Trim(), order, destination, team));
+                boats.Add(new ScenarioBoat(parts[0].Trim(), order, destination, team, count));
             }
         values.TryGetValue("player", out var player);
         return new Scenario(name, terrain, Flag("cities", true), Flag("currents", true), Flag("enemyFleet", true),

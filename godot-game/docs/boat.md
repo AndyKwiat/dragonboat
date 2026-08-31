@@ -1,7 +1,8 @@
 # The boat
 
 Files: `src/boat/BoatConfig.cs` (knobs), `src/boat/Boat.cs` (physics,
-lean, land collision, hit box), `src/boat/BoatModel.cs` (the mesh),
+lean, land collision, hit box), `src/boat/Hulls.cs` +
+`src/boat/BoatCollisions.cs` (hull against hull), `src/boat/BoatModel.cs` (the mesh),
 `src/boat/Sailing.cs` (the Godot-free wind and crew-stamina rules). The
 boat is shared ground: trading cares about its speed (crew multiplier) and
 position (cities); combat mounts guns on it and shoots at it. Neither side
@@ -152,6 +153,45 @@ stays put.
 Verify with `--start=3300,15829,0 --hold=W --frames=700` (head-on into the
 beach east of the start: stops at x≈3474) and `--start=3300,15700,40
 --hold=W --frames=900` (slides south-east along it).
+
+## Hull against hull
+
+Files: `src/boat/Hulls.cs` (the geometry, Godot-free and tested),
+`src/boat/BoatCollisions.cs` (applying it), run from `Main._Process` after
+every boat has moved.
+
+Boats do not pass through each other. The shape is **the same three circles
+the shore is resolved against** — no second notion of where a hull is — and
+the resolution is the same too: overlapping hulls are parted along the
+deepest contact, the part of their closing speed driving them together is
+taken out, and the part along the contact survives. So a boat brought
+alongside another **slides down her side** instead of stopping dead, exactly
+as she does against a beach.
+
+**Size is per hull, not per game.** `Boat.HullLength` and `Boat.HullWidth`
+are fields that default to `BoatConfig`'s one vessel, and everything that
+measures a boat — the model, the shadow, the hit box, the collision shell —
+reads them rather than the constants. `Mass` is deck area, and it decides who
+gives way: a launch shoved by a merchantman moves most of the way, two of a
+kind share it evenly. That is the whole of what a second class of vessel
+needs; nothing in the collision code knows how big a boat is supposed to be.
+
+| knob | | |
+|---|---|---|
+| `HullBounce` | 0.25 | bouncier than the shore, so boats fend each other off rather than grinding along together |
+| `HullSlack` | 0.3 | a little give, so two hulls can lie alongside without shoving each other every frame |
+| `RamSpeed` | 12 | closing faster than this counts as a ram rather than a nudge |
+
+**The ramming hook.** `BoatCollisions.Rammed(a, b, closingSpeed, where)` fires
+once per pair per frame, and only above `RamSpeed`. Nothing is subscribed to
+it — a ram currently flashes both hulls (`Boat.Jolt`) and costs nothing else.
+That is where damage goes when you want it. A scripted run's last line counts
+them as `rams N`, so it can be asserted on.
+
+Two things it deliberately does not do: the legacy hostile fleet
+(`src/enemies`) is a different class and is not in the pass, so the player
+still sails through those; and a very fast hull could in principle pass
+through a thin one between frames, which no boat in the game is near doing.
 
 ## Hit box
 

@@ -38,6 +38,9 @@ public partial class AiBoat : Boat
     public bool HadLineOfSight { get; private set; }
 
     public AiState State => Memory.State;
+    // The water this boat has said it is making for, so its consorts can
+    // leave it alone (src/ai/Traffic.cs).
+    public Berth Claim { get; private set; }
     public NavRoute? Route => Memory.Route;
     public int Leg => Memory.Leg;
     public bool Arrived => Memory.Route != null && Memory.Leg >= Memory.Route.Waypoints.Count;
@@ -60,7 +63,7 @@ public partial class AiBoat : Boat
 
     // One frame: reload, look, decide, sail, shoot — in that order, and each
     // for a reason.
-    public void Think(float dt, IReadOnlyList<AiContact> contacts)
+    public void Think(float dt, IReadOnlyList<AiContact> contacts, IReadOnlyList<Berth> taken)
     {
         // Reload FIRST and with the whole frame's dt. Nothing else ticks a
         // non-player battery — CombatSystem.Update only ticks the player's —
@@ -76,6 +79,17 @@ public partial class AiBoat : Boat
         var target = Targeting.Pick(Team, X, Y, contacts, Order, Memory, bare);
         var situation = Snapshot(dt, target);
         var goal = AiPilot.Decide(situation, Memory, Order);
+        // Somewhere to BE, rather than a bearing to hold? Then check the
+        // water is not already spoken for. A boat that is stopped and
+        // turning is only pointing itself, and must not be nudged off the
+        // bearing it has just worked for.
+        if (goal.KeepWay)
+        {
+            var pivot = target is AiContact p ? ((float, float)?)(p.X, p.Y) : null;
+            var (rx, ry) = Traffic.MakeRoom(goal.X, goal.Y, AiConfig.AiSpacing, taken, pivot);
+            goal = goal with { X = rx, Y = ry };
+        }
+        Claim = new Berth(goal.X, goal.Y);
         goal = ThroughWater(goal, situation);
         var helm = AiSteering.For(goal, situation);
 

@@ -120,5 +120,13 @@ public static class BoatConfig
     // is removed (a fraction CollisionBounce of it comes back out) and the
     // velocity along it is kept — the slide.
     [Tweak("Boat land", 0, 1, 0.05f)] public static float CollisionBounce = 0.1f;
+    // Hull against hull (src/boat/BoatCollisions.cs). Bouncier than the shore
+    // so boats fend each other off rather than grinding along together, and a
+    // little slack so two hulls can lie alongside without shoving.
+    [Tweak("Boat land", 0, 1, 0.05f)] public static float HullBounce = 0.25f;
+    [Tweak("Boat land", 0, 4, 0.1f)] public static float HullSlack = 0.3f;
+    // Closing faster than this counts as a ram rather than a nudge, and is
+    // what BoatCollisions.Rammed reports.
+    [Tweak("Boat land", 0, 40, 1)] public static float RamSpeed = 12f;
     [Tweak("Boat land", 0.3f, 1.5f, 0.05f)] public static float CollisionRadiusScale = 1f; // × Width/2 per circle
 }

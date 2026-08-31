@@ -91,6 +91,33 @@ testable as plain geometry, with no game running.
 | teammates not doubling up | a filter inside `Targeting.Pick`, which already sees the fleet |
 | a commander handing out orders | an assignment to `boat.Order` — orders are data |
 
+## Keeping out of each other's way
+
+Files: `src/ai/Traffic.cs`.
+
+Three boats with the same orders want the same piece of water: they all close
+on the same enemy, so they all steer for the same point off her beam and end
+up in a heap. Hulls collide now ([boat.md](boat.md)), so they no longer
+overlap — but shoving each other aside every frame is not station keeping,
+and it looks like what it is.
+
+So before a boat commits to somewhere to **be**, it checks whether that water
+is spoken for. Boats decide in a fixed order and each one **claims** its
+goal, so the second boat avoids the first's *chosen* spot rather than its
+current one — which is what stops two of them converging on a place neither
+has reached yet.
+
+Given a pivot — the enemy they are all working — a blocked boat slides
+**around** it rather than backing off, keeping the range its tactic asked
+for. Three boats end up spread on an arc at fighting range instead of in a
+queue. With nothing to circle, it simply stops short of the obstruction.
+
+It applies only to a goal that is a *place*. A boat that is stopped and
+turning is pointing itself, not going anywhere, and must not be nudged off
+the bearing it has just worked for. `AiSpacing` (24) is how much water a boat
+wants to itself — two standard hulls reach 8 units each, so anything under 16
+would be a shove.
+
 ## Sides
 
 One `int Team` on every hull. Two vessels are enemies when their teams

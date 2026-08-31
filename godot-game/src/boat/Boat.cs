@@ -31,7 +31,22 @@ public partial class Boat : Node3D, ICombatTarget
     // Speed through the water along the keel, signed (negative = making sternway).
     public float Speed => Vx * Mathf.Cos(Heading) + Vy * Mathf.Sin(Heading);
     public float GroundSpeed => Speed;
-    public float Length => BoatConfig.Length;
+
+    // Hull size, per boat rather than per game: the numbers default to the
+    // one vessel the game has today, but they are fields so a launch and a
+    // merchantman can differ later. Everything that measures this hull —
+    // the model, the shadow, the hit box, the collision shell — reads these.
+    public float HullLength = BoatConfig.Length;
+    public float HullWidth = BoatConfig.Width;
+    public float Length => HullLength;
+    // What it takes to shove her aside. Deck area is a good enough stand-in
+    // for displacement, and keeps a bigger hull harder to push.
+    public float Mass => HullLength * HullWidth;
+
+    // The collision shell: three circles along the keel (src/boat/Hulls.cs),
+    // the same shape the shore is resolved against.
+    public Hull Shell => new(X, Y, Heading, HullLength,
+        HullWidth / 2 * BoatConfig.CollisionRadiusScale, Mass);
 
     private Terrain terrain = null!;
     public Currents? Currents; // optional: rapids that scale top speed (world/Currents.cs)
@@ -57,7 +72,7 @@ public partial class Boat : Node3D, ICombatTarget
 
     public override void _Ready()
     {
-        model = new BoatModel(BoatConfig.Length, Hull);
+        model = new BoatModel(HullLength, Hull);
         AddChild(model);
         model.SetSails(SailsUp);
         // The shadow is a sibling, not a child: it must stay flat on the
@@ -173,9 +188,9 @@ public partial class Boat : Node3D, ICombatTarget
     // it survives, so the boat slides along a coast instead of stopping dead.
     private void CollideWithLand()
     {
-        float r = BoatConfig.Width / 2 * BoatConfig.CollisionRadiusScale;
+        float r = HullWidth / 2 * BoatConfig.CollisionRadiusScale;
         float cosH = Mathf.Cos(Heading), sinH = Mathf.Sin(Heading);
-        foreach (float o in new[] { -BoatConfig.Length / 3, 0, BoatConfig.Length / 3 })
+        foreach (float o in new[] { -HullLength / 3, 0, HullLength / 3 })
         {
             float cx = X + cosH * o, cy = Y + sinH * o;
             var push = terrain.ResolveCircle(ref cx, ref cy, r, out var normal);
@@ -200,7 +215,7 @@ public partial class Boat : Node3D, ICombatTarget
             // shoreline simply occlude whatever overhangs them.
             shadow.Position = new Vector3(X, 0.03f, Y);
             shadow.Rotation = new Vector3(0, -Heading, 0);
-            shadow.Scale = new Vector3(BoatConfig.Length / 2, 1, BoatConfig.Width / 2) * BoatConfig.ShadowScale;
+            shadow.Scale = new Vector3(HullLength / 2, 1, HullWidth / 2) * BoatConfig.ShadowScale;
             shadow.SetStrength(BoatConfig.ShadowStrength);
         }
         // Euler order YXZ: yaw about +Y first (a rotation about +Y turns +X
@@ -214,9 +229,9 @@ public partial class Boat : Node3D, ICombatTarget
     {
         var l = ToLocal(p);
         float m = CombatConfig.HitMargin;
-        return Math.Abs(l.X) <= BoatConfig.Length / 2 + m
+        return Math.Abs(l.X) <= HullLength / 2 + m
             && l.Y >= -m && l.Y <= BoatConfig.Height + m
-            && Math.Abs(l.Z) <= BoatConfig.Width / 2 + m;
+            && Math.Abs(l.Z) <= HullWidth / 2 + m;
     }
 
     public void TakeHit(Vector3 p)
@@ -224,4 +239,9 @@ public partial class Boat : Node3D, ICombatTarget
         HitsTaken++;
         hitFlash = CombatConfig.HullFlashSec;
     }
+
+    // Flash the hull without counting it as a hit — what a collision uses, so
+    // scraping alongside another boat reads on screen without pretending a
+    // cannonball landed.
+    public void Jolt() => hitFlash = CombatConfig.HullFlashSec;
 }

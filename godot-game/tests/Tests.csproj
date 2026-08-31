@@ -27,10 +27,12 @@
     <Compile Include="../src/ai/StandOffTactic.cs" />
     <Compile Include="../src/ai/Targeting.cs" />
     <Compile Include="../src/ai/AiSteering.cs" />
+    <Compile Include="../src/ai/Traffic.cs" />
     <Compile Include="../src/ai/Gunnery.cs" />
     <Compile Include="../src/ai/AiPilot.cs" />
     <Compile Include="../src/ai/Helmsman.cs" />
     <Compile Include="../src/boat/HelmOrder.cs" />
+    <Compile Include="../src/boat/Hulls.cs" />
     <Compile Include="../src/nav/NavConfig.cs" />
     <Compile Include="../src/nav/NavMesh.cs" />
     <Compile Include="../src/nav/NavMeshBuilder.cs" />

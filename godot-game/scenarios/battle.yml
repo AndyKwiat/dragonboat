@@ -22,5 +22,6 @@ currents: false      # nothing pushes a hull but its own helm
 enemyFleet: false    # the legacy moored fleet stays out of the fight
 
 player: player       # the player boat starts on this marker
-boats: ai0:protect   # one AI boat guarding the spot it spawns on
+boats: ai0:protect*3 # three AI boats in line astern from the marker,
+                     # each guarding the spot it spawns on
 team: 1              # ...on the other side from the player, who is team 0

@@ -52,7 +52,8 @@ rules change.
   (config, terrain parsing, city placement, docking, the economy —
   production, prices, staged trades — bank loans, VIP and monk missions,
   wind and crew stamina, the water nav mesh and its routes,
-  AI orders/targeting/tactics/steering/gunnery); it
+  AI orders/targeting/tactics/steering/gunnery/station-keeping, hull
+  collision geometry); it
   compiles those files straight from `src/`, so keep them free of Godot
   types — and add a new rules file to `tests/Tests.csproj` when you write
   one. Rules that need the player or another Godot-tainted class take a

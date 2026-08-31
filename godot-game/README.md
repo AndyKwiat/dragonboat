@@ -12,7 +12,7 @@ the rules.
 | doc | covers |
 |---|---|
 | [docs/world.md](docs/world.md) | map, coordinates, camera rigs/modes, terrain rendering and streaming, terrain queries |
-| [docs/boat.md](docs/boat.md) | the player boat: handling, sails vs oars, wind, crew stamina, lean/bob, land collision, the 3D model |
+| [docs/boat.md](docs/boat.md) | the boat: handling, sails vs oars, wind, crew stamina, lean/bob, land and hull collision, the 3D model |
 | [docs/combat.md](docs/combat.md) | cannons, cannonballs, impact effects, targets (enemy-ready), aiming |
 | [docs/economy.md](docs/economy.md) | who produces what, supply-driven prices, the trade ladder, the world average, cargo cost |
 | [docs/trading.md](docs/trading.md) | cities, story events, VIP deliveries, crew, rations/wages, the game clock, the city popup |
@@ -79,8 +79,8 @@ adding an attribute; keep names unique across config classes.
 User args after `--` drive a run without a human, which is how changes are
 verified (`dotnet test tests` covers the Godot-free core — the config,
 the .terrain parser, city placement, docking, scenario definitions, the
-water nav mesh and the routes over it, the AI's orders, targeting, tactics
-and gunnery, the loan, passenger and monastery rules;
+water nav mesh and the routes over it, the AI's orders, targeting, tactics,
+gunnery and station keeping, hull collision geometry, the loan, passenger and monastery rules;
 everything else is checked by scripted runs — look at the screenshots, and at the line
 the run prints: boat position/heading/speed, shots and hits):
 
@@ -174,9 +174,10 @@ src/world/             CameraRig + CameraControllers, TerrainPlane, TerrainChunk
                        Terrain (water/height/collision queries), CityPlacer,
                        Currents                                          → docs/world.md
 src/boat/              BoatConfig, Boat (physics, lean, land collision, hittable),
-                       BoatModel (hull/masts/sails), HelmOrder (what a helm
-                       is told, from the keys or from an AI), Sailing (wind +
-                       crew stamina; pure rules)                          → docs/boat.md
+                       BoatModel (hull/masts/sails), Hulls + BoatCollisions
+                       (hull against hull, any size, ramming hook), HelmOrder
+                       (what a helm is told, from the keys or from an AI),
+                       Sailing (wind + crew stamina; pure rules)          → docs/boat.md
 src/combat/            CombatConfig, CombatSystem, Cannon, CannonBattery,
                        Projectiles, Effects, ICombatTarget                → docs/combat.md
 src/enemies/           EnemyShips — the moored hostile fleet; the dumb
