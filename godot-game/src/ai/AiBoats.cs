@@ -1,4 +1,5 @@
 using Godot;
+using System;
 using System.Collections.Generic;
 
 // The AI fleet: every self-sailing non-player boat in the run, ticked once a
@@ -21,6 +22,10 @@ public partial class AiBoats : Node3D
     private Terrain terrain = null!;
     private NavMesh nav = null!;
     private CombatSystem combat = null!;
+    private TerrainMap map = null!;
+    private Random rng = null!;
+    private Boat player = null!;
+    private Action onKill = () => { };
 
     public void Init(Terrain terrain, NavMesh nav, CombatSystem combat)
     {
@@ -28,6 +33,53 @@ public partial class AiBoats : Node3D
         this.terrain = terrain;
         this.nav = nav;
         this.combat = combat;
+    }
+
+    // Stock the world with a hostile fleet: boats scattered on coastal water,
+    // each guarding the spot it appears on. This is what the game itself has
+    // instead of a scenario's hand-placed boats — the same AiBoat, the same
+    // protect orders, so the fleet in the real world behaves exactly as the
+    // ones on the battle bench do.
+    public void Scatter(TerrainMap map, Boat player, Random rng, int count, int team, Action onKill)
+    {
+        this.map = map; this.player = player; this.rng = rng; this.onKill = onKill;
+        while (boats.Count < count)
+        {
+            if (FindSpawn(new Rect2()) is not (float x, float y)) break;
+            var boat = Spawn(x, y, (float)(rng.NextDouble() * Math.Tau),
+                new ProtectOrder(x, y, new StandOffTactic()), team);
+            boat.OnSunk = onKill;
+        }
+    }
+
+    // Somewhere to appear: water, with land within reach so she is not out in
+    // the deep ocean, clear of the player's start, and outside `avoid` (what
+    // the camera can see) so nobody watches a hull pop into existence. The
+    // view constraint is dropped if it cannot be met — on a map small enough
+    // to fit on screen there is nowhere out of sight.
+    private (float, float)? FindSpawn(Rect2 avoid)
+    {
+        for (int pass = 0; pass < 2; pass++)
+            for (int tries = 0; tries < 400; tries++)
+            {
+                float x = (float)rng.NextDouble() * map.WorldW;
+                float y = (float)rng.NextDouble() * map.WorldH;
+                if (!terrain.IsWater(x, y) || !NearLand(x, y)) continue;
+                float dx = x - player.X, dy = y - player.Y;
+                if (dx * dx + dy * dy < AiConfig.MinSpawnDistance * AiConfig.MinSpawnDistance) continue;
+                if (pass == 0 && avoid.HasPoint(new Vector2(x, y))) continue;
+                return (x, y);
+            }
+        return null;
+    }
+
+    private bool NearLand(float x, float y)
+    {
+        int cx = (int)x, cy = (int)y, r = AiConfig.MaxLandDistanceCells;
+        for (int j = -r; j <= r; j += AiConfig.LandSampleStep)
+            for (int i = -r; i <= r; i += AiConfig.LandSampleStep)
+                if (!Terrain.IsWaterIndex(map.TerrainAt(cx + i, cy + j))) return true;
+        return false;
     }
 
     // Put a boat on the water. Sails are struck: under canvas the wind would
@@ -69,23 +121,42 @@ public partial class AiBoats : Node3D
     }
 
     // dt is game time, and 0 while the world is paused (the city menu).
-    public void Update(float dt, Boat player)
+    // `view` is the ground the camera can see; wrecks come back outside it.
+    public void Update(float dt, Boat player, Rect2 view = default)
     {
+        // Wrecks return even while the fight logic is asleep, so the sea is
+        // never empty for long — and out of sight, so nobody sees it happen.
+        if (map != null)
+            foreach (var b in boats)
+                if (b.Sunk && FindSpawn(view) is (float rx, float ry))
+                    b.Refloat(rx, ry, (float)(rng.NextDouble() * Math.Tau),
+                        new ProtectOrder(rx, ry, new StandOffTactic()));
+
         if (dt <= 0 || boats.Count == 0) return;
         contacts.Clear();
         contacts.Add(new AiContact(0, player.Team, player.X, player.Y, player.Vx, player.Vy, player.Heading));
-        foreach (var b in boats) contacts.Add(b.AsContact());
+        foreach (var b in boats) if (!b.Sunk) contacts.Add(b.AsContact());
 
         // Boats decide in a fixed order, and each is told where its consorts
         // are AND where the ones that have already decided are going. That
         // second half is what stops two boats converging on a spot neither
         // has reached yet (src/ai/Traffic.cs).
+        float gateSq = AiConfig.ThinkRange * AiConfig.ThinkRange;
         for (int i = 0; i < boats.Count; i++)
         {
+            if (boats[i].Sunk) continue;
+            // A boat far from the player with nothing to do is already where
+            // she wants to be; she can wait. One distance test buys back the
+            // cost of a whole fleet thinking on an 8192-cell map. A boat that
+            // is NOT settled keeps thinking wherever she is, or a chase
+            // abandoned at long range would freeze her mid-water.
+            float pdx = boats[i].X - player.X, pdy = boats[i].Y - player.Y;
+            bool settled = boats[i].State is AiState.Idle or AiState.Holding;
+            if (settled && pdx * pdx + pdy * pdy > gateSq) continue;
             taken.Clear();
             for (int j = 0; j < boats.Count; j++)
             {
-                if (j == i) continue;
+                if (j == i || boats[j].Sunk) continue;
                 taken.Add(new Berth(boats[j].X, boats[j].Y));
                 if (j < i) taken.Add(boats[j].Claim);
             }
@@ -100,7 +171,7 @@ public partial class AiBoats : Node3D
         float best = float.MaxValue;
         for (int j = 0; j < boats.Count; j++)
         {
-            if (j == self || boats[j].Team != boats[self].Team) continue;
+            if (j == self || boats[j].Sunk || boats[j].Team != boats[self].Team) continue;
             float dx = boats[j].X - boats[self].X, dy = boats[j].Y - boats[self].Y;
             best = Mathf.Min(best, Mathf.Sqrt(dx * dx + dy * dy));
         }
@@ -114,6 +185,7 @@ public partial class AiBoats : Node3D
     {
         foreach (var b in boats)
         {
+            if (b.Sunk) continue;
             float dx = b.X - x, dy = b.Y - y;
             if (dx * dx + dy * dy <= dist * dist) return true;
         }
@@ -124,12 +196,15 @@ public partial class AiBoats : Node3D
     // asserted on without looking at pixels. Order and state are separate
     // tokens so either can be grepped; `guns` frozen at 0/7 is the "forgot to
     // tick the battery" bug showing itself.
-    public string Report()
+    public string Report(int most = 4)
     {
         if (boats.Count == 0) return "";
+        int sunk = 0;
+        foreach (var b in boats) if (b.Sunk) sunk++;
         var parts = new List<string>();
         foreach (var b in boats)
         {
+            if (b.Sunk || parts.Count >= most) continue;
             var line = $"{b.Order.Kind.ToString().ToLowerInvariant()}/{AiStates.Name(b.State)}" +
                        $"@({b.X:F1}, {b.Y:F1}) {Compass(b.Heading):F0}° {b.Speed:F1}";
             line += b.Aimed is AiContact t
@@ -142,7 +217,9 @@ public partial class AiBoats : Node3D
                                   : $" leg {b.Leg}/{b.Route.Waypoints.Count - 1}, {b.DistanceToGo():F0} to go";
             parts.Add(line);
         }
-        return $"ai boats {string.Join("; ", parts)}";
+        var tail = boats.Count > parts.Count + sunk ? $" (+{boats.Count - parts.Count - sunk} more)" : "";
+        var lost = sunk > 0 ? $", {sunk} sunk" : "";
+        return $"ai boats [{boats.Count - sunk} afloat{lost}] {string.Join("; ", parts)}{tail}";
     }
 
     // Heading accumulates as a boat turns, so a hull that has spun twice

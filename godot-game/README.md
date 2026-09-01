@@ -19,7 +19,7 @@ the rules.
 | [docs/banking.md](docs/banking.md) | city banks: borrowing against honour, interest, due dates, on-time rewards and late penalties |
 | [docs/religion.md](docs/religion.md) | piety, monasteries, alms, monk errands |
 | [docs/ui.md](docs/ui.md) | fonts, HUD, clock, minimap, city labels, the event log, the tweak panel |
-| [docs/ai.md](docs/ai.md) | boats that sail themselves and fight: orders, states and tactics, guarding a spot, leading a shot, sides |
+| [docs/ai.md](docs/ai.md) | every non-player boat: orders, states and tactics, guarding a spot, leading a shot, sides, the world's fleet and sinking |
 | [docs/nav.md](docs/nav.md) | the water nav mesh: clearance, water bodies, the quadtree, A* routes, and the N overlay |
 | [docs/scenarios.md](docs/scenarios.md) | stripped-down test worlds (`./pathingTest.sh`): a test map, no cities, boats on named markers |
 
@@ -104,7 +104,8 @@ $G --path . -- --screenshot=screenshots/monk.png --seed=7 --monk=5 --deliver    
 
 | flag | effect |
 |---|---|
-| `--screenshot[=path]` | save the viewport after `--frames` (default 90) frames, then quit |
+| `--screenshot[=path]` | save the viewport after `--frames` (default 90) frames, then quit — and **deafen the run to the real keyboard and mouse**, since the window steals focus when it opens and a keystroke meant for another application would otherwise land in the game and silently change the result. `--hold`, `--press` and `--fire` are injected directly and still work. |
+| `--keyboard` | give a `--screenshot` run its keyboard and mouse back, to drive one by hand |
 | `--frames=N` | frames to render before the screenshot (runs are vsynced, typically 120 fps — a 3 s cannonball flight is ~360 frames) |
 | `--zoom=Z` | starting zoom, screen px per world unit |
 | `--rig=isometric\|perspective` | starting camera rig |
@@ -131,6 +132,10 @@ $G --path . -- --screenshot=screenshots/monk.png --seed=7 --monk=5 --deliver    
 | `--stamina=0..1` | start the crew part-spent (default 1 = fresh) |
 | `--tweaks` | start with the tweak panel open |
 | `--size=WxH` | window size |
+
+A scripted run ignores real input, so you can keep typing in another
+application while one is on screen. Only `--hold`, `--press` and `--fire`
+reach it. `--keyboard` turns that off.
 
 `screenshots/` and `*.png` are git-ignored.
 
@@ -180,9 +185,8 @@ src/boat/              BoatConfig, Boat (physics, lean, land collision, hittable
                        Sailing (wind + crew stamina; pure rules)          → docs/boat.md
 src/combat/            CombatConfig, CombatSystem, Cannon, CannonBattery,
                        Projectiles, Effects, ICombatTarget                → docs/combat.md
-src/enemies/           EnemyShips — the moored hostile fleet; the dumb
-                       boats, deliberately left alone by src/ai   → docs/ai.md
-src/ai/                AiOrder/ProtectOrder/VoyageOrder (missions), AiTactic/
+src/ai/                the whole hostile fleet as well as scenario boats:
+                       AiOrder/ProtectOrder/VoyageOrder (missions), AiTactic/
                        StandOffTactic (how to fight), AiState, Targeting,
                        AiSteering, Helmsman, Gunnery (leading a shot),
                        AiConfig ([Tweak] knobs), AiBoat/AiBoats, RouteOverlay

@@ -1,4 +1,5 @@
 using Godot;
+using System;
 using System.Collections.Generic;
 
 // A non-player boat that sails and fights itself.
@@ -13,9 +14,9 @@ using System.Collections.Generic;
 // the answer. Every rule worth arguing about lives in Godot-free code that
 // tests/ compiles — this file is the part that has to touch the engine.
 //
-// It is NOT the hostile fleet: those hulls are EnemyShip (src/enemies), they
-// are moored, and nothing here touches them. AI boats exist only inside a
-// test scenario, so a normal launch has none.
+// This is what the game's hostile fleet is made of, as well as what a test
+// scenario spawns: one kind of AI boat, whether it is guarding a stretch of
+// the world's coast or a marker on the battle bench.
 public partial class AiBoat : Boat
 {
     // Blue, so an AI boat is never mistaken for the player's boat (dark
@@ -36,6 +37,12 @@ public partial class AiBoat : Boat
     public float Range { get; private set; }
     public float BearingDeg { get; private set; }
     public bool HadLineOfSight { get; private set; }
+
+    // Sunk boats stay in the fleet, hidden, until the fleet finds them
+    // somewhere new to appear.
+    public bool Sunk { get; private set; }
+    // Called the moment she goes down — honour, for now.
+    public Action OnSunk = () => { };
 
     public AiState State => Memory.State;
     // The water this boat has said it is making for, so its consorts can
@@ -178,6 +185,34 @@ public partial class AiBoat : Boat
         var cannon = Guns.BestCannon(at);
         if (cannon != null && Projectiles.WithinRange(cannon.GlobalPosition, at))
             combat.Projectiles.Fire(cannon, at);
+    }
+
+    // Three rounds and she goes down. The player has no such number: a hit
+    // is counted and the hull flashes, and that is all (src/boat/Boat.cs).
+    public override void TakeHit(Vector3 p)
+    {
+        base.TakeHit(p);
+        if (Sunk || HitsTaken < AiConfig.AiHitsToSink) return;
+        Sunk = true;
+        combat?.RemoveTarget(this);
+        combat?.Effects.SpawnRing(new Vector3(X, 0.05f, Y), CombatConfig.SplashColor,
+            CombatConfig.SplashLife * 2, HullLength);
+        SetAfloat(false);
+        OnSunk();
+    }
+
+    // Back from the deep somewhere else, with a fresh hull and a new station.
+    public void Refloat(float x, float y, float heading, IAiOrder order)
+    {
+        X = x; Y = y; Heading = heading;
+        Vx = 0; Vy = 0;
+        HitsTaken = 0;
+        Sunk = false;
+        Order = order;
+        Memory.Reset(x, y);
+        SetAfloat(true);
+        SyncMesh();
+        combat?.AddTarget(this);
     }
 
     // How far is left to sail, along the route rather than as the crow flies.

@@ -205,6 +205,14 @@ public partial class Boat : Node3D, ICombatTarget
         }
     }
 
+    // Afloat or gone. The shadow is a sibling rather than a child, so it has
+    // to be hidden with the hull or it stays painted on the water.
+    public void SetAfloat(bool afloat)
+    {
+        Visible = afloat;
+        if (shadow != null) shadow.Visible = afloat;
+    }
+
     public void SyncMesh()
     {
         float bob = Mathf.Sin(bobPhase) * BoatConfig.BobAmplitude;
@@ -234,7 +242,10 @@ public partial class Boat : Node3D, ICombatTarget
             && Math.Abs(l.Z) <= HullWidth / 2 + m;
     }
 
-    public void TakeHit(Vector3 p)
+    // Virtual because Projectiles calls this through ICombatTarget: a `new`
+    // method on a subclass would be silently skipped, and the boat would
+    // quietly never notice it had been hit.
+    public virtual void TakeHit(Vector3 p)
     {
         HitsTaken++;
         hitFlash = CombatConfig.HullFlashSec;

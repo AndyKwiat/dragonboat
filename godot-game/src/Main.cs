@@ -20,7 +20,6 @@ public partial class Main : Node3D
     private Terrain terrainQuery = null!;
     private Boat boat = null!;
     private CombatSystem combat = null!;
-    private EnemyShips enemies = null!;
     private AiBoats aiBoats = null!;
     private readonly BoatCollisions hulls = new();
     private readonly List<Boat> afloat = new();   // every hull, for the collision pass
@@ -222,20 +221,16 @@ public partial class Main : Node3D
         combat.PlayerGuns = combat.Arm(boat, CombatConfig.PlayerMounts, BoatConfig.Length);
         combat.AddTarget(boat);
 
-        // Enemy fleet: stationary red ships on random water, same guns and
-        // tweaks as the player (see src/enemies/EnemyShips.cs).
-        enemies = new EnemyShips();
-        AddChild(enemies);
-        enemies.Init(map, terrainQuery, combat, boat, worldRng,
-            () => player.Honour += EnemyShips.KillHonour,
-            scenario is { EnemyFleet: false } ? 0 : null);
-
-        // The AI fleet: self-sailing non-player boats (src/ai). Only a
-        // scenario ever puts any in it, so a normal launch has none.
+        // The hostile fleet: AI boats with protect orders, scattered on
+        // coastal water, each guarding where she appears (src/ai). The same
+        // class the battle bench uses — there is only one kind of AI boat.
         aiBoats = new AiBoats();
         aiBoats.Init(terrainQuery, nav, combat);
         AddChild(aiBoats);
         SpawnScenarioBoats();
+        if (scenario is not { EnemyFleet: false })
+            aiBoats.Scatter(map, boat, worldRng, AiConfig.FleetCount, HostileTeam,
+                () => player.Honour += AiConfig.KillHonour);
         // N shows the nav mesh and, on top of it, the routes the AI boats
         // are actually steering along.
         routeOverlay = new RouteOverlay();
@@ -243,6 +238,13 @@ public partial class Main : Node3D
         AddChild(routeOverlay);
 
         input = new InputState();
+        // A run that will take a screenshot and quit is nobody's to drive, so
+        // it ignores the keyboard and mouse entirely: the window steals focus
+        // when it opens, and a keystroke meant for another application would
+        // otherwise land in the game and quietly change the result. --hold,
+        // --press and --fire still work — Main injects those directly.
+        // --keyboard gives the devices back if you want to drive one by hand.
+        input.IgnoreDevices = args.ContainsKey("screenshot") && !args.ContainsKey("keyboard");
         AddChild(input);
 
         // Camera rigs (projection + view angle), cycled with V; camera modes
@@ -392,6 +394,10 @@ public partial class Main : Node3D
         }
     }
 
+    // Sides. The player sails alone: everything else afloat is against him
+    // (src/ai/Targeting.cs — boats on different teams are enemies).
+    private const int HostileTeam = 1;
+
     // The standing assignment a scenario asked for. A guard's station is the
     // marker it spawns on (src/ai/ProtectOrder.cs).
     private static IAiOrder OrderFor(ScenarioBoat spec, float stationX, float stationY) => spec.Order switch
@@ -420,6 +426,10 @@ public partial class Main : Node3D
     // --seed=N             fixed world RNG: same cities and fleet every run
     // The window fills the screen unless --screenshot or --size is given.
     // --screenshot[=path]  save the viewport after --frames (default 90) and quit
+    //                      (and, unless --keyboard, deafens the run to real
+    //                       keyboard and mouse input so a stray keystroke
+    //                       cannot change it)
+    // --keyboard           let a --screenshot run hear the keyboard and mouse
     // --zoom=Z             starting zoom (px per world unit)
     // --rig=name           starting camera rig
     // --vectors            start with the velocity/force overlay on (F toggles)
@@ -796,10 +806,9 @@ public partial class Main : Node3D
         // scripted shot is seen by the combat camera below, like a click.)
         if (fireOffset is Vector2 fo && fireFrames.Contains(frameCount))
             combat.FireAtGround(boat.X + fo.X, boat.Y + fo.Y);
-        // Enemy logic pauses with the menu, out of range, or past LOD 1.
-        enemies.Update(menuOpen ? 0 : gameDt, boat, groundView);
-        // AI boats sail on the same game clock, and pause with the menu too.
-        aiBoats.Update(menuOpen ? 0 : gameDt, boat);
+        // AI boats sail on the same game clock, and pause with the menu too;
+        // wrecks come back outside the ground the camera can see.
+        aiBoats.Update(menuOpen ? 0 : gameDt, boat, groundView);
         // Now that everyone has moved, stop them sitting inside each other.
         // Last, so no boat's position is stale by a frame (src/boat/BoatCollisions.cs).
         afloat.Clear();
@@ -813,15 +822,12 @@ public partial class Main : Node3D
         // doesn't flap) flips it back. Free cam is never touched, and any
         // manual mode change cancels the auto-return.
         float combatRange = CombatConfig.MuzzleSpeed * CombatConfig.MuzzleSpeed / CombatConfig.Gravity;
-        if (active == followCamera && combat.PlayerFiredThisFrame
-            && (enemies.AnyWithin(boat.X, boat.Y, combatRange) || aiBoats.AnyWithin(boat.X, boat.Y, combatRange)))
+        if (active == followCamera && combat.PlayerFiredThisFrame && aiBoats.AnyWithin(boat.X, boat.Y, combatRange))
         {
             SwitchMode("edge");
             combatCam = true;
         }
-        else if (combatCam && active == edgeCamera
-                 && !enemies.AnyWithin(boat.X, boat.Y, combatRange * 1.2f)
-                 && !aiBoats.AnyWithin(boat.X, boat.Y, combatRange * 1.2f))
+        else if (combatCam && active == edgeCamera && !aiBoats.AnyWithin(boat.X, boat.Y, combatRange * 1.2f))
             SwitchMode("follow");
         if (active != edgeCamera) combatCam = false;
         // Esc closes the window on top first, then the market panel under it.

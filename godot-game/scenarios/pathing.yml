@@ -9,7 +9,7 @@ terrain: pathingTest.terrain
 
 cities: false        # no coastal cities, no economy, no docking
 currents: false      # nothing pushing a boat off its course but its own helm
-enemyFleet: false    # the legacy moored fleet stays out of the way
+enemyFleet: false    # the world's own hostile fleet stays out of the way
 
 player: p0                        # the player boat starts on this marker
 # One AI boat per marker: `tag[:state[>destination]]`. These two make the

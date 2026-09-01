@@ -302,22 +302,43 @@ sink her: AI boats have no `HitsToSink`, no wreck and no respawn, unlike the
 hostile fleet. They are a test bench, and one that vanished mid-passage would
 take the pathing test with it.
 
-Worth knowing when you try it by hand: a voyaging boat is doing 42 units a
+Worth knowing when you try it by hand: a boat under way is doing 42 units a
 second and a shell is most of a second in the air, so clicking *on* one lands
-the ball where she was. You have to lead her. The red hostile ships never
-move, which is why they feel so much easier to hit.
+the ball where she was. You have to lead her, exactly as she leads you.
 
-## The legacy fleet is not this
+## The world's fleet
 
-The hostile ships (`src/enemies/EnemyShips.cs`) are
-the *dumb* boats: moored hulls that never move or turn, whose entire AI is
-"fire the best loaded cannon that bears on the player". They are not
-`AiBoat`s, they have no `AiState`, and nothing in `src/ai/` touches them.
-That separation is deliberate and is the guarantee that the game plays
-exactly as it did while the new AI is under construction: **everything in
-this doc only happens inside a scenario**, and a normal launch spawns no AI
-boats at all (`AiBoats.Update` walks an empty list).
+The game stocks itself with `AiConfig.FleetCount` (20) of these, scattered on
+coastal water by `AiBoats.Scatter` — never in the deep ocean, never within
+`MinSpawnDistance` of where the player starts. Each one is given **protect**
+orders over the spot she appears on, so the world is a coast full of guards
+rather than a shooting gallery: sail near one and she comes for you.
 
-When the pathing states are proven, giving the hostile fleet one is a
-question worth asking — but it is a separate change, made deliberately, not
-a side effect of this work.
+There used to be a second, dumber kind — moored hulls that never moved and
+only fired. That class is gone. **There is one kind of AI boat now**, and the
+fleet in the world is the same code as the boats on the battle bench, which
+means the bench is a real test of the game rather than a thing beside it.
+
+A scenario turns the fleet off with `enemyFleet: false`, which every bench
+does, so the only boats afloat are the ones it lists ([scenarios.md](scenarios.md)).
+
+### Sinking
+
+Three rounds (`AiHitsToSink`) and a boat goes down: she stops being a target,
+her hull and shadow go, a splash rings where she was, and the kill pays
+`KillHonour` (50).
+
+**The player cannot be sunk at all.** `Boat.TakeHit` counts the hit and
+flashes the hull and does nothing else; only `AiBoat` overrides it. That
+asymmetry is deliberate for now, and it is also the assertion channel — a
+run's `taken N` is the AI's marksmanship, measured on a hull that survives to
+report it.
+
+In the **world**, a wreck comes back: the fleet never shrinks below its
+count, and a replacement appears outside the ground the camera can see, so
+nobody watches a hull pop into existence. In a **scenario** nothing respawns
+— a bench with a shifting cast would not be a bench.
+
+A note on the hit that matters: `Boat.TakeHit` is `virtual` precisely because
+`Projectiles` calls it through `ICombatTarget`. A `new` method on `AiBoat`
+would be silently skipped and the boat would never notice it had been hit.

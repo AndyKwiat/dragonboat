@@ -85,7 +85,7 @@ boat), so reloads and flights stay consistent with sailing speed.
 3. Its AI calls `combat.Fire(guns, target)` when it wants to shoot — the
    same best-cannon/arc/reload rules as the player. `Projectiles` already
    skips the firing vessel and will hit the player `Boat`.
-4. Keep it under `src/combat/` (or `src/enemies/` with its own doc) and out of
+4. Keep it under `src/combat/` (or its own folder with its own doc) and out of
    the trading code.
 
 `Projectiles.Shots/Hits` are the running tallies the HUD shows; the

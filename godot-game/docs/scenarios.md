@@ -34,7 +34,7 @@ A scenario is a file in `scenarios/`, named after the flag that loads it
 | `terrain` | *(required)* | the `.terrain` file to load instead of `game-config.yml`'s |
 | `cities` | `true` | generate the coastal cities? `false` = no economy, no labels, no docking |
 | `currents` | `true` | lay down current zones? `false` = nothing shoves a boat off its course |
-| `enemyFleet` | `true` | spawn the legacy moored fleet (`src/enemies`)? |
+| `enemyFleet` | `true` | scatter the world's own hostile fleet (`AiBoats.Scatter`)? A bench almost always wants `false`, so the only boats afloat are the ones it lists. |
 | `player` | *(none)* | marker tag to start the player boat on; without it the boat starts off a city's shore as usual, which needs `cities: true` |
 | `boats` | *(none)* | AI boats: `tag[:order[>destination]][*count][@team]` — e.g. `p1:voyage>p2, ai0:protect*3@1, p3`. A count greater than one puts a group on the marker, in line astern and spaced so hulls do not start touching; each guard stations where it actually is. |
 | `ai` | `idle` | the order boats in `boats` start with when they don't name one |

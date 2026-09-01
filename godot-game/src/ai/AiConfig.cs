@@ -37,11 +37,16 @@ public static class AiConfig
 
     // --- gunnery ------------------------------------------------------
     // How far ahead of a moving target to aim, as a fraction of the full
-    // ballistic lead. 0 aims where the target is right now, which is what
-    // the moored fleet does and is a guaranteed miss on anything moving;
-    // 1 is a perfect shot at something holding its course. The default is
-    // deliberately short of perfect so a manoeuvring player can spoil it.
+    // ballistic lead. 0 aims where the target is right now, a guaranteed
+    // miss on anything under way; 1 is a perfect shot at something holding
+    // its course. The default is deliberately short of perfect so a
+    // manoeuvring player can spoil it.
     [Tweak("AI", 0, 1.5f, 0.05f)] public static float AiLeadFraction = 0.85f;
+
+    // --- taking damage ------------------------------------------------
+    // Rounds an AI boat can absorb before she goes down. The player has no
+    // such number and cannot be sunk at all (src/boat/Boat.cs).
+    [Tweak("AI", 1, 20, 1)] public static int AiHitsToSink = 3;
 
     // --- keeping out of each other's way ------------------------------
     // How much water a boat wants to itself, and how far apart a squadron
@@ -56,6 +61,20 @@ public static class AiConfig
     // --- housekeeping -------------------------------------------------
     [Tweak("AI", 0.1f, 10, 0.1f)] public static float AiRepathSec = 1.5f;   // how often a blind chase re-plans
     [Tweak("AI", 0.05f, 2, 0.05f)] public static float AiLosRefreshSec = 0.25f;  // how often line of sight is retested
+
+    // The hostile fleet the world is stocked with, and what one is worth.
+    public const int FleetCount = 20;
+    public const int KillHonour = 50;
+    // Nobody is scattered closer to the player's start than this...
+    public const float MinSpawnDistance = 400f;
+    // ...nor out in the deep ocean: a spawn must have land within this many
+    // cells, sampled every LandSampleStep, which covers rivers and coastal
+    // water and excludes the open sea.
+    public const int MaxLandDistanceCells = 250;
+    public const int LandSampleStep = 8;
+    // A boat this far from the player, and with nothing to do, is not worth
+    // thinking about. She is already at her station; she can wait.
+    public const float ThinkRange = 700f;
 
     // How far apart boats spawned as a group are placed. Not a [Tweak]:
     // it is read once, when they are put on the water, and a slider that

@@ -2,12 +2,11 @@ using System;
 
 // Where to aim at something that is moving.
 //
-// Nothing else in the game leads a target: the moored fleet fires at where
-// the player IS, which is why it feels accurate against a boat lying still
-// and misses everything under way. At a hundred units a ball is in the air
-// for a second and a half and a rowed boat covers sixty-five units in that
-// time — five hull lengths. Unled, an AI boat would never hit anything, and
-// worse, a run could not tell "never fired" from "fired and missed".
+// A gun has to be aimed where the target WILL be. At a hundred units a ball
+// is in the air for a second and a half, and a rowed boat covers sixty-five
+// units in that time — five hull lengths. Firing at where she is now is a
+// guaranteed miss on anything under way, and worse, a run could not tell
+// "never fired" from "fired and missed".
 //
 // The flight time comes straight out of the same solution Projectiles uses
 // (SolveLaunch), rearranged so it needs no trigonometry: with both hulls on

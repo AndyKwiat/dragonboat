@@ -10,8 +10,9 @@ using System;
 // to hang per-state data and no reason to make it a class. It is what the
 // run's report line prints and what docs/ai.md documents.
 //
-// The game's own hostile fleet (src/enemies/EnemyShips.cs) is NOT an AI boat
-// and has no state: those hulls are moored and deliberately left alone.
+// Every hostile hull afloat is one of these, in the world as much as on a
+// test bench — the fleet the game stocks itself with is AI boats under
+// protect orders (src/ai/AiBoats.Scatter).
 public enum AiState
 {
     // Lies to: no helm orders, no thrust. Drifts only if the water moves her.

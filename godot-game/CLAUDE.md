@@ -23,6 +23,10 @@ rules change.
   `--scenario`; see
   `ParseArgs` in `src/Main.cs`). The run's final printed line (boat position/heading/speed,
   shots/hits) is useful for asserting movement without pixels.
+- A `--screenshot` run ignores the real keyboard and mouse (the window steals
+  focus when it opens, so a keystroke meant for another app would otherwise
+  land in the game and change the run). `--hold`/`--press`/`--fire` still
+  work; `--keyboard` gives the devices back.
 - The window is hidpi: screenshots come out at 2× the logical size. A plain
   `./run.sh` fills the screen; `--screenshot`/`--size` keep the small
   1280×800 window, so scripted runs stay predictable.

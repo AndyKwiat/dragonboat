@@ -46,6 +46,16 @@ public sealed class AiMemory
         FireDwellLeft = 0;
     }
 
+    // Wipe her back to a fresh hull at a new station.
+    public void Reset(float stationX, float stationY)
+    {
+        State = AiState.Idle;
+        SecondsInState = 0;
+        StationX = stationX; StationY = stationY;
+        ForgetTarget();
+        ClearRoute();
+    }
+
     public void ClearRoute()
     {
         Route = null;

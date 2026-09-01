@@ -188,10 +188,10 @@ it — a ram currently flashes both hulls (`Boat.Jolt`) and costs nothing else.
 That is where damage goes when you want it. A scripted run's last line counts
 them as `rams N`, so it can be asserted on.
 
-Two things it deliberately does not do: the legacy hostile fleet
-(`src/enemies`) is a different class and is not in the pass, so the player
-still sails through those; and a very fast hull could in principle pass
-through a thin one between frames, which no boat in the game is near doing.
+Every hull afloat is in the pass — the player and every AI boat, in the world
+as much as on a bench. One thing it deliberately does not do: a very fast hull
+could in principle pass through a thin one between frames, which no boat in
+the game is near doing.
 
 ## Hit box
 

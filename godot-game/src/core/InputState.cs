@@ -45,8 +45,18 @@ public partial class InputState : Node
         if (what == NotificationApplicationFocusOut) Keys.Clear();
     }
 
+    // A scripted run takes its input from the command line — --hold, --press,
+    // --fire — and Main injects those straight into the sets below. Real
+    // devices are a hazard there rather than a feature: the window takes
+    // focus when it opens, so a keystroke meant for another application
+    // lands in the game and silently changes the run. A stray space strikes
+    // the sails; a stray click fires a cannon. Set for every --screenshot
+    // run (see Main.ParseArgs), which is exactly the runs nobody is driving.
+    public bool IgnoreDevices;
+
     public override void _UnhandledInput(InputEvent e)
     {
+        if (IgnoreDevices) return;
         switch (e)
         {
             case InputEventKey key:

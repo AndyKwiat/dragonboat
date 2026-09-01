@@ -19,7 +19,7 @@ terrain: battleTest.terrain
 
 cities: false        # no coastal cities, no economy, no docking
 currents: false      # nothing pushes a hull but its own helm
-enemyFleet: false    # the legacy moored fleet stays out of the fight
+enemyFleet: false    # the world's own hostile fleet stays out of the fight
 
 player: player       # the player boat starts on this marker
 boats: ai0:protect*3 # three AI boats in line astern from the marker,
