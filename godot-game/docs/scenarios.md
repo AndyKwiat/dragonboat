@@ -11,6 +11,7 @@ small hand-painted map, no cities, no currents, no fleet, and the boats under
 test dropped on named spots.
 
 ```bash
+./sim.sh --scenario=pathing --frames=20000 --json   # headless, fast, repeatable
 ./pathingTest.sh                          # the pathing scenario, windowed
 ./battleTest.sh                           # the battle scenario, windowed
 ./pathingTest.sh --screenshot=x.png --frames=300 --mode=free --center=512,512 --zoom=1

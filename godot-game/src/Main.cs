@@ -75,8 +75,12 @@ public partial class Main : Node3D
 
     // Test hooks.
     private string? screenshotPath;
-    private int screenshotFrames = 90;
+    private int runFrames;          // 0 = run until closed; otherwise quit after this many
+    private bool reportJson;
+    private float fixedStep;        // >0 = every frame advances exactly this much game time
+    private RunReport report = null!;
     private int frameCount;
+    private float elapsed;          // game seconds simulated, for the report
     private readonly List<Key> heldKeys = new();
     private City? startCity;        // the city the boat starts off (--city with no name)
     private Vector2? fireOffset;                 // --fire=dx,dy: aim point relative to the boat
@@ -84,6 +88,10 @@ public partial class Main : Node3D
     private readonly List<(Key key, int frame)> pressFrames = new();   // --press=Key@frame
 
     private Vector2 View => GetViewport().GetVisibleRect().Size;
+
+    // No display: --headless. Nothing is drawn, so the frame is pure
+    // simulation and the render-only work can be skipped.
+    private static bool Headless => DisplayServer.GetName() == "headless";
 
     public override void _Ready()
     {
@@ -100,7 +108,12 @@ public partial class Main : Node3D
         // windowed, at the top-left corner. A scripted run keeps the small
         // project.godot window (or whatever --size asks for) so screenshots
         // stay a predictable size.
-        if (!args.ContainsKey("screenshot") && !args.ContainsKey("size"))
+        // ...and only when there is a screen to fill. Headless, the dummy
+        // display server answers this with junk, and feeding that to
+        // WindowSetSize leaves a degenerate viewport that poisons every
+        // camera and layout calculation downstream. Note this is exactly the
+        // branch a headless run takes, since it passes no --screenshot.
+        if (!Headless && !args.ContainsKey("screenshot") && !args.ContainsKey("size"))
         {
             var usable = DisplayServer.ScreenGetUsableRect();
             DisplayServer.WindowSetSize(usable.Size);
@@ -330,6 +343,8 @@ public partial class Main : Node3D
         tweakPanel.Init(topPx: 130);   // under the clock
         ui.AddChild(tweakPanel);
 
+        report = new RunReport(boat, aiBoats, combat, hulls, crewStamina, wind, time);
+
         GetTree().Root.SizeChanged += Resize;
         ApplyArgs(args);
     }
@@ -425,6 +440,11 @@ public partial class Main : Node3D
     //                      (a test map, no cities, AI boats — src/scenarios)
     // --seed=N             fixed world RNG: same cities and fleet every run
     // The window fills the screen unless --screenshot or --size is given.
+    // --frames=N           run N frames, print the report and quit (on its
+    //                      own; no picture needed). Implies a fixed timestep.
+    // --json               report as one JSON object rather than a line
+    // --step=S             seconds of game time per frame (default 1/120 for
+    //                      a --frames run, real time when playing by hand)
     // --screenshot[=path]  save the viewport after --frames (default 90) and quit
     //                      (and, unless --keyboard, deafens the run to real
     //                       keyboard and mouse input so a stray keystroke
@@ -614,8 +634,30 @@ public partial class Main : Node3D
         if (args.TryGetValue("screenshot", out var shot))
         {
             screenshotPath = shot == "true" ? "screenshot.png" : shot;
-            if (args.TryGetValue("frames", out var frames)) screenshotFrames = int.Parse(frames);
+            runFrames = 90;                       // the long-standing default
         }
+        if (args.TryGetValue("frames", out var frames)) runFrames = int.Parse(frames);
+        reportJson = args.ContainsKey("json");
+        // Any run with a frame budget is a scripted one, so it steps by a
+        // fixed amount rather than by however long the last frame took.
+        // 1/120 because every frame count in the docs was written against a
+        // 120 fps display; 1/60 would silently halve the game time of each.
+        if (runFrames > 0) fixedStep = 1f / 120f;
+        if (args.TryGetValue("step", out var step)) fixedStep = F(step);
+        if (fixedStep > 0)
+        {
+            // Simulate as fast as the machine allows: vsync would otherwise
+            // pin a scripted run to the monitor's refresh rate.
+            Engine.MaxFps = 0;
+            DisplayServer.WindowSetVsyncMode(DisplayServer.VSyncMode.Disabled);
+        }
+        // --hold and --press reach the boat only when something is driving
+        // it, and in free mode the camera has the keys instead. Worse, the
+        // clock stops too — so the run looks plausible and measures nothing.
+        if (args.ContainsKey("mode") && args["mode"] == "free"
+            && (args.ContainsKey("hold") || args.ContainsKey("press")))
+            GD.PushWarning("--mode=free parks the player boat and stops the clock: "
+                         + "--hold/--press will pan the camera, not sail. Drop --mode=free to drive.");
     }
 
     private void SetRig(string name)
@@ -677,7 +719,14 @@ public partial class Main : Node3D
     public override void _Process(double delta)
     {
         if (fatal) return;
-        float dt = Math.Min((float)delta, 0.1f);
+        // A scripted run advances by a fixed amount every frame, so frame N is the
+        // same moment in the world every time it is run. Left to real time,
+        // the same command gives a different answer on every machine and on
+        // every run — measured on this one, four identical runs put a boat
+        // 869, 872, 877 and 885 units from its destination, and the drift
+        // compounds until a long run finishes in one attempt and not another.
+        float dt = fixedStep > 0 ? fixedStep : Math.Min((float)delta, 0.1f);
+        elapsed += dt;
         var view = View;
         foreach (var k in heldKeys) input.Keys.Add(k);
         // --press: one-shot key presses on given frames (--hold only holds a
@@ -780,7 +829,10 @@ public partial class Main : Node3D
             minY = Math.Min(minY, g.Y); maxY = Math.Max(maxY, g.Y);
         }
         var groundView = new Rect2(minX, minY, maxX - minX, maxY - minY);
-        chunks.Update(groundView, state.CenterX, state.CenterY);
+        // Streaming raised terrain builds real meshes for a renderer that,
+        // headless, will never draw them — the biggest per-frame cost in the
+        // game, spent on nothing. The rect itself is still needed below.
+        if (!Headless) chunks.Update(groundView, state.CenterX, state.CenterY);
 
         // City labels: hit-testing is ours, recomputed after the camera settled.
         var hoveredCity = cityLabels.Update(state, view, input.CursorPx, rig);
@@ -907,17 +959,22 @@ public partial class Main : Node3D
         tweakPanel.Update(view);
 
         frameCount++;
-        if (screenshotPath != null && frameCount >= screenshotFrames)
+        // The frame budget ends the run whether or not a picture was wanted.
+        // These used to be one block, so the only way to learn what happened
+        // was to render and save a PNG — and a run without --screenshot never
+        // exited at all.
+        if (runFrames > 0 && frameCount >= runFrames)
         {
-            var img = GetViewport().GetTexture().GetImage();
-            var err = img.SavePng(screenshotPath);
-            GD.Print($"screenshot {(err == Error.Ok ? "saved to" : "FAILED " + err + " for")} {screenshotPath} at frame {frameCount}; " +
-                     $"boat at ({boat.X:F1}, {boat.Y:F1}) heading {Mathf.RadToDeg(boat.Heading):F0}° speed {boat.Speed:F1}; " +
-                     $"sails {(boat.SailsUp ? "up" : "down")} stamina {crewStamina.Level:F2} " +
-                     $"wind {wind.Force:F0}@{wind.BearingDeg:F0}°; " +
-                     $"shots {combat.PlayerGuns?.Shots ?? 0} hits {combat.PlayerGuns?.Hits ?? 0} taken {boat.HitsTaken} " +
-                     $"rams {hulls.Rams}" +
-                     (aiBoats.Count > 0 ? "; " + aiBoats.Report() : ""));
+            Error? saved = null;
+            if (screenshotPath != null)
+            {
+                if (Headless)
+                    GD.PushWarning($"--screenshot {screenshotPath}: nothing is rendered headless, so no image was saved");
+                else saved = GetViewport().GetTexture().GetImage().SavePng(screenshotPath);
+            }
+            GD.Print(reportJson
+                ? report.Json(frameCount, elapsed)
+                : report.Line(frameCount, saved == null ? null : screenshotPath, saved));
             screenshotPath = null;
             GetTree().Quit();
         }

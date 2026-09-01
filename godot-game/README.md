@@ -31,7 +31,29 @@ the rules.
 ./buildAndRun.sh    # both
 ./pathingTest.sh    # the pathing test scenario instead of the game (docs/scenarios.md)
 ./battleTest.sh     # the battle test scenario (player + one AI boat on a lake)
+./sim.sh            # no window, no rendering: run N frames, print the report, quit
 ```
+
+`./sim.sh` is the fast way to check something. It needs `--frames`, takes the
+same flags with no `--`, and is the same simulation — just without a picture:
+
+```bash
+./sim.sh --scenario=battle --frames=2000 --json
+./sim.sh --seed=7 --frames=600                     # the real world, as a line
+```
+
+It is **25x faster and repeatable to the character**: 1200 frames costs 0.5 s
+against 11 s windowed, 6000 frames 0.7 s against a minute, and five identical
+runs give five identical answers. Two things buy that — nothing is drawn, and
+a run with `--frames` steps by a fixed amount of game time rather than by
+however long the last frame took. Frame counts therefore mean the same thing
+on every machine, which they did not before: the same command used to leave a
+boat anywhere in a 16-unit spread, and the drift compounded until a long
+voyage finished in one run and not the next.
+
+`--json` is what to assert on. The line is for reading; the JSON has every
+boat (the line truncates at four) and every number in its own field, so
+nothing has to be picked out of a sentence.
 
 `./run.sh` with no window flags opens the game windowed at the full size of
 the screen, in the top-left corner. Passing `--screenshot` or `--size` keeps
@@ -104,12 +126,15 @@ $G --path . -- --screenshot=screenshots/monk.png --seed=7 --monk=5 --deliver    
 
 | flag | effect |
 |---|---|
+| `--frames=N` | run N frames, print the report and quit — on its own, no picture needed. Turns on a fixed timestep, so the run is reproducible. |
+| `--json` | report as one JSON object instead of a line: every boat, every number its own field |
+| `--step=S` | seconds of game time per frame; default 1/120 for a `--frames` run, real time when playing by hand |
 | `--screenshot[=path]` | save the viewport after `--frames` (default 90) frames, then quit — and **deafen the run to the real keyboard and mouse**, since the window steals focus when it opens and a keystroke meant for another application would otherwise land in the game and silently change the result. `--hold`, `--press` and `--fire` are injected directly and still work. |
 | `--keyboard` | give a `--screenshot` run its keyboard and mouse back, to drive one by hand |
 | `--frames=N` | frames to render before the screenshot (runs are vsynced, typically 120 fps — a 3 s cannonball flight is ~360 frames) |
 | `--zoom=Z` | starting zoom, screen px per world unit |
 | `--rig=isometric\|perspective` | starting camera rig |
-| `--mode=follow\|edge\|free` | starting camera mode |
+| `--mode=follow\|edge\|free` | starting camera mode. **Free mode parks the player boat and stops the clock** — the camera has WASD instead — so `--hold`/`--press` will pan the view rather than sail. The run warns if you combine them. |
 | `--center=x,y` | focus point in world units (free mode) |
 | `--city[=Name]` | open the market of the city the boat starts off, or a named one (names are dealt fresh each run) |
 | `--seed=N` | fixed world RNG — the same cities, sizes, names and enemy fleet every run |

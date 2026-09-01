@@ -13,6 +13,11 @@ rules change.
   game (`scenarios/*.yml`, `docs/scenarios.md`): a small test map, no cities,
   boats on the map's markers. They take the same flags as a scripted run,
   without the `--`.
+- `./sim.sh --frames=N [--json]` is the fast way to check anything that does
+  not need a picture: no window, no rendering, a fixed timestep, and the same
+  answer every run. 1200 frames costs 0.5 s against 11 s windowed. Prefer it,
+  and prefer `--json` for assertions — the human line truncates at four boats
+  and has caught nobody's eye when a boat quietly never moved.
 - `dotnet test tests` covers the Godot-free core; everything else is
   verified with scripted runs + screenshots:
   `./run.sh -- --screenshot=x.png --frames=120 --size=2560x1600` plus the

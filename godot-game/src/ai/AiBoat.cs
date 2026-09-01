@@ -87,13 +87,23 @@ public partial class AiBoat : Boat
         var situation = Snapshot(dt, target, consortRange);
         var goal = AiPilot.Decide(situation, Memory, Order);
         // Somewhere to BE, rather than a bearing to hold? Then check the
-        // water is not already spoken for. A boat that is stopped and
-        // turning is only pointing itself, and must not be nudged off the
-        // bearing it has just worked for.
-        if (goal.KeepWay)
+        // water is not already spoken for. Two conditions, and both matter:
+        //
+        // KeepWay, because a boat that is stopped and turning is only
+        // pointing itself and must not be nudged off the bearing she has
+        // just worked for.
+        //
+        // And a TARGET, because that is the thing worth circling. Spacing
+        // exists so boats converging on one enemy spread around her; with
+        // nobody to circle there is no ring, and the fallback — stop short of
+        // whatever is in the way — is a deadlock waiting to happen. Two boats
+        // passing head-on in a river each stopped short of the other, thirty
+        // metres apart, for ever: neither could reach the waypoint it was
+        // braking for, so neither ever advanced a leg. A passage under way is
+        // already a plan; nudging its waypoints is how you break it.
+        if (goal.KeepWay && target is AiContact pivot)
         {
-            var pivot = target is AiContact p ? ((float, float)?)(p.X, p.Y) : null;
-            var (rx, ry) = Traffic.MakeRoom(goal.X, goal.Y, AiConfig.AiSpacing, taken, pivot);
+            var (rx, ry) = Traffic.MakeRoom(goal.X, goal.Y, AiConfig.AiSpacing, taken, (pivot.X, pivot.Y));
             goal = goal with { X = rx, Y = ry };
         }
         // Claim only water she is actually going to. A boat that is stopped

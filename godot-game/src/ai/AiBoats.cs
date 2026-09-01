@@ -145,14 +145,17 @@ public partial class AiBoats : Node3D
         for (int i = 0; i < boats.Count; i++)
         {
             if (boats[i].Sunk) continue;
-            // A boat far from the player with nothing to do is already where
-            // she wants to be; she can wait. One distance test buys back the
-            // cost of a whole fleet thinking on an 8192-cell map. A boat that
-            // is NOT settled keeps thinking wherever she is, or a chase
-            // abandoned at long range would freeze her mid-water.
+            // A boat lying at her station, far from the player, is already
+            // where she wants to be; she can wait. One distance test buys
+            // back the cost of a whole fleet thinking on an 8192-cell map.
+            //
+            // ONLY a boat at her station. Idle used to count as settled, and
+            // that was a bug: every boat starts Idle, so a voyage spawned
+            // further than ThinkRange from the player never took her first
+            // think and never sailed at all. A boat has to have decided she
+            // has nothing to do before we agree with her.
             float pdx = boats[i].X - player.X, pdy = boats[i].Y - player.Y;
-            bool settled = boats[i].State is AiState.Idle or AiState.Holding;
-            if (settled && pdx * pdx + pdy * pdy > gateSq) continue;
+            if (boats[i].State == AiState.Holding && pdx * pdx + pdy * pdy > gateSq) continue;
             taken.Clear();
             for (int j = 0; j < boats.Count; j++)
             {
