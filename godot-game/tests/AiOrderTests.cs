@@ -11,9 +11,10 @@ public class AiOrderTests
     private const float Deg = MathF.PI / 180f;
 
     private static AiSituation Sees(float x, float y, float heading, AiContact? target,
-        float range = 0, float bearingDeg = 0, float speed = 0) =>
+        float range = 0, float bearingDeg = 0, float speed = 0, float consort = float.MaxValue) =>
         new(Dt: 0.1f, Team: 0, X: x, Y: y, Heading: heading, Speed: speed,
-            Target: target, Range: range, Bearing: bearingDeg * Deg, LineOfSight: true, LoadedGuns: 7);
+            Target: target, Range: range, Bearing: bearingDeg * Deg, LineOfSight: true, LoadedGuns: 7,
+            ConsortRange: consort);
 
     private static AiContact At(float x, float y) => new(1, 1, x, y, 0, 0, 0);
 
@@ -135,6 +136,44 @@ public class AiOrderTests
             AiPilot.Decide(Sees(0, 0, 0, At(110, 0), range: 110, bearingDeg: b), m, order);
             Assert.Equal(AiState.Engaging, m.State);
         }
+    }
+
+    // Being in range is not enough: a boat that stops the moment she is in
+    // range never reaches the berth Traffic picked for her, so two consorts
+    // end up on the same bearing shooting through each other. She keeps
+    // working until she has room.
+    [Fact]
+    public void SheKeepsWorkingForRoomEvenWhenSheIsAlreadyInRange()
+    {
+        var (order, m) = Guard();
+        var crowded = Sees(0, 0, 0, At(0, 110), range: 110, bearingDeg: 90,
+            consort: AiConfig.AiSpacing * 0.5f);
+        AiPilot.Decide(crowded, m, order);
+        Assert.Equal(AiState.Pursuing, m.State);
+
+        // Given room at the same range, she settles and fights.
+        var clear = Sees(0, 0, 0, At(0, 110), range: 110, bearingDeg: 90,
+            consort: AiConfig.AiSpacing * 2);
+        AiPilot.Decide(clear, m, order);
+        Assert.Equal(AiState.Engaging, m.State);
+    }
+
+    // ...but not so eagerly that she shuffles for ever: once settled, a
+    // consort has to come properly close before she gives up her berth.
+    [Fact]
+    public void OnceSettledSheDoesNotShuffleAtTheFirstNudge()
+    {
+        var (order, m) = Guard();
+        AiPilot.Decide(Sees(0, 0, 0, At(0, 110), range: 110, bearingDeg: 90, consort: 1000), m, order);
+        Assert.Equal(AiState.Engaging, m.State);
+        // Just inside the spacing: she stays put.
+        AiPilot.Decide(Sees(0, 0, 0, At(0, 110), range: 110, bearingDeg: 90,
+            consort: AiConfig.AiSpacing * 0.9f), m, order);
+        Assert.Equal(AiState.Engaging, m.State);
+        // Properly crowded: she moves.
+        AiPilot.Decide(Sees(0, 0, 0, At(0, 110), range: 110, bearingDeg: 90,
+            consort: AiConfig.AiSpacing * 0.5f), m, order);
+        Assert.Equal(AiState.Pursuing, m.State);
     }
 
     [Fact]

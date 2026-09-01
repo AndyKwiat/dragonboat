@@ -89,8 +89,22 @@ public partial class AiBoats : Node3D
                 taken.Add(new Berth(boats[j].X, boats[j].Y));
                 if (j < i) taken.Add(boats[j].Claim);
             }
-            boats[i].Think(dt, contacts, taken);
+            boats[i].Think(dt, contacts, taken, NearestConsort(i));
         }
+    }
+
+    // How far off the nearest boat on the same side is — what a tactic uses
+    // to decide whether it has room to stop and fight.
+    private float NearestConsort(int self)
+    {
+        float best = float.MaxValue;
+        for (int j = 0; j < boats.Count; j++)
+        {
+            if (j == self || boats[j].Team != boats[self].Team) continue;
+            float dx = boats[j].X - boats[self].X, dy = boats[j].Y - boats[self].Y;
+            best = Mathf.Min(best, Mathf.Sqrt(dx * dx + dy * dy));
+        }
+        return best;
     }
 
     // Any AI boat within dist of (x, y)? Drives the combat camera, which

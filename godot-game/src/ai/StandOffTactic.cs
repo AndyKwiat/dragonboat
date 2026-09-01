@@ -42,12 +42,21 @@ public sealed class StandOffTactic : IAiTactic
             return new AiGoal(s.X - ux * back, s.Y - uy * back, KeepWay: true, OpenFire: false);
         }
 
-        // Too far to fight: make for a point short of her, at fighting range.
+        // Too far to fight, or too close to a consort to be any use where she
+        // is: keep working for a berth. The crowding half matters as much as
+        // the range — without it a boat stops the instant she is in range,
+        // wherever that happens to be, and never reaches the spread berth
+        // Traffic picked for her. Two of them then sit on top of each other
+        // at the same bearing, in each other's line of fire, and widening
+        // the spacing makes it WORSE because the berth she abandons is
+        // further away. A little hysteresis so she does not shuffle for ever.
         bool engaged = m.State == AiState.Engaging;
+        bool crowded = s.ConsortRange < AiConfig.AiSpacing * (engaged ? 0.8f : 1f);
         float far = AiConfig.AiFightFar;
-        if (s.Range > far || (!engaged && s.Range > AiConfig.AiFightRange * 1.05f))
+        if (s.Range > far || crowded || (!engaged && s.Range > AiConfig.AiFightRange * 1.05f))
         {
             m.Enter(AiState.Pursuing);
+            // Still shooting while she works for room, if she can reach.
             return new AiGoal(target.X - ux * AiConfig.AiFightRange, target.Y - uy * AiConfig.AiFightRange,
                 KeepWay: true, OpenFire: s.Range <= far);
         }

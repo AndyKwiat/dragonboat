@@ -44,10 +44,14 @@ public static class AiConfig
     [Tweak("AI", 0, 1.5f, 0.05f)] public static float AiLeadFraction = 0.85f;
 
     // --- keeping out of each other's way ------------------------------
-    // How much water a boat wants to itself. Two standard hulls reach 8
-    // units from their centres, so anything under 16 is a shove; this leaves
-    // room to lie alongside without touching (src/ai/Traffic.cs).
-    [Tweak("AI", 0, 120, 2)] public static float AiSpacing = 24f;
+    // How much water a boat wants to itself, and how far apart a squadron
+    // ends up sitting round a shared target. Two standard hulls reach 8
+    // units from their centres, so anything under 16 is a shove — but the
+    // binding constraint is the line of fire, not the hulls: consorts a
+    // third of a boat-length apart on the same bearing shoot through each
+    // other. Measured on the battle bench, 36 keeps three boats 44 units
+    // apart at the closest and nothing within 9 units of anyone's line.
+    [Tweak("AI", 0, 120, 2)] public static float AiSpacing = 36f;
 
     // --- housekeeping -------------------------------------------------
     [Tweak("AI", 0.1f, 10, 0.1f)] public static float AiRepathSec = 1.5f;   // how often a blind chase re-plans

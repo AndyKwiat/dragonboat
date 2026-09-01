@@ -114,9 +114,23 @@ queue. With nothing to circle, it simply stops short of the obstruction.
 
 It applies only to a goal that is a *place*. A boat that is stopped and
 turning is pointing itself, not going anywhere, and must not be nudged off
-the bearing it has just worked for. `AiSpacing` (24) is how much water a boat
-wants to itself — two standard hulls reach 8 units each, so anything under 16
-would be a shove.
+the bearing it has just worked for — and for the same reason she claims her
+own position then, not the bearing hint sixty units off her bow, or her
+consorts would give way to a phantom and park alongside her instead.
+
+**Being in range is not enough to stop.** A boat also needs *room*: without
+that, she settles the instant the range is right, wherever she happens to
+be, and never reaches the berth Traffic picked for her. Two consorts then sit
+on the same bearing shooting through each other — and widening the spacing
+makes it *worse*, because the berth she abandons is further away. So the
+tactic keeps working until `ConsortRange` clears `AiSpacing`, with a little
+hysteresis so a settled boat does not shuffle at the first nudge.
+
+`AiSpacing` (36) is how much water a boat wants to itself. The binding
+constraint is not the hulls — two of them reach only 8 units each — but the
+**line of fire**: consorts a third of a boat-length apart on one bearing
+shoot through each other. Measured on the battle bench, 36 holds three boats
+44 units apart at the closest, with nothing within 9 units of anyone's line.
 
 ## Sides
 

@@ -18,7 +18,12 @@ public readonly record struct AiSituation(
     float Range,          // to the target; 0 with no target
     float Bearing,        // to the target, signed radians, + = starboard (Helmsman's convention)
     bool LineOfSight,     // clear water between us and it
-    int LoadedGuns)
+    int LoadedGuns,
+    // How far off the nearest boat on our own side is. A tactic needs it to
+    // know whether it has room to stop and fight, or should keep working for
+    // a berth of its own first (src/ai/Traffic.cs).
+    // Defaults to "nobody near", so a boat sailing alone needs no thought.
+    float ConsortRange = float.MaxValue)
 {
     public bool HasTarget => Target.HasValue;
 

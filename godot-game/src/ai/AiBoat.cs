@@ -63,7 +63,7 @@ public partial class AiBoat : Boat
 
     // One frame: reload, look, decide, sail, shoot — in that order, and each
     // for a reason.
-    public void Think(float dt, IReadOnlyList<AiContact> contacts, IReadOnlyList<Berth> taken)
+    public void Think(float dt, IReadOnlyList<AiContact> contacts, IReadOnlyList<Berth> taken, float consortRange)
     {
         // Reload FIRST and with the whole frame's dt. Nothing else ticks a
         // non-player battery — CombatSystem.Update only ticks the player's —
@@ -75,9 +75,9 @@ public partial class AiBoat : Boat
         // Decide ONCE, before moving. The sub-step count varies with the
         // frame time, so deciding inside the loop would make the boat's
         // behaviour depend on the frame rate.
-        var bare = Snapshot(dt, null);
+        var bare = Snapshot(dt, null, consortRange);
         var target = Targeting.Pick(Team, X, Y, contacts, Order, Memory, bare);
-        var situation = Snapshot(dt, target);
+        var situation = Snapshot(dt, target, consortRange);
         var goal = AiPilot.Decide(situation, Memory, Order);
         // Somewhere to BE, rather than a bearing to hold? Then check the
         // water is not already spoken for. A boat that is stopped and
@@ -89,7 +89,11 @@ public partial class AiBoat : Boat
             var (rx, ry) = Traffic.MakeRoom(goal.X, goal.Y, AiConfig.AiSpacing, taken, pivot);
             goal = goal with { X = rx, Y = ry };
         }
-        Claim = new Berth(goal.X, goal.Y);
+        // Claim only water she is actually going to. A boat that is stopped
+        // and turning has a goal that is a bearing hint sixty units off her
+        // bow, not a destination — claiming THAT would send her consorts
+        // round a phantom and leave them free to park alongside her.
+        Claim = goal.KeepWay ? new Berth(goal.X, goal.Y) : new Berth(X, Y);
         goal = ThroughWater(goal, situation);
         var helm = AiSteering.For(goal, situation);
 
@@ -108,13 +112,13 @@ public partial class AiBoat : Boat
         if (goal.OpenFire && target is AiContact enemy) OpenFire(enemy);
     }
 
-    private AiSituation Snapshot(float dt, AiContact? target)
+    private AiSituation Snapshot(float dt, AiContact? target, float consortRange)
     {
         Aimed = target;
         if (target is not AiContact t)
         {
             Range = 0; BearingDeg = 0; HadLineOfSight = false;
-            return new AiSituation(dt, Team, X, Y, Heading, Speed, null, 0, 0, false, LoadedGuns());
+            return new AiSituation(dt, Team, X, Y, Heading, Speed, null, 0, 0, false, LoadedGuns(), consortRange);
         }
         float dx = t.X - X, dy = t.Y - Y;
         Range = Mathf.Sqrt(dx * dx + dy * dy);
@@ -127,7 +131,7 @@ public partial class AiBoat : Boat
             HadLineOfSight = nav == null || NavPath.Visible(nav, X, Y, t.X, t.Y);
             Memory.SecondsSinceLos = 0;
         }
-        return new AiSituation(dt, Team, X, Y, Heading, Speed, t, Range, bearing, HadLineOfSight, LoadedGuns());
+        return new AiSituation(dt, Team, X, Y, Heading, Speed, t, Range, bearing, HadLineOfSight, LoadedGuns(), consortRange);
     }
 
     private int LoadedGuns()
