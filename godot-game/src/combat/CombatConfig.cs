@@ -10,12 +10,39 @@ public static class CombatConfig
     // waterline, bearing in degrees (0 = dead ahead, +90 = starboard).
     // CannonBattery scales these by the vessel's length / 12.
     public record Mount(float Forward, float Right, float Height, float BearingDeg);
-    public static readonly Mount[] PlayerMounts =
+    // Where the guns sit on the nominal hull: chasers at the ends, the
+    // broadside spread evenly along BroadsideAft..BroadsideFore at
+    // BroadsideRight either side.
+    public const float ChaserForward = 6.5f, ChaserSpread = 1f, MountHeight = 2.4f;
+    public const float BroadsideAft = -3f, BroadsideFore = 3f, BroadsideRight = 2f;
+
+    // A vessel's battery, laid out from the gun counts her class carries
+    // (boats.yml): bow chasers, stern chasers and so many guns a side. The
+    // medium boat's 1 + 3 + 3 comes out exactly where it always was, and a
+    // boat added to the file is armed without anything here changing.
+    public static Mount[] MountsFor(BoatClass cls)
     {
-        new(6.5f, 0, 2.4f, 0),                                   // bow chaser
-        new(-3, -2, 2.4f, -90), new(0, -2, 2.4f, -90), new(3, -2, 2.4f, -90),   // port broadside
-        new(-3,  2, 2.4f,  90), new(0,  2, 2.4f,  90), new(3,  2, 2.4f,  90),   // starboard broadside
-    };
+        var mounts = new System.Collections.Generic.List<Mount>();
+        // Chasers: one on the centreline, more ranged abreast of it.
+        void Chasers(int n, float forward, float bearing)
+        {
+            for (int i = 0; i < n; i++)
+            {
+                float right = n == 1 ? 0 : Mathf.Lerp(-ChaserSpread, ChaserSpread, i / (float)(n - 1));
+                mounts.Add(new Mount(forward, right, MountHeight, bearing));
+            }
+        }
+        Chasers(cls.GunsBow, ChaserForward, 0);
+        Chasers(cls.GunsStern, -ChaserForward, 180);
+        for (int side = -1; side <= 1; side += 2)
+            for (int i = 0; i < cls.GunsPerSide; i++)
+            {
+                float fwd = cls.GunsPerSide == 1 ? 0
+                          : Mathf.Lerp(BroadsideAft, BroadsideFore, i / (float)(cls.GunsPerSide - 1));
+                mounts.Add(new Mount(fwd, side * BroadsideRight, MountHeight, side * 90));
+            }
+        return mounts.ToArray();
+    }
     public static readonly Vector3 CannonSize = new(2f, 0.8f, 0.8f);   // length along its own forward (+X)
     public static readonly Color CannonColor = new Color(0x222222FF);
     public static readonly Color CannonReloadingColor = new Color(0x8a6a4aFF);

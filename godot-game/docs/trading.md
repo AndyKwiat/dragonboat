@@ -1,4 +1,4 @@
-# Trading: cities, story events, VIPs, crew, upkeep, time
+# Trading: cities, story events, VIPs, upkeep, time
 
 Files: `src/trading/*` (rules, no Godot types — `Supply.cs` and
 `Production.cs` are the economy proper and are unit-tested),
@@ -6,13 +6,15 @@ Files: `src/trading/*` (rules, no Godot types — `Supply.cs` and
 `src/core/City.cs`, `src/core/GameTime.cs` (the clock),
 `src/ui/CityPopup.cs` (the market panel), `src/ui/Clock.cs`
 (purse/cargo/time readout), the
-`// Market`, `// Story events`, `// Player`, `// Game time`, `// Crew`,
+`// Market`, `// Story events`, `// Player`, `// Game time`,
 `// Upkeep`, `// City popup` blocks of `src/core/Config.cs`. This repo is
 the source of truth for these rules (it began as a port of a three.js
 prototype, since deleted). Keep the `src/trading/` files free of Godot
 types.
-Combat never touches any of this; the only shared objects are the `Boat`
-(its `MaxSpeedScale` comes from the crew) and the clock. Banking
+Combat never touches any of this; the only shared objects are the `Boat` and
+the clock. The hold and the crew are the boat's own, out of `boats.yml`
+([harbour.md](harbour.md)) — buying a boat in a harbour is the only thing
+that changes either. Banking
 (`src/banking/`, [banking.md](banking.md)) is its own system too — it only
 moves the player's money and honour — but its bank row and button sit in
 the city popup, and medium/large cities are the ones that have a bank.
@@ -145,18 +147,18 @@ a startup error, not a playable run.
   that market since it began.
 - **Player** (`Player.cs`): purse (never below 0), honour (starts 0, may
   go negative; shown beside money in the clock overlay and the popup's
-  purse line), crew count, inventory. Honour is also what a city's bank
+  purse line), the boat she sails (`Player.Boat`, which is where
+  `CrewCount` and `CargoCapacity()` come from), inventory. Honour is also what a city's bank
   lends against, what repaying one in time earns, and what a late loan
   costs ([banking.md](banking.md)).
   `Buy` clamps to hold space AND the purse, `Sell`/`Consume` to what's
-  held; `ChangeCrew` goes through `Crew.ChangeAllowed`. It also carries the
-  hold's book value and implements `ITrader`, which is all a market deal
+  held. It also carries the hold's book value and implements `ITrader`, which is all a market deal
   needs of it — the trading arithmetic itself is
   [the economy's](economy.md).
-- **Crew** (`Crew.cs`): head count drives top speed (`SpeedAtMin` →
-  `SpeedAtMax` linearly up to `SpeedFullCrew` hands), hold space
-  (`CargoPerCrew`), and you can't put hands ashore if the hold would then
-  overflow. Hiring happens in large cities only (popup).
+- **Crew**: not hired and not a choice — the head count is the boat's, and
+  so is the hold ([harbour.md](harbour.md)). A bigger boat therefore eats
+  more rice and costs more in wages, which is what makes the large one worth
+  thinking about rather than simply better.
 - **Upkeep** (`Upkeep.cs`): `Due` counts periods of game time elapsed since
   the last check (catching up over big jumps). `Rations`: one unit of
   `RationsProductId` (rice) per crew member per `RationsHoursPerUnit`;
@@ -178,7 +180,8 @@ a startup error, not a playable run.
 
 Click a city's name (`ui/CityLabels.cs` does the hit-testing) to open
 `CityPopup`: facts (including what the city **makes** and its market size),
-rumours, the hiring hall (large cities), the bank row (medium and large
+rumours, the harbour (medium and large cities — the boats for sale,
+[harbour.md](harbour.md)), the bank row (medium and large
 cities — its button opens the bank window, [banking.md](banking.md)), then
 one row per stocked product with a trade slider. What the slider does, what
 each row shows and every price in it belong to

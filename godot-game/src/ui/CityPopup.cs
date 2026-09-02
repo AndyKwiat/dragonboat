@@ -16,12 +16,16 @@ public partial class CityPopup : PanelContainer
     private Monasteries religion = null!;
     // Set by Main: opens the bank window over this panel (medium/large
     // cities), or the monastery's (the small cities that have a house).
+    // Struck in a harbour: the player has bought this boat. Main takes the
+    // money, swaps the hull and re-arms her (src/harbour/Harbour.cs).
+    public Action<BoatClass>? BuyBoat;
     public Action<City>? OpenBank;
     public Action<City>? OpenMonastery;
     private ScrollContainer scroll = null!;
     private VBoxContainer content = null!;
-    private Label title = null!, facts = null!, crewCount = null!, purse = null!;
-    private Control crewHeading = null!, crewSection = null!;
+    private Label title = null!, facts = null!, purse = null!;
+    private Control harbourHeading = null!;
+    private VBoxContainer harbourSection = null!;
     private Control bankHeading = null!, bankSection = null!;
     private Label bankStatus = null!;
     private Button bankButton = null!;
@@ -34,7 +38,6 @@ public partial class CityPopup : PanelContainer
     private VBoxContainer vipSection = null!;
     private string vipDeliveredNote = "";
     private VBoxContainer market = null!;
-    private Button addCrew = null!, removeCrew = null!;
     private City? current;
     private readonly List<Action> refreshers = new();
     private int layoutFrames;   // frames left to re-measure the content height
@@ -77,6 +80,16 @@ public partial class CityPopup : PanelContainer
         facts = Fonts.MakeLabel("", Fonts.Mono, px - 2, new Color("#bbbbbb"));
         content.AddChild(facts);
 
+        // Harbour: the boats this city has for sale, medium and large ports
+        // only. First in the panel — a new hull is the biggest thing money
+        // buys here. Rebuilt per open, because the offers move with the
+        // purse and the hold (BuildHarbour).
+        harbourHeading = Heading("Harbour");
+        content.AddChild(harbourHeading);
+        harbourSection = new VBoxContainer();
+        harbourSection.AddThemeConstantOverride("separation", 4);
+        content.AddChild(harbourSection);
+
         // VIP deliveries: the just-delivered reward note and/or the city's
         // live offer with its Accept button, rebuilt per open (BuildVip).
         vipSection = new VBoxContainer();
@@ -90,23 +103,6 @@ public partial class CityPopup : PanelContainer
         rumours = new VBoxContainer();
         rumours.AddThemeConstantOverride("separation", 4);
         content.AddChild(rumours);
-
-        // Crew: hiring hall, large cities only (hidden everywhere else).
-        crewHeading = Heading("Crew");
-        content.AddChild(crewHeading);
-        crewSection = new HBoxContainer();
-        ((HBoxContainer)crewSection).AddThemeConstantOverride("separation", 14);
-        crewCount = Fonts.MakeLabel("", Fonts.Mono, px, new Color("#dddddd"));
-        crewCount.SizeFlagsHorizontal = SizeFlags.ExpandFill;
-        var crewActions = new HBoxContainer();
-        crewActions.AddThemeConstantOverride("separation", 6);
-        addCrew = MakeButton("Add", () => player.ChangeCrew(1));
-        removeCrew = MakeButton("Remove", () => player.ChangeCrew(-1));
-        crewActions.AddChild(addCrew);
-        crewActions.AddChild(removeCrew);
-        crewSection.AddChild(crewCount);
-        crewSection.AddChild(crewActions);
-        content.AddChild(crewSection);
 
         // Bank: medium and large cities only (hidden everywhere else). The
         // window itself is a second popup over this one — see ui/BankPopup.cs.
@@ -162,16 +158,6 @@ public partial class CityPopup : PanelContainer
     public void Refresh()
     {
         foreach (var r in refreshers) r();
-        var c = Config.Crew;
-        crewCount.Text =
-            $"{player.CrewCount} aboard (max {c.Max})   " +
-            $"speed x{Crew.SpeedMultiplier(player.CrewCount, c):F2}   " +
-            $"cargo {player.TotalUnits()}/{player.CargoCapacity()} ({c.CargoPerCrew}/hand)";
-        // Dismissing a hand is refused when their share of the hold is in use.
-        SetEnabled(addCrew, player.CanChangeCrew(1));
-        SetEnabled(removeCrew, player.CanChangeCrew(-1));
-        removeCrew.TooltipText = player.CrewCount > c.Min && !player.CanChangeCrew(-1)
-            ? "Not enough hold space without them — sell some cargo first" : "";
         RefreshBank();
         RefreshMonastery();
         purse.Text = $"money {player.Money}    honour {player.Honour}    " +
@@ -233,6 +219,66 @@ public partial class CityPopup : PanelContainer
             line.AutowrapMode = TextServer.AutowrapMode.Word;
             line.SizeFlagsHorizontal = SizeFlags.ExpandFill;
             rumours.AddChild(line);
+        }
+    }
+
+    // The boats this harbour has on the stocks. You own exactly one hull, so
+    // every row is a trade: the boat you are in goes back over the counter
+    // at what it cost and only the difference changes hands
+    // (src/harbour/Harbour.cs). A row you cannot take says why in its
+    // tooltip rather than vanishing — knowing the large boat exists, and
+    // what she would cost, is half the point of walking down to the water.
+    private void BuildHarbour()
+    {
+        foreach (var child in harbourSection.GetChildren()) child.QueueFree();
+        if (!harbourSection.Visible) return;
+        int px = Config.PopupFontPx;
+        harbourSection.AddChild(Spacer(8));
+        foreach (var offer in Harbour.OffersAt(player.Boat, player.Money, player.TotalUnits()))
+        {
+            var cls = offer.Class;
+            var row = new HBoxContainer();
+            row.AddThemeConstantOverride("separation", 14);
+
+            var info = new VBoxContainer { SizeFlagsHorizontal = SizeFlags.ExpandFill };
+            info.AddThemeConstantOverride("separation", 0);
+            var nameRow = new HBoxContainer();
+            nameRow.AddThemeConstantOverride("separation", 8);
+            nameRow.AddChild(Fonts.MakeLabel(cls.Name, Fonts.UiSemiBold, px,
+                offer.Owned ? Config.MarketProducerColor : Config.MarketNormalColor));
+            if (offer.Owned)
+                nameRow.AddChild(Fonts.MakeLabel("◆ YOURS", Fonts.MonoBold, px - 4, Config.MarketProducerColor));
+            info.AddChild(nameRow);
+            info.AddChild(Fonts.MakeLabel(
+                $"{cls.Crew} crew   {cls.Cargo} hold   " +
+                $"{cls.GunCount} {(cls.GunCount == 1 ? "gun" : "guns")}   " +
+                $"{cls.Sails} {(cls.Sails == 1 ? "mast" : "masts")}",
+                Fonts.Ui, px - 3, new Color("#999999")));
+
+            var price = Fonts.MakeLabel($"{cls.Cost}", Fonts.Mono, px - 1, new Color("#cfd6e4"));
+            price.CustomMinimumSize = new Vector2(96, 0);
+            price.HorizontalAlignment = HorizontalAlignment.Right;
+
+            // What actually leaves the purse once the old boat is handed in.
+            var net = Fonts.MakeLabel(offer.Owned ? "" : offer.Net >= 0 ? $"-{offer.Net}" : $"+{-offer.Net}",
+                Fonts.Mono, px - 2, offer.Net >= 0 ? Config.MarketDearColor : Config.MarketCheapColor);
+            net.CustomMinimumSize = new Vector2(96, 0);
+            net.HorizontalAlignment = HorizontalAlignment.Right;
+
+            var buy = MakeButton("Buy", () =>
+            {
+                BuyBoat?.Invoke(cls);
+                Rebuild();
+            });
+            SetEnabled(buy, offer.CanBuy);
+            buy.TooltipText = offer.Blocked
+                ?? $"Trade her in for the {cls.Name} — {(offer.Net >= 0 ? $"{offer.Net} to pay" : $"{-offer.Net} back")}";
+
+            row.AddChild(info);
+            row.AddChild(price);
+            row.AddChild(net);
+            row.AddChild(buy);
+            harbourSection.AddChild(row);
         }
     }
 
@@ -456,11 +502,11 @@ public partial class CityPopup : PanelContainer
         facts.Text = $"{"coords",-8}{Mathf.RoundToInt(city.X)}, {Mathf.RoundToInt(city.Y)}\n{"size",-8}{city.Size}\n" +
                      $"{"makes",-8}{(city.Produces.Count > 0 ? string.Join(", ", ProducedNames(city)) : "nothing")}\n" +
                      $"{"market",-8}{city.MarketSize} units either way";
-        // Only the large cities have a hiring hall; only medium and large
-        // ones have a bank.
-        bool hiring = city.Size == "large";
-        crewHeading.Visible = hiring;
-        crewSection.Visible = hiring;
+        // Only the medium and large ports build boats, and only they have a
+        // bank.
+        bool harbour = Harbour.HasHarbour(city);
+        harbourHeading.Visible = harbour;
+        harbourSection.Visible = harbour;
         bool banking = Loans.HasBank(city);
         bankHeading.Visible = banking;
         bankSection.Visible = banking;
@@ -479,6 +525,7 @@ public partial class CityPopup : PanelContainer
             $"Delivered {(delivered.Count == 1 ? "an important passenger" : $"{delivered.Count} important passengers")} — " +
             $"+{delivered.Money} money, +{delivered.TotalHonour} honour" +
             (delivered.SpeedHonour > 0 ? $" ({delivered.Honour} for the passage, {delivered.SpeedHonour} for the speed of it)" : "");
+        BuildHarbour();
         BuildVip(city);
         if (city != current)
         {
@@ -497,6 +544,7 @@ public partial class CityPopup : PanelContainer
     {
         if (current == null || !Visible) return;
         storyEvents.DiscoverAt(current);   // events that just rolled in while watching
+        BuildHarbour();
         BuildVip(current);
         BuildRumours(current);
         BuildMarket(current);

@@ -3,10 +3,11 @@
 Files: `src/boat/BoatConfig.cs` (knobs), `src/boat/Boat.cs` (physics,
 lean, land collision, hit box), `src/boat/Hulls.cs` +
 `src/boat/BoatCollisions.cs` (hull against hull), `src/boat/BoatModel.cs` (the mesh),
-`src/boat/Sailing.cs` (the Godot-free wind and crew-stamina rules). The
-boat is shared ground: trading cares about its speed (crew multiplier) and
-position (cities); combat mounts guns on it and shoots at it. Neither side
-should need to read the other's doc.
+`src/boat/Sailing.cs` (the Godot-free wind and crew-stamina rules),
+`src/boat/BoatClass.cs` (which vessel this is — see
+[harbour.md](harbour.md)). The boat is shared ground: trading cares about
+its position (cities) and carries its hold and crew; combat mounts guns on
+it and shoots at it. Neither side should need to read the other's doc.
 
 ## Frame and model
 
@@ -16,11 +17,14 @@ boat's own forward axis. **Vessel frame: forward +X, up +Y, starboard +Z.**
 Children (the model, `combat/CannonBattery`) ride along and lean with it.
 
 `BoatModel` is the combat prototype's boat rebuilt from primitives: a 12×2×4
-box hull sitting on the water, a 45°-rotated box as the bow wedge, two
-0.3×8 masts at ±2.5 along the hull, each with a triangular sail hanging aft
-(double-sided). Everything is laid out on a 12-unit hull and scaled by
-`BoatConfig.Length / 12`, so changing `Length` resizes the whole boat (the
-gun mounts scale the same way). Materials are lit (`StandardMaterial3D`,
+box hull sitting on the water, a 45°-rotated box as the bow wedge, and one
+0.3×8 mast per sail the class carries, each with a triangular sail hanging
+aft (double-sided). One mast stands amidships, two on ±2.5 (where the
+game's one boat always carried them), three or more spread evenly along the
+hull. Everything is laid out on a 12×4 hull and scaled by the class's
+`HullLength / 12` fore-and-aft and `HullWidth / 4` abeam, so a launch and a
+merchantman come out of the same builder (the gun mounts scale the same
+way). Materials are lit (`StandardMaterial3D`,
 not unshaded) so sails and hull sides read against the flat terrain; the
 light lives in `Main`. `SetHitFlash` drives the red emissive glow after a
 cannonball hit.
@@ -35,8 +39,15 @@ and lateral axes (`LateralDragScale`× abeam), and the current
 drag allows — `TerminalSpeed(sailsUp)` solves it. Steering authority ramps
 with water speed over the hull up to `TurnFullSpeed`, so a boat merely
 drifting on a current can't steer; `TurnRateScale` is `1/timeScale` from
-`Main` so the helm feels the same in fast-forward, and `ThrustScale` is the
-crew multiplier. `Main` sub-steps by `MaxStepSeconds`.
+`Main` so the helm feels the same in fast-forward. `Main` sub-steps by
+`MaxStepSeconds`.
+
+Two numbers in that step are the **boat's own**, not the game's: the thrust
+is scaled by her class's `sailThrust`/`oarThrust` and the turn rate by her
+`turn`, straight out of `boats.yml` ([harbour.md](harbour.md)). They are
+multipliers over the knobs above and the medium boat's are all 1, so the
+sliders still tune the whole fleet at once and the medium is the boat this
+document has always described.
 
 `Speed` is the scalar along the heading; `GroundSpeed` is what the boat
 actually moved along its heading this step (less when the shore pushed back)
@@ -169,12 +180,12 @@ alongside another **slides down her side** instead of stopping dead, exactly
 as she does against a beach.
 
 **Size is per hull, not per game.** `Boat.HullLength` and `Boat.HullWidth`
-are fields that default to `BoatConfig`'s one vessel, and everything that
-measures a boat — the model, the shadow, the hit box, the collision shell —
-reads them rather than the constants. `Mass` is deck area, and it decides who
-gives way: a launch shoved by a merchantman moves most of the way, two of a
-kind share it evenly. That is the whole of what a second class of vessel
-needs; nothing in the collision code knows how big a boat is supposed to be.
+come off `Boat.Class` (`boats.yml`), and everything that measures a boat —
+the model, the shadow, the hit box, the collision shell — reads them rather
+than any constant. `Mass` is deck area, and it decides who gives way: a
+launch shoved by a merchantman moves most of the way, two of a kind share it
+evenly. Nothing in the collision code knows how big a boat is supposed to
+be, which is why three classes of vessel needed no changes here at all.
 
 | knob | | |
 |---|---|---|

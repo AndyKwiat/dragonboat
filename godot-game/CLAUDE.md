@@ -51,16 +51,18 @@ rules change.
 - A new gameplay system gets its own `src/<name>/` folder and
   `docs/<name>.md`, wired up only in `Main.cs`; trading and combat never
   reach into each other.
-- `game-config.yml` (terrain file, small/medium/large city counts, current
-  density) is required
-  at launch and has no code defaults; `data/products.json` and `data/city-names.json` are
+- `boats.yml` (every vessel: size, masts, crew, hold, cost, guns and
+  handling multipliers over `BoatConfig`) and
+  `game-config.yml` (terrain file, small/medium/large city counts, current
+  density) are both required at launch and have no code defaults; `data/products.json` and `data/city-names.json` are
   canonical. Cities are generated on the coast every run (`CityPlacer`);
   maps are `.terrain` files painted in `../terrain-gen`. One map cell = one
   world unit.
 - `dotnet test tests` runs the xunit suite over the Godot-free core
   (config, terrain parsing, city placement, docking, the economy —
   production, prices, staged trades — bank loans, VIP and monk missions,
-  wind and crew stamina, the water nav mesh and its routes,
+  wind and crew stamina, the boat classes and the harbours,
+  the water nav mesh and its routes,
   AI orders/targeting/tactics/steering/gunnery/station-keeping, hull
   collision geometry); it
   compiles those files straight from `src/`, so keep them free of Godot

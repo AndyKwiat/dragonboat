@@ -1,0 +1,61 @@
+# Every vessel in the game, read once at launch (src/boat/BoatClass.cs).
+# Add a block here and the boat exists: it shows up in the harbours, gets a
+# model with that many masts, and is armed from its own gun counts.
+#
+# Handling is a MULTIPLIER over the knobs in src/boat/BoatConfig.cs, so the
+# live T-panel sliders still move the whole fleet together and `medium` —
+# all 1.0 — is exactly the boat the game has always had. Every key is
+# required; nothing here has a code default.
+#
+# The player starts in the `small` boat and every AI hull is a `medium`
+# (BoatClasses.StartingName / AiName).
+
+- name: small
+  # A launch: one mast, one gun in the bow, a hold you can fill in an
+  # afternoon. Slower than the medium under either rig, but handier.
+  hullLength: 8        # world units. The model, the blob shadow, the hit box
+  hullWidth: 3         # and the collision shell all measure off these.
+  sails: 1             # masts (and triangular sails) on the model
+  crew: 1              # fixed by the hull: rations and wages follow it
+  cargo: 200           # units the hold takes
+  cost: 1000           # buy and sell price are the same
+  sailThrust: 0.80     # x BoatConfig.SailThrustScale
+  oarThrust: 0.85      # x BoatConfig.OarThrustScale
+  turn: 1.15           # x BoatConfig.TurnRate
+  gunsBow: 1
+  gunsStern: 0
+  gunsPerSide: 0
+
+- name: medium
+  # The boat the game shipped with, down to the last decimal. Do not retune
+  # this block to change the feel of the game — move BoatConfig instead, and
+  # the whole fleet follows.
+  hullLength: 12
+  hullWidth: 4
+  sails: 2
+  crew: 10
+  cargo: 1200
+  cost: 10000
+  sailThrust: 1.0
+  oarThrust: 1.0
+  turn: 1.0
+  gunsBow: 1
+  gunsStern: 0
+  gunsPerSide: 3       # 7 guns all told
+
+- name: large
+  # A merchantman: three masts, sixteen guns and a hold that makes a voyage
+  # worth the calendar. Faster than the medium under canvas, a slug at the
+  # oars, and slower to answer the helm than either.
+  hullLength: 18
+  hullWidth: 6
+  sails: 3
+  crew: 30
+  cargo: 10000
+  cost: 80000
+  sailThrust: 1.25
+  oarThrust: 0.70
+  turn: 0.85
+  gunsBow: 2
+  gunsStern: 2
+  gunsPerSide: 6       # 16 guns all told

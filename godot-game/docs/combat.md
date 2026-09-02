@@ -30,8 +30,14 @@ CombatConfig     all knobs, [Tweak]-able     src/combat/CombatConfig.cs
 - **`CannonBattery`** (`Node3D`, child of the vessel) — the vessel's guns.
   `BestCannon(target)`: the loaded cannon that bears and is most square-on,
   or null. `Vessel` is its parent — projectiles never hit the vessel that
-  fired them. The player's battery is `PlayerMounts`: one bow chaser and
-  three guns a side.
+  fired them. A battery is laid out by `CombatConfig.MountsFor(BoatClass)`
+  from the gun counts the boat's class carries in `boats.yml` — bow chasers
+  at the stem, stern chasers facing aft, and so many guns a side spread
+  evenly along the hull ([harbour.md](harbour.md)). The medium boat's is one
+  bow chaser and three guns a side; the small carries a single bow chaser
+  and the large sixteen guns. Mounts are laid out on a 12-unit hull and
+  scaled by the vessel's length, so a bigger boat's guns sit where they
+  should. Every AI hull is a medium and carries the medium's seven.
 - **`Projectiles`** — `Fire(cannon, target)` spawns a ball at the cannon,
   with velocity from `SolveLaunch`: every ball leaves at **`MuzzleSpeed`**;
   the *low* launch angle that lands on the target is solved from

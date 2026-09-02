@@ -37,6 +37,7 @@ A scenario is a file in `scenarios/`, named after the flag that loads it
 | `currents` | `true` | lay down current zones? `false` = nothing shoves a boat off its course |
 | `enemyFleet` | `true` | scatter the world's own hostile fleet (`AiBoats.Scatter`)? A bench almost always wants `false`, so the only boats afloat are the ones it lists. |
 | `player` | *(none)* | marker tag to start the player boat on; without it the boat starts off a city's shore as usual, which needs `cities: true` |
+| `boat` | `medium` | which boat from `boats.yml` the player sails ([harbour.md](harbour.md)). The default is the medium — the vessel every bench here was written against, and the one the AI sails — so a bench measures the AI and not the player's hull. `--boat=` on the command line still wins. |
 | `boats` | *(none)* | AI boats: `tag[:order[>destination]][*count][@team]` — e.g. `p1:voyage>p2, ai0:protect*3@1, p3`. A count greater than one puts a group on the marker, in line astern and spaced so hulls do not start touching; each guard stations where it actually is. |
 | `ai` | `idle` | the order boats in `boats` start with when they don't name one |
 | `team` | `1` | the side boats take when they don't name one; the player is always 0 |
@@ -87,7 +88,7 @@ cities, no currents, no legacy fleet, the player on marker `player` and one
 AI boat on `ai0`. `./battleTest.sh` runs it.
 
 Both hulls are armed and both are targets — every boat carries
-`CombatConfig.PlayerMounts`. `ai0:protect*3` puts **three** boats there in line astern, each guarding the
+the medium boat's battery (`CombatConfig.MountsFor`). `ai0:protect*3` puts **three** boats there in line astern, each guarding the
 spot it spawns on, each coming for the player when the player gets too close,
 and each spreading out rather than piling onto the same bit of water
 ([ai.md](ai.md)).

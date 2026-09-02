@@ -235,12 +235,6 @@ public static class Config
     public static readonly Color NightColor = new Color("#4a5568");
     public const int ClockFontPx = 20;
 
-    // Crew.
-    public static readonly CrewLimits Crew = new()
-    {
-        Starting = 1, Min = 1, Max = 20, SpeedAtMin = 1, SpeedAtMax = 2, SpeedFullCrew = 10, CargoPerCrew = 100,
-    };
-
     // Upkeep.
     public const string RationsProductId = "RICE";
     public const float RationsHoursPerUnit = 8f;

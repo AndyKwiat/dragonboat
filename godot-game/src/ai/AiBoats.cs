@@ -92,6 +92,9 @@ public partial class AiBoats : Node3D
         {
             X = x, Y = y, Heading = heading, Order = order, Team = team,
             Hull = AiBoat.BlueHull, SailsUp = false, Destination = destination,
+            // Every AI hull is a medium: one class of vessel is what the
+            // fleet and the benches have always assumed (boats.yml).
+            Class = BoatClasses.Ai,
         };
         boat.Init(terrain);
         boat.Arm(combat, nav);
@@ -105,7 +108,7 @@ public partial class AiBoats : Node3D
         // battery would start counting shots that nothing fires, and would
         // quietly break the benches that assert on the world's shot tally.
         if (order.Tactic != null)
-            boat.Guns = combat.Arm(boat, CombatConfig.PlayerMounts, BoatConfig.Length);
+            boat.Guns = combat.Arm(boat, CombatConfig.MountsFor(boat.Class), boat.HullLength);
         if (destination is Vector2 to)
         {
             boat.Memory.Route = NavPath.Find(nav, x, y, to.X, to.Y);

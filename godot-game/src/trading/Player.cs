@@ -19,7 +19,11 @@ public sealed class Player : ITrader
     // Standing with the monasteries: alms and monk errands earn it, a monk
     // left too long loses it (src/religion). Starts at 0, may go negative.
     public int Piety;
-    public int CrewCount;
+    // The boat under her (boats.yml): what she holds and how many hands she
+    // carries are hers, not the player's — buying a boat in a harbour is the
+    // only way either changes (src/harbour/Harbour.cs).
+    public BoatClass Boat = null!;
+    public int CrewCount => Boat.Crew;
     public readonly Dictionary<string, int> Inventory = new();
     // What the units currently aboard cost, per product — the running total
     // paid for them, so the hold knows its own book value. Units leave at the
@@ -35,7 +39,7 @@ public sealed class Player : ITrader
     public Player()
     {
         Money = Config.StartingMoney;
-        CrewCount = Crew.Clamp(Config.Crew.Starting, Config.Crew);
+        Boat = BoatClasses.Starting;
         // The hold you start with is booked at base price — you did not buy
         // it anywhere, so there is no better figure to call it in at.
         foreach (var kv in Config.StartingInventory)
@@ -78,15 +82,7 @@ public sealed class Player : ITrader
         return total;
     }
 
-    public bool CanChangeCrew(int delta) => Crew.ChangeAllowed(CrewCount, delta, TotalUnits(), Config.Crew);
-
-    public int ChangeCrew(int delta)
-    {
-        if (CanChangeCrew(delta)) CrewCount = Crew.Clamp(CrewCount + delta, Config.Crew);
-        return CrewCount;
-    }
-
-    public int CargoCapacity() => Crew.CargoCapacity(CrewCount, Config.Crew);
+    public int CargoCapacity() => Boat.Cargo;
     public int CargoSpace() => Math.Max(0, CargoCapacity() - TotalUnits());
 
     // Capped by the hold AND the purse — money can't go negative.

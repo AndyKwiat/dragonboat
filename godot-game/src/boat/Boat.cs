@@ -13,7 +13,6 @@ public partial class Boat : Node3D, ICombatTarget
     public float X, Y;   // set by Main before Init (off a large city's shore)
     public float Heading = BoatConfig.StartHeading;
     public float Vx, Vy;            // velocity, world units/sec
-    public float ThrustScale = 1;   // multiplier on MaxForce, driven by crew size
     public bool Turning;            // a steering key was held this frame
     public float TurnRateScale = 1; // multiplier on turn rate; Main sets 1/timeScale so
                                     // steering feels the same in fast-forward
@@ -32,12 +31,16 @@ public partial class Boat : Node3D, ICombatTarget
     public float Speed => Vx * Mathf.Cos(Heading) + Vy * Mathf.Sin(Heading);
     public float GroundSpeed => Speed;
 
-    // Hull size, per boat rather than per game: the numbers default to the
-    // one vessel the game has today, but they are fields so a launch and a
-    // merchantman can differ later. Everything that measures this hull —
-    // the model, the shadow, the hit box, the collision shell — reads these.
-    public float HullLength = BoatConfig.Length;
-    public float HullWidth = BoatConfig.Width;
+    // Which vessel this hull is (boats.yml, src/boat/BoatClass.cs): her size,
+    // her crew, her hold, her guns and how she handles. Set before the node
+    // enters the tree, and again by SetClass when a boat is bought.
+    // Everything that measures this hull — the model, the shadow, the hit
+    // box, the collision shell — reads the size off her class, so a launch
+    // and a merchantman differ everywhere without any of that code knowing
+    // how big a boat is supposed to be.
+    public BoatClass Class = null!;
+    public float HullLength => Class.HullLength;
+    public float HullWidth => Class.HullWidth;
     public float Length => HullLength;
     // What it takes to shove her aside. Deck area is a good enough stand-in
     // for displacement, and keeps a bigger hull harder to push.
@@ -72,13 +75,29 @@ public partial class Boat : Node3D, ICombatTarget
 
     public override void _Ready()
     {
-        model = new BoatModel(HullLength, Hull);
+        model = new BoatModel(Class, Hull);
         AddChild(model);
         model.SetSails(SailsUp);
         // The shadow is a sibling, not a child: it must stay flat on the
         // water while the hull rolls and bobs above it.
         shadow = new BlobShadow(BoatConfig.ShadowStrength);
         GetParent().CallDeferred(Node.MethodName.AddChild, shadow);
+        SyncMesh();
+    }
+
+    // A new boat under the same command (harbour/Harbour.cs): the hull keeps
+    // her place, her way and her canvas, and everything else about her —
+    // model, size, hold, guns — comes from the new class. Main re-arms the
+    // battery, which is the one thing this node does not own.
+    public void SetClass(BoatClass cls)
+    {
+        Class = cls;
+        if (model == null) return;    // not in the tree yet: _Ready builds it
+        RemoveChild(model);
+        model.QueueFree();
+        model = new BoatModel(cls, Hull);
+        AddChild(model);
+        model.SetSails(SailsUp);
         SyncMesh();
     }
 
@@ -123,14 +142,16 @@ public partial class Boat : Node3D, ICombatTarget
         if (!SailsUp) authority = Math.Max(authority, BoatConfig.OarStandingTurn);
         else if (vFwd == 0) authority = 0;
         if (turn != 0 && authority > 0)
-            Heading += turn * BoatConfig.TurnRate * BoatConfig.TurnScaleFor(SailsUp)
+            Heading += turn * BoatConfig.TurnRate * Class.Turn * BoatConfig.TurnScaleFor(SailsUp)
                      * TurnRateScale * authority * turnSign * dt;
 
         // Forces. Thrust is along the heading; drag is split by axis so the
         // keel resists sideways motion far more than forward motion. The sail
         // state scales both: canvas pushes gently against little drag (fast,
         // lazy), oars shove hard against a lot of it (nippy, slower).
-        float thrustScale = BoatConfig.ThrustScaleFor(SailsUp);
+        // The rig scaled by what this class of hull makes of it: a big boat
+        // carries more canvas and worse oars (boats.yml).
+        float thrustScale = BoatConfig.ThrustScaleFor(SailsUp) * Class.ThrustFactor(SailsUp);
         float dragScale = BoatConfig.DragScaleFor(SailsUp);
         // Under canvas the sails are always drawing: the boat makes way
         // whether or not W is held (holding it changes nothing), and S is how
@@ -141,7 +162,7 @@ public partial class Boat : Node3D, ICombatTarget
         SailDrive = SailsUp && Wind != null
             ? Wind.Drive(BoatConfig.SailFullWind, BoatConfig.SailWindKneeFrac, BoatConfig.SailWindKneeDrive)
             : 1;
-        float thrust = driving ? BoatConfig.MaxForce * ThrustScale * thrustScale * SailDrive
+        float thrust = driving ? BoatConfig.MaxForce * thrustScale * SailDrive
                      : back ? -BoatConfig.BrakeForce * thrustScale : 0;
         ThrustForce = new Vector2(cosH, sinH) * thrust;
         float k1 = BoatConfig.DragLinear * dragScale + (turn != 0 ? BoatConfig.RudderDrag * authority : 0);

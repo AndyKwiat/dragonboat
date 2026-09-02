@@ -1,7 +1,7 @@
 using Godot;
 
 // Top-left overlay: the game date and time, then what drains as it passes —
-// rice, purse, honour, crew, cargo. Dims at night; rice goes red when low,
+// rice, purse, honour, boat, cargo. Dims at night; rice goes red when low,
 // money when in debt, honour when negative.
 public partial class Clock : PanelContainer
 {
@@ -62,7 +62,8 @@ public partial class Clock : PanelContainer
         SetText(money, $"money {player.Money}");
         SetText(honour, $"honour {player.Honour}");
         SetText(piety, $"piety {player.Piety}");
-        SetText(crew, $"crew  {player.CrewCount}");
+        // The boat is the crew and the hold both: her class names the line.
+        SetText(crew, $"boat  {player.Boat.Name} ({player.CrewCount} crew)");
         SetText(cargo, $"cargo {player.TotalUnits()}/{player.CargoCapacity()}");
         var lines = "";
         foreach (var vip in player.VipPassengers)

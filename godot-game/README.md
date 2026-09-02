@@ -2,7 +2,8 @@
 
 Godot 4.7 (.NET / C#) dragonboat game: an isometric (or 45° perspective)
 view of a hand-painted terrain map; you sail a two-masted boat between cities,
-trade, feed and pay a crew — and fire its cannons at anything you click.
+trade, feed and pay a crew, buy a bigger boat — and fire its cannons at
+anything you click.
 It began as a port of a three.js prototype (since deleted) plus the boat
 combat from `../combat-prototype`; this repo is now the only home of all
 the rules.
@@ -13,9 +14,10 @@ the rules.
 |---|---|
 | [docs/world.md](docs/world.md) | map, coordinates, camera rigs/modes, terrain rendering and streaming, terrain queries |
 | [docs/boat.md](docs/boat.md) | the boat: handling, sails vs oars, wind, crew stamina, lean/bob, land and hull collision, the 3D model |
+| [docs/harbour.md](docs/harbour.md) | the fleet in `boats.yml` — small, medium and large — and buying one in a harbour |
 | [docs/combat.md](docs/combat.md) | cannons, cannonballs, impact effects, targets (enemy-ready), aiming |
 | [docs/economy.md](docs/economy.md) | who produces what, supply-driven prices, the trade ladder, the world average, cargo cost |
-| [docs/trading.md](docs/trading.md) | cities, story events, VIP deliveries, crew, rations/wages, the game clock, the city popup |
+| [docs/trading.md](docs/trading.md) | cities, story events, VIP deliveries, rations/wages, the game clock, the city popup |
 | [docs/banking.md](docs/banking.md) | city banks: borrowing against honour, interest, due dates, on-time rewards and late penalties |
 | [docs/religion.md](docs/religion.md) | piety, monasteries, alms, monk errands |
 | [docs/ui.md](docs/ui.md) | fonts, HUD, clock, minimap, city labels, the event log, the tweak panel |
@@ -153,6 +155,8 @@ $G --path . -- --screenshot=screenshots/monk.png --seed=7 --monk=5 --deliver    
 | `--monastery[=Name]` | open a monastery's window over its city's market |
 | `--monk[=days]` | take a monk aboard, accepted that many days ago (30 days to land him) |
 | `--alms=daysAgo` | pretend that monastery last took alms then, to see the weekly cooldown |
+| `--boat=name` | start in that boat from `boats.yml` (default: the small one; a scenario's own default is the medium) |
+| `--buy=name` | buy that boat as a harbour would, topping the purse up to cover the difference |
 | `--sails=up\|down` | start under canvas (default) or at the oars |
 | `--stamina=0..1` | start the crew part-spent (default 1 = fresh) |
 | `--tweaks` | start with the tweak panel open |
@@ -177,6 +181,9 @@ game-config.yml        which terrain file to load, how many small/medium/
                        large cities to generate, how thick the currents
                        run, how many story events of each kind are live —
                        every key required, no code defaults
+boats.yml              every vessel in the game: size, masts, crew, hold,
+                       cost, guns and handling multipliers — every key
+                       required, no code defaults (docs/harbour.md)
 map1.terrain           the map, painted in ../terrain-gen (TGN2, gzipped);
                        one cell = one world unit
 pathingTest.terrain    a small test map for the AI bench, markers p0-p3
@@ -204,6 +211,7 @@ src/world/             CameraRig + CameraControllers, TerrainPlane, TerrainChunk
                        Terrain (water/height/collision queries), CityPlacer,
                        Currents                                          → docs/world.md
 src/boat/              BoatConfig, Boat (physics, lean, land collision, hittable),
+                       BoatClass (boats.yml: the fleet   → docs/harbour.md),
                        BoatModel (hull/masts/sails), Hulls + BoatCollisions
                        (hull against hull, any size, ramming hook), HelmOrder
                        (what a helm is told, from the keys or from an AI),
@@ -224,8 +232,10 @@ src/scenarios/         Scenario — scenarios/*.yml, the stripped-down test
                        worlds behind --scenario                  → docs/scenarios.md
 src/trading/           the economy — Production, Supply, MarketDeal, WorldPrices,
                        Market                                          → docs/economy.md
-                       everything else it trades in — Player, Crew, Upkeep,
+                       everything else it trades in — Player, Upkeep,
                        StoryEvents, Vips, Docking; pure rules           → docs/trading.md
+src/harbour/           Harbour — what a boat costs and what the trade-in is
+                       worth; pure rules                              → docs/harbour.md
 src/banking/           Loans — city banks, interest, due dates, late
                        penalties; pure rules                              → docs/banking.md
 src/religion/          Monasteries — piety, alms, monk errands; pure rules
@@ -246,7 +256,7 @@ VIP passengers, monasteries) → clock/event log/minimap/HUD → screenshot hook
 C# with `Nullable` on, 4-space indent, one class per file, `partial` only
 where Godot needs it (Node subclasses). World/camera/trading/UI constants go
 in `core/Config.cs`; boat and combat knobs go in their own `*Config.cs` as
-`[Tweak]` statics. Keep the rules files (`GameTime`, `Crew`, `Player`,
+`[Tweak]` statics. Keep the rules files (`GameTime`, `Harbour`, `Player`,
 `Upkeep`, `Supply`, `Production`, `MarketDeal`, `WorldPrices`, `Market`,
 `StoryEvents`) and the world-building ones
 (`GameConfig`, `TerrainMap`, `City`, `CityPlacer`, `Scenario`, `AiState`,

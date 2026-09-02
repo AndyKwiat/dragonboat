@@ -19,6 +19,7 @@ using System.Collections.Generic;
 //     currents: false                # lay down current zones? (default true)
 //     enemyFleet: false              # spawn the legacy hostile fleet? (default true)
 //     player: p0                     # marker tag to start the player boat on
+//     boat: medium                   # which boat the player sails (boats.yml)
 //     boats: p1:voyage>p2, ai0:protect*3@1  # `tag[:order[>dest]][*count][@team]`
 //     ai: idle                       # default order for boats without one
 //     team: 1                        # default side for boats without one
@@ -55,12 +56,17 @@ public sealed class Scenario
     // Marker tag the player boat starts on; null = place it the normal way
     // (off a large city's shore), which needs `cities: true`.
     public string? PlayerMarker { get; }
+    // The boat the player sails on the bench. Defaults to the medium — the
+    // vessel every scenario here was written against, and the one the AI
+    // sails — so a bench measures the AI and not the player's hull. `--boat`
+    // on the command line still wins.
+    public string PlayerBoat { get; }
     public IReadOnlyList<ScenarioBoat> Boats { get; }
 
     public static string PathOf(string name) => $"res://scenarios/{name}.yml";
 
     public Scenario(string name, string terrainFile, bool cities, bool currents, bool enemyFleet,
-        string? playerMarker, IReadOnlyList<ScenarioBoat>? boats = null)
+        string? playerMarker, IReadOnlyList<ScenarioBoat>? boats = null, string? playerBoat = null)
     {
         if (string.IsNullOrWhiteSpace(name)) throw new ArgumentException("a scenario needs a name");
         if (string.IsNullOrWhiteSpace(terrainFile)) throw new ArgumentException($"scenario {name}: 'terrain' is empty");
@@ -69,6 +75,7 @@ public sealed class Scenario
         Name = name; TerrainFile = terrainFile; Cities = cities; Currents = currents;
         EnemyFleet = enemyFleet; PlayerMarker = playerMarker;
         Boats = boats ?? Array.Empty<ScenarioBoat>();
+        PlayerBoat = string.IsNullOrWhiteSpace(playerBoat) ? BoatClasses.AiName : playerBoat!.Trim();
     }
 
     public static Scenario Parse(string name, string text)
@@ -143,11 +150,12 @@ public sealed class Scenario
                 boats.Add(new ScenarioBoat(parts[0].Trim(), order, destination, team, count));
             }
         values.TryGetValue("player", out var player);
+        values.TryGetValue("boat", out var playerBoat);
         return new Scenario(name, terrain, Flag("cities", true), Flag("currents", true), Flag("enemyFleet", true),
-            string.IsNullOrWhiteSpace(player) ? null : player!.Trim(), boats);
+            string.IsNullOrWhiteSpace(player) ? null : player!.Trim(), boats, playerBoat);
     }
 
-    private static readonly string[] Keys = { "terrain", "cities", "currents", "enemyFleet", "player", "boats", "ai", "team" };
+    private static readonly string[] Keys = { "terrain", "cities", "currents", "enemyFleet", "player", "boat", "boats", "ai", "team" };
 
     // The marker a scenario named, or a loud failure: a scenario that spawns
     // on a tag the map does not carry is a broken test, not a quiet no-op.

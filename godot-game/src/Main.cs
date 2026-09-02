@@ -134,6 +134,9 @@ public partial class Main : Node3D
         // game-config.yml picks the terrain file and the city count; the
         // cities are placed fresh on the coast every launch.
         GameConfig.Current = GameConfig.Parse(FileAccess.GetFileAsString(GameConfig.Path));
+        // The fleet: every vessel in the game, the player's and the AI's
+        // alike (boats.yml, src/boat/BoatClass.cs).
+        BoatClasses.All = BoatClasses.Parse(FileAccess.GetFileAsString(BoatClasses.Path));
         GameData.Load();
         // --scenario=name loads scenarios/name.yml instead of the usual
         // world: a different map, and whatever of the world it leaves out
@@ -198,6 +201,14 @@ public partial class Main : Node3D
         navOverlay.Init(nav);
         AddChild(navOverlay);
         boat = new Boat();
+        // The hull the player commands. She starts in the smallest one and
+        // buys her way up in the harbours (src/harbour/Harbour.cs);
+        // --boat=name puts a scripted run in any of them.
+        // A bench names the hull it was written against (default medium);
+        // in the real world the player starts in the smallest boat and buys
+        // her way up. --boat overrides either.
+        boat.Class = BoatClasses.ByName(args.TryGetValue("boat", out var startBoat) ? startBoat
+                                      : scenario?.PlayerBoat ?? BoatClasses.StartingName);
         PlaceBoatStart(cities, worldRng);
         boat.Init(terrainQuery);
         boat.Currents = currents;
@@ -231,7 +242,7 @@ public partial class Main : Node3D
         combat = new CombatSystem();
         combat.Init(terrainQuery);
         AddChild(combat);
-        combat.PlayerGuns = combat.Arm(boat, CombatConfig.PlayerMounts, BoatConfig.Length);
+        combat.PlayerGuns = combat.Arm(boat, CombatConfig.MountsFor(boat.Class), boat.HullLength);
         combat.AddTarget(boat);
 
         // The hostile fleet: AI boats with protect orders, scattered on
@@ -282,6 +293,9 @@ public partial class Main : Node3D
         active.Enable(new CameraState(boat.X, boat.Y, Config.BoatFollowZoom));
 
         player = new Player();
+        // The hold, the crew and their rations are the boat's, not the
+        // player's: whichever hull was chosen above is the one they sail.
+        player.Boat = boat.Class;
         time = new GameTime();
         rations = new Rations(player, time);
         wages = new Wages(player, time);
@@ -329,6 +343,11 @@ public partial class Main : Node3D
         bankPopup.Announce = text => eventLog.Add(text);
         bankPopup.Changed = () => { cityPopup.Refresh(); cityLabels.RefreshIntel(); };
         cityPopup.OpenBank = city => bankPopup.Show(city);
+        // Buying a boat in a harbour: the price of the new hull less what the
+        // old one fetches (they cost the same either way), then the same node
+        // becomes the new vessel — she keeps her place, her way and her
+        // canvas — and her battery is rebuilt from the new gun counts.
+        cityPopup.BuyBoat = BuyBoat;
         ui.AddChild(bankPopup);
         monasteryPopup = new MonasteryPopup();
         monasteryPopup.Init(player, time, religion);
@@ -413,6 +432,26 @@ public partial class Main : Node3D
     // (src/ai/Targeting.cs — boats on different teams are enemies).
     private const int HostileTeam = 1;
 
+    // A boat bought in a harbour (src/harbour/Harbour.cs): the price of the
+    // new hull less what the old one fetches — they cost the same either way
+    // — then the same node becomes the new vessel. She keeps her place, her
+    // way and her canvas; her model, her size and her hold come from the new
+    // class, and her battery is rebuilt from its gun counts. The popup has
+    // already refused a deal the purse or the cargo cannot take.
+    private void BuyBoat(BoatClass cls)
+    {
+        int net = cls.Cost - player.Boat.Cost;
+        player.Money -= net;
+        player.Boat = cls;
+        boat.SetClass(cls);
+        combat.PlayerGuns?.QueueFree();
+        combat.PlayerGuns = combat.Arm(boat, CombatConfig.MountsFor(cls), boat.HullLength);
+        eventLog.Add(net >= 0
+            ? $"Bought the {cls.Name} for {net} — {cls.Crew} crew, {cls.Cargo} hold, {cls.GunCount} guns"
+            : $"Traded down to the {cls.Name}, {-net} back in the purse");
+        cityLabels.RefreshIntel();
+    }
+
     // The standing assignment a scenario asked for. A guard's station is the
     // marker it spawns on (src/ai/ProtectOrder.cs).
     private static IAiOrder OrderFor(ScenarioBoat spec, float stationX, float stationY) => spec.Order switch
@@ -464,12 +503,15 @@ public partial class Main : Node3D
     // --monk[=daysAboard]  take a monk aboard, accepted that many days ago
     // --alms=daysAgo       pretend that monastery took alms that many days ago
     // --honour=N           set the player's honour (bank credit is 10x it)
+    // --buy=name           buy that boat as a harbour would, topping the purse
+    //                      up to cover the difference (test hook)
     // --loan=N[@late]      borrow N from that city's bank at startup, its due
     //                      date already `late` days in the past
     // --size=WxH           window size
     // --hold=W,D           keys held down for the whole run (physical key names)
     // --press=Key@frame,... one-shot key presses (Escape closes the market)
     // --start=x,y[,deg]    put the boat here (world units, heading in degrees, 0 = east)
+    // --boat=name          start in that boat from boats.yml (default small)
     // --sails=up|down      start under canvas (default) or at the oars
     // --stamina=0..1       start the crew part-spent (default 1 = fresh)
     // --set=Name=V,...     override [Tweak] values by field name (see core/Tweaks.cs)
@@ -522,6 +564,22 @@ public partial class Main : Node3D
         // Banking test hooks: set honour (credit is a multiple of it), take
         // a loan out, and/or open the bank window over the market.
         if (args.TryGetValue("honour", out var honour)) player.Honour = int.Parse(honour);
+        // Strike a harbour deal without a mouse: the same path the Buy button
+        // takes, so the hull, the hold and the guns all move. The purse is
+        // topped up to whatever the deal costs — a scripted run should not
+        // have to sail a trade route first — but a hold too full for the new
+        // boat is refused here exactly as it is in the popup.
+        if (args.TryGetValue("buy", out var bought))
+        {
+            var cls = BoatClasses.ByName(bought);
+            var offer = Harbour.OfferOf(cls, player.Boat, int.MaxValue, player.TotalUnits());
+            if (!offer.CanBuy) GD.PushWarning($"--buy={bought}: {offer.Blocked}");
+            else
+            {
+                player.Money += Math.Max(0, offer.Net - player.Money);
+                BuyBoat(cls);
+            }
+        }
         var bankCity = args.TryGetValue("city", out var named) && named != "true"
             ? GameData.Cities.Find(c => c.Name == named)
             : startCity != null && Loans.HasBank(startCity) ? startCity : GameData.Cities.Find(Loans.HasBank);
@@ -783,7 +841,6 @@ public partial class Main : Node3D
         if (driving && input.Pressed.Contains(Key.Space)) boat.SetSails(!boat.SailsUp);
         if (driving)
         {
-            boat.ThrustScale = Crew.SpeedMultiplier(player.CrewCount, Config.Crew);
             // Fast-forward speeds the voyage, not the helm: keep the turn rate
             // constant per real second so steering feels the same at any rate.
             boat.TurnRateScale = 1 / timeScale;

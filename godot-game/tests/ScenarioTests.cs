@@ -195,4 +195,11 @@ public class ScenarioTests
         Assert.Equal(AiOrderKind.Protect, s.Boats[0].Order);
         Assert.Null(s.Boats[0].Destination);
     }
+
+    [Fact]
+    public void TheBenchSailsTheMediumUnlessItSaysOtherwise()
+    {
+        Assert.Equal("medium", Scenario.Parse("s", "terrain: t.terrain\n").PlayerBoat);
+        Assert.Equal("large", Scenario.Parse("s", "terrain: t.terrain\nboat: large\n").PlayerBoat);
+    }
 }

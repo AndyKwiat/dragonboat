@@ -40,7 +40,7 @@ public sealed class RunReport
         var shot = screenshot == null ? ""
             : $"screenshot {(saveError == Error.Ok ? "saved to" : "FAILED " + saveError + " for")} {screenshot} ";
         return $"{shot}at frame {frame}; " +
-               $"boat at ({player.X:F1}, {player.Y:F1}) heading {Mathf.RadToDeg(player.Heading):F0}° speed {player.Speed:F1}; " +
+               $"{player.Class.Name} at ({player.X:F1}, {player.Y:F1}) heading {Mathf.RadToDeg(player.Heading):F0}° speed {player.Speed:F1}; " +
                $"sails {(player.SailsUp ? "up" : "down")} stamina {stamina.Level:F2} " +
                $"wind {wind.Force:F0}@{wind.BearingDeg:F0}°; " +
                $"shots {combat.PlayerGuns?.Shots ?? 0} hits {combat.PlayerGuns?.Hits ?? 0} taken {player.HitsTaken} " +
@@ -89,6 +89,7 @@ public sealed class RunReport
             ["minutes"] = time.TotalMinutes,
             ["player"] = new Dictionary<string, object?>
             {
+                ["boat"] = player.Class.Name,
                 ["x"] = Round(player.X), ["y"] = Round(player.Y),
                 ["heading"] = Round(Mathf.RadToDeg(player.Heading)),
                 ["speed"] = Round(player.Speed),

@@ -32,6 +32,8 @@
     <Compile Include="../src/ai/AiPilot.cs" />
     <Compile Include="../src/ai/Helmsman.cs" />
     <Compile Include="../src/boat/HelmOrder.cs" />
+    <Compile Include="../src/boat/BoatClass.cs" />
+    <Compile Include="../src/harbour/Harbour.cs" />
     <Compile Include="../src/boat/Hulls.cs" />
     <Compile Include="../src/nav/NavConfig.cs" />
     <Compile Include="../src/nav/NavMesh.cs" />

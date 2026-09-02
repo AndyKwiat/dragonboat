@@ -31,7 +31,7 @@ or zooming the map.
   `WindDialBlowColor` as the force approaches `WindDialFullForce`. The event
   log stacks above it. Rules: [boat.md](boat.md).
 - **Clock** (top left) — date/time, rations, money, honour, piety (red when
-  negative — [religion.md](religion.md)), crew, cargo, one
+  negative — [religion.md](religion.md)), the boat and her crew, cargo, one
   line per VIP aboard (`VIP delivery - Ravenport (+170, 12d left)`: what
   landing them today pays and how long before they jump ship —
   [trading.md](trading.md)), one per monk aboard
@@ -70,13 +70,16 @@ or zooming the map.
   popup opens or the midnight pass runs, never per frame. Discovery rules:
   [trading.md](trading.md).
 - **CityPopup** — the market panel: facts, rumours (nearest other-city
-  story events, red/green by high/low), the hiring hall (large cities),
+  story events, red/green by high/low), the harbour (medium and large
+  cities — one row per boat in `boats.yml` with its crew, hold, guns, masts,
+  price and what the trade-in leaves to pay; a row you cannot take is greyed
+  with the reason in its tooltip, [harbour.md](harbour.md)),
   then the market rows, each with a centre-zero trade slider (left =
   sell, right = buy; rules in [trading.md](trading.md)); measures its
   content for a few frames
   after opening / resizing (wrapped labels only know their height after
   layout) and sizes itself to 62vw clamped to 520–900 px, growing to fill the whole screen height before it scrolls,
-  scrolling beyond that. Between the crew and the market it carries a
+  scrolling beyond that. Between the harbour and the market it carries a
   **Bank** row (medium and large cities) whose button opens the bank
   window, and a **Monastery** row (the small cities with a house).
   Rules it drives: [trading.md](trading.md).
