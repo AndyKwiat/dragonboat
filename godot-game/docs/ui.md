@@ -1,7 +1,7 @@
 # UI overlays
 
 Files: `src/ui/*` — Godot `Control`s on one `CanvasLayer` added in `Main`,
-in draw order: city labels (under everything), HUD, clock, stamina bar, wind dial, minimap, city
+in draw order: city labels (under everything), HUD, clock, stamina bar, morale bar, wind dial, minimap, city
 popup, bank/monastery windows, event log, tweak panel. The popup and tweak panel have `MouseFilter.Stop`, so
 clicks and wheel events inside them never reach `InputState` (which listens
 in `_UnhandledInput`) — that is what keeps a slider drag from firing a cannon
@@ -23,6 +23,10 @@ or zooming the map.
   bar that fades green → red as it empties. Spent (0%), the track flashes
   red; that is the only thing exhaustion costs so far. Rules:
   [boat.md](boat.md).
+- **MoraleBar** (top centre, hanging off the bottom edge of the stamina bar
+  and lined up with it) — `MORALE 42%` over a bar that fades amber → red as
+  the crew sour, plus `SPEED 85%` in the caption once morale is under half
+  and is costing the boat speed. Rules: [crew.md](crew.md).
 - **WindDial** (bottom left) — `WIND 22 TO THE SE` over an arrow pointing
   the way the wind blows, with a ring and a north tick. Both directions are
   projected through the live camera rig (two points on the water either side
@@ -81,7 +85,10 @@ or zooming the map.
   layout) and sizes itself to 62vw clamped to 520–900 px, growing to fill the whole screen height before it scrolls,
   scrolling beyond that. Between the harbour and the market it carries a
   **Bank** row (medium and large cities) whose button opens the bank
-  window, and a **Monastery** row (the small cities with a house).
+  window, a **Monastery** row (the small cities with a house), and a
+  **Pub night** row (medium and large again) whose button sends the crew
+  ashore until morning and fills the morale bar
+  ([crew.md](crew.md)).
   Rules it drives: [trading.md](trading.md).
 - **MonasteryPopup** — the monastery window, built like the bank's: the
   house's terms, alms (a slider + Give, or the days left in its week) and

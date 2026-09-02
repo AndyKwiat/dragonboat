@@ -22,14 +22,15 @@ public sealed class RunReport
     private readonly CombatSystem combat;
     private readonly BoatCollisions hulls;
     private readonly CrewStamina stamina;
+    private readonly CrewMorale morale;
     private readonly Wind wind;
     private readonly GameTime time;
 
     public RunReport(Boat player, AiBoats ai, CombatSystem combat, BoatCollisions hulls,
-        CrewStamina stamina, Wind wind, GameTime time)
+        CrewStamina stamina, CrewMorale morale, Wind wind, GameTime time)
     {
         this.player = player; this.ai = ai; this.combat = combat;
-        this.hulls = hulls; this.stamina = stamina; this.wind = wind; this.time = time;
+        this.hulls = hulls; this.stamina = stamina; this.morale = morale; this.wind = wind; this.time = time;
     }
 
     // The line this project has always printed, plus wherever the screenshot
@@ -41,7 +42,7 @@ public sealed class RunReport
             : $"screenshot {(saveError == Error.Ok ? "saved to" : "FAILED " + saveError + " for")} {screenshot} ";
         return $"{shot}at frame {frame}; " +
                $"{player.Class.Name} at ({player.X:F1}, {player.Y:F1}) heading {Mathf.RadToDeg(player.Heading):F0}° speed {player.Speed:F1}; " +
-               $"sails {(player.SailsUp ? "up" : "down")} stamina {stamina.Level:F2} " +
+               $"sails {(player.SailsUp ? "up" : "down")} stamina {stamina.Level:F2} morale {morale.Level:F2} " +
                $"wind {wind.Force:F0}@{wind.BearingDeg:F0}°; " +
                $"shots {combat.PlayerGuns?.Shots ?? 0} hits {combat.PlayerGuns?.Hits ?? 0} taken {player.HitsTaken} " +
                $"rams {hulls.Rams}" +
@@ -95,6 +96,8 @@ public sealed class RunReport
                 ["speed"] = Round(player.Speed),
                 ["sails"] = player.SailsUp ? "up" : "down",
                 ["stamina"] = Round(stamina.Level),
+                ["morale"] = Round(morale.Level),
+                ["moraleSpeed"] = Round(morale.Speed),
                 ["shots"] = combat.PlayerGuns?.Shots ?? 0,
                 ["hits"] = combat.PlayerGuns?.Hits ?? 0,
                 ["taken"] = player.HitsTaken,

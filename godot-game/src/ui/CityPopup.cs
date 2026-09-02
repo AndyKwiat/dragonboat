@@ -14,6 +14,7 @@ public partial class CityPopup : PanelContainer
     private WorldPrices world = null!;
     private Loans loans = null!;
     private Monasteries religion = null!;
+    private CrewMorale morale = null!;
     // Set by Main: opens the bank window over this panel (medium/large
     // cities), or the monastery's (the small cities that have a house).
     // Struck in a harbour: the player has bought this boat. Main takes the
@@ -21,6 +22,9 @@ public partial class CityPopup : PanelContainer
     public Action<BoatClass>? BuyBoat;
     public Action<City>? OpenBank;
     public Action<City>? OpenMonastery;
+    // Struck in a medium or large port: the crew are ashore until morning
+    // (Main.PubNight moves the clock and fills the morale bar).
+    public Action<City>? PubNight;
     private ScrollContainer scroll = null!;
     private VBoxContainer content = null!;
     private Label title = null!, facts = null!, purse = null!;
@@ -32,6 +36,8 @@ public partial class CityPopup : PanelContainer
     private Control monasteryHeading = null!, monasterySection = null!;
     private Label monasteryStatus = null!;
     private Button monasteryButton = null!;
+    private Control pubHeading = null!, pubSection = null!;
+    private Label pubStatus = null!;
     private string monkDeliveredNote = "";
     private Control rumoursHeading = null!;
     private VBoxContainer rumours = null!;
@@ -45,11 +51,12 @@ public partial class CityPopup : PanelContainer
 
     public bool IsOpen => Visible;
 
-    public void Init(Player player, GameTime time, StoryEvents storyEvents, WorldPrices world, Loans loans, Monasteries religion)
+    public void Init(Player player, GameTime time, StoryEvents storyEvents, WorldPrices world, Loans loans, Monasteries religion, CrewMorale morale)
     {
         this.player = player; this.time = time; this.storyEvents = storyEvents; this.world = world;
         this.loans = loans;
         this.religion = religion;
+        this.morale = morale;
         int px = Config.PopupFontPx;
         Visible = false;
         MouseFilter = MouseFilterEnum.Stop;
@@ -130,6 +137,27 @@ public partial class CityPopup : PanelContainer
         monasterySection.AddChild(monasteryButton);
         content.AddChild(monasterySection);
 
+        // Pub night: medium and large ports only. A night's drinking costs
+        // the clock everything up to eight the next morning and puts the
+        // crew's temper right (src/crew/Morale.cs).
+        pubHeading = Heading("Pub night");
+        content.AddChild(pubHeading);
+        pubSection = new HBoxContainer();
+        ((HBoxContainer)pubSection).AddThemeConstantOverride("separation", 14);
+        pubStatus = Fonts.MakeLabel("", Fonts.Mono, px, new Color("#dddddd"));
+        pubStatus.SizeFlagsHorizontal = SizeFlags.ExpandFill;
+        var pubButton = Fonts.MakeButton("Pub night", () =>
+        {
+            if (current == null) return;
+            PubNight?.Invoke(current);
+            Rebuild();
+        }, 100);
+        pubButton.TooltipText = "Turn the crew loose in the pub: nobody sails until morning, " +
+                                "and they come back with their morale full";
+        pubSection.AddChild(pubStatus);
+        pubSection.AddChild(pubButton);
+        content.AddChild(pubSection);
+
         content.AddChild(Heading("Market"));
         market = new VBoxContainer();
         market.AddThemeConstantOverride("separation", 0);
@@ -160,6 +188,7 @@ public partial class CityPopup : PanelContainer
         foreach (var r in refreshers) r();
         RefreshBank();
         RefreshMonastery();
+        RefreshPub();
         purse.Text = $"money {player.Money}    honour {player.Honour}    " +
                      $"cargo {player.TotalUnits()}/{player.CargoCapacity()} units (cost {player.CargoValue()})";
         Fonts.SetColor(purse, player.Money < 0 ? new Color("#ff8b7a") : new Color("#ffd166"));
@@ -200,6 +229,17 @@ public partial class CityPopup : PanelContainer
         if (house.Errand != null) bits += "   a monk seeks passage";
         monasteryStatus.Text = bits;
         Fonts.SetColor(monasteryStatus, house.Errand != null || wait == 0 ? Config.PietyColor : new Color("#888888"));
+    }
+
+    // The pub row: what a night's drinking would cost the clock, and what
+    // the crew's temper is worth putting right.
+    private void RefreshPub()
+    {
+        if (current == null || !pubSection.Visible) return;
+        long hours = CrewMorale.PubNightMinutes(time.TotalMinutes) / GameTime.MinutesPerHour;
+        int level = Mathf.RoundToInt(morale.Level * 100);
+        pubStatus.Text = $"morale {level}% — {hours} hours ashore, back aboard {CrewMorale.PubEndHour:D2}:00";
+        Fonts.SetColor(pubStatus, morale.Speed < 1 ? Config.MoraleLowColor : new Color("#dddddd"));
     }
 
     // The nearest other-city events, as one line each; hearing a rumour is
@@ -513,6 +553,10 @@ public partial class CityPopup : PanelContainer
         bool monastic = religion.HasMonastery(city);
         monasteryHeading.Visible = monastic;
         monasterySection.Visible = monastic;
+        // A pub worth a night in it wants a town: medium and large only.
+        bool pub = CrewMorale.HasPub(city);
+        pubHeading.Visible = pub;
+        pubSection.Visible = pub;
         // Arriving is what completes a VIP delivery: passengers bound here
         // step ashore, and the popup opens on the reward note.
         // Landing a monk pays like a VIP delivery, in piety.

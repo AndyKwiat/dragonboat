@@ -48,10 +48,13 @@ public partial class Main : Node3D
     private Monasteries religion = null!;
     private Hud hud = null!;
     private StaminaBar staminaBar = null!;
+    private MoraleBar moraleBar = null!;
     private WindDial windDial = null!;
     private Clock clock = null!;
     private Wind wind = null!;
     private CrewStamina crewStamina = null!;
+    private CrewMorale crewMorale = null!;
+    private int lastHitsTaken;      // to spot a new ball in the hull (morale)
     private Minimap minimap = null!;
     private CityLabels cityLabels = null!;
     private VectorOverlay vectors = null!;
@@ -218,6 +221,9 @@ public partial class Main : Node3D
                         BoatConfig.WindSwingDeg, BoatConfig.WindSwingHours);
         boat.Wind = wind;
         crewStamina = new CrewStamina(BoatConfig.RowHoursToEmpty, BoatConfig.RestHoursToFull);
+        // How the crew feel about the voyage — it sags with the hours, lifts
+        // ashore, and slows the boat once it is under half (src/crew).
+        crewMorale = new CrewMorale();
         AddChild(boat);
         // The terrain is unshaded, so this light only touches the boats,
         // guns and balls — enough to make the model read.
@@ -257,7 +263,7 @@ public partial class Main : Node3D
         SpawnScenarioBoats();
         if (scenario is not { EnemyFleet: false })
             aiBoats.Scatter(map, boat, worldRng, GameConfig.Current.HostileBoats, HostileTeam,
-                () => player.Honour += AiConfig.KillHonour);
+                () => { player.Honour += AiConfig.KillHonour; crewMorale.Killed(); });
         // N shows the nav mesh and, on top of it, the routes the AI boats
         // are actually steering along.
         routeOverlay = new RouteOverlay();
@@ -330,6 +336,9 @@ public partial class Main : Node3D
         staminaBar = new StaminaBar();
         staminaBar.Init(crewStamina);
         ui.AddChild(staminaBar);
+        moraleBar = new MoraleBar();
+        moraleBar.Init(crewMorale);
+        ui.AddChild(moraleBar);
         windDial = new WindDial();
         windDial.Init(wind);
         ui.AddChild(windDial);
@@ -337,7 +346,7 @@ public partial class Main : Node3D
         minimap.Init(map, terrain.Texture);
         ui.AddChild(minimap);
         cityPopup = new CityPopup();
-        cityPopup.Init(player, time, storyEvents, worldPrices, loans, religion);
+        cityPopup.Init(player, time, storyEvents, worldPrices, loans, religion, crewMorale);
         ui.AddChild(cityPopup);
         // The bank window sits on top of the market panel it was opened from;
         // the event log is the world talking back while you sail (banking.md).
@@ -357,6 +366,9 @@ public partial class Main : Node3D
         monasteryPopup.Announce = text => eventLog.Add(text);
         monasteryPopup.Changed = () => { cityPopup.Refresh(); cityLabels.RefreshIntel(); };
         cityPopup.OpenMonastery = city => monasteryPopup.Show(city);
+        // A night in the pub: the clock runs on to the morning and the crew
+        // come back new men (medium and large ports only).
+        cityPopup.PubNight = PubNight;
         ui.AddChild(monasteryPopup);
         eventLog = new EventLog();
         eventLog.Init();
@@ -365,7 +377,7 @@ public partial class Main : Node3D
         tweakPanel.Init(topPx: 130);   // under the clock
         ui.AddChild(tweakPanel);
 
-        report = new RunReport(boat, aiBoats, combat, hulls, crewStamina, wind, time);
+        report = new RunReport(boat, aiBoats, combat, hulls, crewStamina, crewMorale, wind, time);
 
         GetTree().Root.SizeChanged += Resize;
         ApplyArgs(args);
@@ -423,6 +435,9 @@ public partial class Main : Node3D
                 // consorts are, or they would all crowd one spot for ever.
                 var order = OrderFor(spec, x, y);
                 var ai = aiBoats.Spawn(x, y, heading, order, spec.Team, destination);
+                // Sinking somebody cheers the crew on the bench as much as
+                // it does in the world (src/crew/Morale.cs).
+                ai.OnSunk = () => crewMorale.Killed();
                 string bound = ai.Route == null ? "" :
                     $", bound for '{spec.Destination}' by {ai.Route.Waypoints.Count - 1} leg(s), {ai.Route.Length():0} units";
                 GD.Print($"AI boat ({spec.Order.ToString().ToLower()}, team {spec.Team}) on marker " +
@@ -434,6 +449,26 @@ public partial class Main : Node3D
     // Sides. The player sails alone: everything else afloat is against him
     // (src/ai/Targeting.cs — boats on different teams are enemies).
     private const int HostileTeam = 1;
+
+    // A night in the pub, taken in a medium or large port: the clock runs on
+    // to eight the next morning — or the morning after, if the crew are
+    // already up past three — and morale comes back full
+    // (src/crew/Morale.cs). Nothing else is skipped: rations, wages, loans
+    // and the story events all read the clock, so they catch up by
+    // themselves over the frames that follow.
+    private void PubNight(City city)
+    {
+        long ashore = CrewMorale.PubNightMinutes(time.TotalMinutes);
+        time.Advance(ashore);
+        // The wind swings on accumulated hours, so it has to be told, or a
+        // night ashore would leave it blowing where it did yesterday.
+        wind.Advance(ashore / (float)GameTime.MinutesPerHour);
+        crewMorale.PubNight();
+        eventLog.Add($"A night ashore in {city.Name}: {ashore / GameTime.MinutesPerHour} hours in the pub, " +
+                     "and the crew are new men");
+        RefreshMarkets();
+        clock.Update();
+    }
 
     // A boat bought in a harbour (src/harbour/Harbour.cs): the price of the
     // new hull less what the old one fetches — they cost the same either way
@@ -518,6 +553,8 @@ public partial class Main : Node3D
     // --boat=name          start in that boat from boats.yml (default small)
     // --sails=up|down      start under canvas (default) or at the oars
     // --stamina=0..1       start the crew part-spent (default 1 = fresh)
+    // --morale=0..1        start the crew's morale here (default 0.5)
+    // --pub                spend the first frame in the pub of that city
     // --set=Name=V,...     override [Tweak] values by field name (see core/Tweaks.cs)
     // --dump-tweaks        write changed tweaks to tweaks.dump on startup (test hook)
     // --fire=dx,dy@f,...   fire at the point dx,dy from the boat on those frames
@@ -536,6 +573,9 @@ public partial class Main : Node3D
             boat.SyncMesh();
             active.Enable(new CameraState(boat.X, boat.Y, active.State.Zoom));
         }
+        // Before anything that opens a popup: the market panel's pub row
+        // reads the crew's temper as it is built.
+        if (args.TryGetValue("morale", out var morale)) crewMorale.Set(F(morale));
         if (args.ContainsKey("vectors")) vectors.Toggle();
         if (args.ContainsKey("nav")) { navOverlay.Toggle(); routeOverlay.Toggle(); }
         if (args.TryGetValue("fire", out var fire))
@@ -611,6 +651,14 @@ public partial class Main : Node3D
                 }
                 cityLabels.RefreshIntel();
             }
+        }
+        // --pub: a night in that city's pub before the run starts, which is
+        // how the jump in the clock and the full morale bar get asserted on.
+        if (args.ContainsKey("pub"))
+        {
+            var pubCity = bankCity ?? GameData.Cities.Find(CrewMorale.HasPub);
+            if (pubCity == null) GD.PushWarning("--pub: no medium or large city this run");
+            else PubNight(pubCity);
         }
         if (args.ContainsKey("bank") && bankCity != null)
         {
@@ -875,6 +923,17 @@ public partial class Main : Node3D
         float sailHours = Config.HoursPerSecondSailing * gameDt;
         wind.Advance(sailHours);
         crewStamina.Update(sailHours, boat.Rowing);
+        // The crew's temper runs on the same clock, and what is left of it
+        // decides how hard they will work her (src/crew/Morale.cs).
+        crewMorale.Update(sailHours);
+        boat.SpeedScale = crewMorale.Speed;
+        // A ball in the hull tells on them. Counted off HitsTaken rather
+        // than hooked into TakeHit, which the AI boats inherit.
+        if (boat.HitsTaken > lastHitsTaken)
+        {
+            crewMorale.Hit(boat.HitsTaken - lastHitsTaken);
+            lastHitsTaken = boat.HitsTaken;
+        }
 
         if (menuOpen) input.ConsumeFrameDeltas();   // swallow wheel/drag so it doesn't replay on close
         else active.Update(dt, input, view);
@@ -962,6 +1021,9 @@ public partial class Main : Node3D
         {
             cityPopup.Show(dock);
             cityLabels.RefreshIntel();
+            // Coming alongside anywhere lifts the crew: shore leave, however
+            // short (src/crew/Morale.cs).
+            crewMorale.CalledAt();
         }
 
         cityPopup.Update(view);
@@ -1016,8 +1078,10 @@ public partial class Main : Node3D
             $"guns {combat.PlayerGuns.LoadedCount}/{combat.PlayerGuns.Cannons.Count} loaded, shots {combat.PlayerGuns.Shots}, in air {combat.Projectiles.InFlight}";
         vectors.Update(rig);
         staminaBar.Update(dt, view, boat.SailsUp);
+        moraleBar.Update(view, staminaBar.Position.Y + staminaBar.Size.Y, staminaBar.Size.X);
         windDial.Update(rig, boat.X, boat.Y, view);
-        string sailing = $"{(boat.SailsUp ? "sails up" : "oars")} [space]  crew {crewStamina.Level * 100:F0}%\n" +
+        string sailing = $"{(boat.SailsUp ? "sails up" : "oars")} [space]  crew {crewStamina.Level * 100:F0}%" +
+                         $"  morale {crewMorale.Level * 100:F0}% (speed {crewMorale.Speed * 100:F0}%)\n" +
                          $"wind {wind.Force:F0} to the {wind.Towards()} ({wind.BearingDeg:F0}°), " +
                          $"drive {boat.SailDrive * 100:F0}%\n";   // the dial (bottom left) shows the wind
         hud.Update(state, view, rig, CameraRig.MinZoomFor(view, map.WorldW, map.WorldH), active.Name, timeScale, chunks.GetStats(), guns, sailing);

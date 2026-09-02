@@ -14,6 +14,7 @@ the rules.
 |---|---|
 | [docs/world.md](docs/world.md) | map, coordinates, camera rigs/modes, terrain rendering and streaming, terrain queries |
 | [docs/boat.md](docs/boat.md) | the boat: handling, sails vs oars, wind, crew stamina, lean/bob, land and hull collision, the 3D model |
+| [docs/crew.md](docs/crew.md) | crew morale: what sours it, what a pub night costs the clock, and the speed a sullen crew works the boat at |
 | [docs/harbour.md](docs/harbour.md) | the fleet in `boats.yml` — small, medium and large — and buying one in a harbour |
 | [docs/combat.md](docs/combat.md) | cannons, cannonballs, impact effects, targets (enemy-ready), aiming |
 | [docs/economy.md](docs/economy.md) | who produces what, supply-driven prices, the trade ladder, the world average, cargo cost |
@@ -160,6 +161,8 @@ $G --path . -- --screenshot=screenshots/monk.png --seed=7 --monk=5 --deliver    
 | `--buy=name` | buy that boat as a harbour would, topping the purse up to cover the difference |
 | `--sails=up\|down` | start under canvas (default) or at the oars |
 | `--stamina=0..1` | start the crew part-spent (default 1 = fresh) |
+| `--morale=0..1` | start the crew's morale there (default 0.5) |
+| `--pub` | spend the first frame in a medium/large city's pub: the clock jumps to 08:00 and morale fills |
 | `--tweaks` | start with the tweak panel open |
 | `--size=WxH` | window size |
 
@@ -242,7 +245,9 @@ src/banking/           Loans — city banks, interest, due dates, late
                        penalties; pure rules                              → docs/banking.md
 src/religion/          Monasteries — piety, alms, monk errands; pure rules
                                                                           → docs/religion.md
-src/ui/                Fonts, Hud, Clock, StaminaBar, WindDial, Minimap, CityLabels, CityPopup,
+src/crew/              CrewMorale — how willing the crew are, what sours
+                       them and the speed it costs; pure rules      → docs/crew.md
+src/ui/                Fonts, Hud, Clock, StaminaBar, MoraleBar, WindDial, Minimap, CityLabels, CityPopup,
                        BankPopup, MonasteryPopup, EventLog, TweakPanel
                        — Godot Controls on a CanvasLayer                  → docs/ui.md
 ```
@@ -262,7 +267,7 @@ in `core/Config.cs`; boat and combat knobs go in their own `*Config.cs` as
 `Upkeep`, `Supply`, `Production`, `MarketDeal`, `WorldPrices`, `Market`,
 `StoryEvents`) and the world-building ones
 (`GameConfig`, `TerrainMap`, `City`, `CityPlacer`, `Scenario`, `AiState`,
-`NavMesh`) free of Godot types —
+`NavMesh`, `CrewMorale`) free of Godot types —
 pure, testable code, and `tests/` compiles them straight from `src/`. Where a
 rule needs something Godot-tainted, it takes a narrow interface instead of the
 class (`ITrader`, which `Player` implements for `MarketDeal`) so it stays

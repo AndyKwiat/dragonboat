@@ -25,6 +25,7 @@ rules change.
   `--press=Key@frame`, `--seed=N` for a reproducible world, `--set`,
   `--mode`, `--center`, `--zoom`, `--dump-tweaks`, `--honour`, `--loan`,
   `--bank`, `--vip`, `--deliver`, `--monastery`, `--monk`, `--alms`, `--sails`, `--stamina`,
+  `--morale`, `--pub`,
   `--scenario`; see
   `ParseArgs` in `src/Main.cs`). The run's final printed line (boat position/heading/speed,
   shots/hits) is useful for asserting movement without pixels.
@@ -61,7 +62,7 @@ rules change.
 - `dotnet test tests` runs the xunit suite over the Godot-free core
   (config, terrain parsing, city placement, docking, the economy —
   production, prices, staged trades — bank loans, VIP and monk missions,
-  wind and crew stamina, the boat classes and the harbours,
+  wind and crew stamina, crew morale, the boat classes and the harbours,
   the water nav mesh and its routes,
   AI orders/targeting/tactics/steering/gunnery/station-keeping, hull
   collision geometry); it

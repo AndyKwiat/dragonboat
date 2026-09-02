@@ -20,6 +20,9 @@ public partial class Boat : Node3D, ICombatTarget
                                     // vs oars (no wind, punchy, slower, tires the crew)
     public bool Rowing;             // sails down AND a helm order given this frame
     public float SailDrive = 1;     // 0..1 of the rig's pull the wind is giving
+    // What fraction of her best speed the crew will work her to; morale sets
+    // it on the player's boat (src/crew/Morale.cs) and 1 leaves her alone.
+    public float SpeedScale = 1;
     public Wind? Wind;              // the world's wind; only felt with the sails up
     public float Roll;              // radians about the forward axis (+ = starboard down)
     public int HitsTaken;
@@ -185,6 +188,20 @@ public partial class Boat : Node3D, ICombatTarget
         // as long as the step is small (BoatConfig.MaxStepSeconds).
         Vx += f.X * dt;
         Vy += f.Y * dt;
+        // A sullen crew work her slower. The cap is on the way she has ON
+        // THE WATER rather than on the thrust, so it holds whatever is
+        // pushing — canvas, oars or the current under her — and lands on the
+        // speed the rule is written about.
+        if (SpeedScale < 1)
+        {
+            float cap = SpeedScale * BoatConfig.TerminalSpeed(SailsUp);
+            float speed = Mathf.Sqrt(Vx * Vx + Vy * Vy);
+            if (speed > cap && speed > 0)
+            {
+                Vx *= cap / speed;
+                Vy *= cap / speed;
+            }
+        }
         X += Vx * dt;
         Y += Vy * dt;
         CollideWithLand();

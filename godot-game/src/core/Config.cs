@@ -230,6 +230,11 @@ public static class Config
     public static readonly Color StaminaFullColor = new Color("#6bd97a");
     public static readonly Color StaminaEmptyColor = new Color("#ff6b6b");
     public const float StaminaFlashRadPerSec = 6f;
+    // Crew morale bar (ui/MoraleBar.cs), the same width, right under the
+    // stamina bar. Amber when they are willing, red as they sour.
+    public const float MoraleBarGapPx = 6f;
+    public static readonly Color MoraleFullColor = new Color("#ffd166");
+    public static readonly Color MoraleLowColor = new Color("#ff6b6b");
 
     public static readonly Color DayColor = new Color("#f2e9d8");
     public static readonly Color NightColor = new Color("#4a5568");

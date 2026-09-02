@@ -122,7 +122,10 @@ sideways and a headwind shoves it astern. Measured, sailing due west with a
 full over `RestHoursToFull` (36). Rowing means **sails down and a helm key
 held**; sailing, or oars shipped with no order given, rests them. Running
 out costs nothing yet — the bar (`ui/StaminaBar.cs`, top centre) just sits
-at 0 and flashes. The wind gets its own arrow bottom left
+at 0 and flashes. How the crew *feel* is a separate number with separate
+rules, and that one does cost speed: `SpeedScale` caps the way the boat has
+on the water at a fraction of `TerminalSpeed()` whenever morale is under
+half ([crew.md](crew.md)). The wind gets its own arrow bottom left
 (`ui/WindDial.cs`) — both are in [ui.md](ui.md). `--sails=up|down` and `--stamina=0..1` set the state for a
 scripted run, and the run's final line prints both.
 
