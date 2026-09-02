@@ -308,7 +308,8 @@ the ball where she was. You have to lead her, exactly as she leads you.
 
 ## The world's fleet
 
-The game stocks itself with `AiConfig.FleetCount` (20) of these, scattered on
+The game stocks itself with `hostileBoats` of these — the count is
+`game-config.yml`'s, not the code's, and ships at 60 — scattered on
 coastal water by `AiBoats.Scatter` — never in the deep ocean, never within
 `MinSpawnDistance` of where the player starts. Each one is given **protect**
 orders over the spot she appears on, so the world is a coast full of guards
@@ -318,6 +319,12 @@ There used to be a second, dumber kind — moored hulls that never moved and
 only fired. That class is gone. **There is one kind of AI boat now**, and the
 fleet in the world is the same code as the boats on the battle bench, which
 means the bench is a real test of the game rather than a thing beside it.
+
+The fleet is placed once, at launch, which is why the count is a file key
+rather than a live `[Tweak]`: moving a slider mid-game would do nothing. It
+is also close to free — tripling it costs about a tenth of a second over
+1200 headless frames, because a boat far from the player with nothing to do
+is never thought about (`ThinkRange`, below).
 
 A scenario turns the fleet off with `enemyFleet: false`, which every bench
 does, so the only boats afloat are the ones it lists ([scenarios.md](scenarios.md)).

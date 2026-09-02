@@ -18,6 +18,11 @@ smallCities: 18
 mediumCities: 18
 largeCities: 5
 
+# Hostile AI boats scattered on coastal water, each guarding the spot she
+# appears on (docs/ai.md). Read once at launch: the fleet is placed there and
+# then, so this is a file key rather than a live tweak. 0 leaves the sea empty.
+hostileBoats: 260
+
 # Story events the world holds at any one time, by kind; when one lapses a
 # fresh one is rolled elsewhere so the count holds. 0 means none of that
 # kind ever spawns.

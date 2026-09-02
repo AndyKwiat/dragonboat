@@ -60,6 +60,11 @@ public static class CombatConfig
     [Tweak("Cannon", 10, 180, 5)] public static float FiringArcDeg = 60f;   // total arc each cannon covers
     [Tweak("Cannon", 0.2f, 4, 0.1f)] public static float BallRadius = 0.9f;
     [Tweak("Cannon", 0, 3, 0.1f)] public static float HitMargin = 0.5f;     // hit box padding around a hull
+    // How far a ball may land from where it was aimed: every shot's aim point
+    // is nudged by up to this many world units in x and y, drawn separately,
+    // so a broadside straddles the target instead of putting every ball
+    // through the same hole. 0 is perfect gunnery.
+    [Tweak("Cannon", 0, 10, 0.1f)] public static float ShotScatter = 1f;
     public static readonly Color BallColor = new Color(0x111111FF);
 
     // Effects: flat rings that grow and fade (splashes, land puffs) and

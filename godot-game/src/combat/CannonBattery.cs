@@ -31,6 +31,18 @@ public partial class CannonBattery : Node3D
         get { int n = 0; foreach (var c in Cannons) if (c.Loaded) n++; return n; }
     }
 
+    // Every loaded gun that can bear on the point — the whole broadside, in
+    // mount order. The player fires all of them at once (CombatSystem.Fire);
+    // an AI boat picks one (BestCannon).
+    public List<Cannon> CannonsBearing(Vector3 target)
+    {
+        float half = Mathf.DegToRad(CombatConfig.FiringArcDeg) / 2;
+        var bearing = new List<Cannon>();
+        foreach (var c in Cannons)
+            if (c.Loaded && c.OffAngle(target) <= half) bearing.Add(c);
+        return bearing;
+    }
+
     public Cannon? BestCannon(Vector3 target)
     {
         float half = Mathf.DegToRad(CombatConfig.FiringArcDeg) / 2;

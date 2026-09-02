@@ -74,7 +74,7 @@ opens the project picker and hangs a scripted run.
 | WASD / arrows | drive the boat (follow mode) or pan (free mode) — under sail the canvas is always drawing, so W does nothing and S takes the way off |
 | **space** | sails up / sails down — canvas is always drawing, as hard as the wind allows (a calm goes nowhere), runs faster but steers lazily; oars ignore the wind, accelerate harder, top out slower and tire the crew (the bar at the top) |
 | wheel | zoom; drag pans in free mode |
-| **click** | fire the best loaded cannon at the reticle under the cursor — or open a city's market if you clicked its name |
+| **click** | fire a broadside at the reticle under the cursor — every loaded gun that bears and can reach lets go at once, each ball scattering a unit or so — or open a city's market if you clicked its name |
 | *(sail into a city)* | opens its market too — you must leave the quay, and wait out a 5 s cooldown, before it opens again |
 | Shift (hold) | fast-forward game time — ramps up while held, eases back on release |
 | C | cycle camera mode (follow / edge / free) |
@@ -147,6 +147,7 @@ $G --path . -- --screenshot=screenshots/monk.png --seed=7 --monk=5 --deliver    
 | `--start=x,y[,deg]` | put the boat here, heading in degrees (0 = east, 90 = south) |
 | `--fire=dx,dy@f1,f2` | fire at the ground point dx,dy from the boat on those frames (default frame 10); only cannons that bear fire |
 | `--set=Name=V,Name=V` | override `[Tweak]` values by field name |
+| `--money=N` | set the player's purse outright (applied before `--buy` and `--loan`) |
 | `--honour=N` | set the player's honour (bank credit is a multiple of it) |
 | `--loan=N[@D]` | borrow N from that city's bank at launch, its due date moved D days earlier (`@4` = four days late, `@-2` = due in two days) |
 | `--bank` | open that city's bank window over its market |
@@ -178,8 +179,9 @@ project.godot          1280×800 window, hidpi on (Main sets the content scale
                        factor, so "px" stays a CSS-like logical px), clear colour
 Main.tscn              one Node3D with src/Main.cs
 game-config.yml        which terrain file to load, how many small/medium/
-                       large cities to generate, how thick the currents
-                       run, how many story events of each kind are live —
+                       large cities to generate, how many hostile boats
+                       sail, how thick the currents run, how many story
+                       events of each kind are live —
                        every key required, no code defaults
 boats.yml              every vessel in the game: size, masts, crew, hold,
                        cost, guns and handling multipliers — every key

@@ -39,6 +39,13 @@ CombatConfig     all knobs, [Tweak]-able     src/combat/CombatConfig.cs
   scaled by the vessel's length, so a bigger boat's guns sit where they
   should. Every AI hull is a medium and carries the medium's seven.
 - **`Projectiles`** — `Fire(cannon, target)` spawns a ball at the cannon,
+  its aim point first nudged by up to `ShotScatter` (1 unit) in x and y,
+  drawn separately per ball: nobody's gunnery is perfect, and without it a
+  broadside puts every ball through the same hole. A hull is 12 × 4, so at
+  1 unit a salvo straddles the target without missing it; the scatter runs
+  off its own generator seeded from the world's, so a `--seed` run repeats
+  down to which way each ball strayed. `--set=ShotScatter=0` is perfect
+  gunnery, and 30 misses a stationary hull with every shot.
   with velocity from `SolveLaunch`: every ball leaves at **`MuzzleSpeed`**;
   the *low* launch angle that lands on the target is solved from
   `tan θ = (v² − √(v⁴ − g(g d² + 2 h v²))) / (g d)`, so farther shots arc
@@ -71,7 +78,13 @@ camera with `Terrain.RaycastGround`, so the aim point sits on the water or on
 top of a hill, and parks the reticle there (`ReticlePx` screen pixels, scaled
 by 1/zoom). Yellow means a loaded cannon can bear on it *and* the point is within the
 fixed muzzle speed's reach from that cannon; grey means it can't be hit (all
-reloading, outside every firing arc, or out of range). A click fires `PlayerGuns.BestCannon(aim)` unless it
+reloading, outside every firing arc, or out of range). A click fires a
+**broadside**: `CombatSystem.FireBroadside` lets go every loaded gun that
+bears on the point and can reach it, all in the same frame — one on the small
+boat, three on the medium, six on the large lying beam-on, and both bow
+chasers when the target is dead ahead of her. Guns that cannot bear are not
+touched, so a hull with one side reloading still fires the other. That is
+unless the click
 landed on a hover-highlighted city label (that opens the market instead) or
 the city menu is open — while the menu is up the reticle is hidden, nothing
 fires, and the closing click is inert (`menuOpen` in `Main._Process`).
@@ -88,8 +101,10 @@ boat), so reloads and flights stay consistent with sailing speed.
 1. Make its node implement `ICombatTarget` (hull box in its own frame, a
    `TakeHit` that flashes/damages) and `combat.AddTarget(it)`.
 2. `var guns = combat.Arm(node, mounts, length)` gives it a battery.
-3. Its AI calls `combat.Fire(guns, target)` when it wants to shoot — the
-   same best-cannon/arc/reload rules as the player. `Projectiles` already
+3. Its AI calls `combat.Fire(guns, target)` when it wants to shoot — one gun,
+   the loaded one that bears most squarely, on the same arc/reload rules as
+   the player. An AI boat fires as she comes to bear rather than in salvoes;
+   `FireBroadside` is the player's alone. `Projectiles` already
    skips the firing vessel and will hit the player `Boat`.
 4. Keep it under `src/combat/` (or its own folder with its own doc) and out of
    the trading code.

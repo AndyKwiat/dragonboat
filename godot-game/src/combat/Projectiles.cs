@@ -21,14 +21,18 @@ public partial class Projectiles : Node3D
     public int InFlight => balls.Count;
 
     private readonly List<Ball> balls = new();
+    // Where the shots scatter. Its own generator, seeded from the world's, so
+    // a --seed run repeats itself down to which way each ball strayed.
+    private Random scatter = new(0);
     private Terrain terrain = null!;
     private Effects effects = null!;
     private StandardMaterial3D ballMaterial = null!;
 
-    public void Init(Terrain terrain, Effects effects)
+    public void Init(Terrain terrain, Effects effects, Random? rng = null)
     {
         this.terrain = terrain;
         this.effects = effects;
+        if (rng != null) scatter = rng;
         ballMaterial = new StandardMaterial3D { AlbedoColor = CombatConfig.BallColor };
     }
 
@@ -61,8 +65,20 @@ public partial class Projectiles : Node3D
         return new Vector3(flat.X * MathF.Cos(angle) * v, MathF.Sin(angle) * v, flat.Z * MathF.Cos(angle) * v);
     }
 
+    // Where this ball actually lands: the aim point nudged by up to
+    // CombatConfig.ShotScatter in x and y, drawn separately. Nobody's gunnery
+    // is perfect, and without it a broadside puts six balls through one hole.
+    private Vector3 Scattered(Vector3 target)
+    {
+        float s = CombatConfig.ShotScatter;
+        if (s <= 0) return target;
+        float Nudge() => (float)(scatter.NextDouble() * 2 - 1) * s;
+        return new Vector3(target.X + Nudge(), target.Y, target.Z + Nudge());
+    }
+
     public void Fire(Cannon cannon, Vector3 target)
     {
+        target = Scattered(target);
         var start = cannon.GlobalPosition;
         var battery = cannon.GetParent<CannonBattery>();
         var owner = battery.Vessel;

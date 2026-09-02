@@ -240,7 +240,10 @@ public partial class Main : Node3D
         // Combat: the player's guns ride on the boat; the boat is itself a
         // target so enemy fire can hit it later.
         combat = new CombatSystem();
-        combat.Init(terrainQuery);
+        // Its own generator, drawn from the world's, so shots scatter the
+        // same way on every run of the same --seed without the world's
+        // layout depending on how much shooting there was.
+        combat.Init(terrainQuery, new Random(worldRng.Next()));
         AddChild(combat);
         combat.PlayerGuns = combat.Arm(boat, CombatConfig.MountsFor(boat.Class), boat.HullLength);
         combat.AddTarget(boat);
@@ -253,7 +256,7 @@ public partial class Main : Node3D
         AddChild(aiBoats);
         SpawnScenarioBoats();
         if (scenario is not { EnemyFleet: false })
-            aiBoats.Scatter(map, boat, worldRng, AiConfig.FleetCount, HostileTeam,
+            aiBoats.Scatter(map, boat, worldRng, GameConfig.Current.HostileBoats, HostileTeam,
                 () => player.Honour += AiConfig.KillHonour);
         // N shows the nav mesh and, on top of it, the routes the AI boats
         // are actually steering along.
@@ -502,6 +505,7 @@ public partial class Main : Node3D
     // --monastery[=Name]   open a monastery's window over its city's market
     // --monk[=daysAboard]  take a monk aboard, accepted that many days ago
     // --alms=daysAgo       pretend that monastery took alms that many days ago
+    // --money=N            set the player's purse (before --buy and --loan)
     // --honour=N           set the player's honour (bank credit is 10x it)
     // --buy=name           buy that boat as a harbour would, topping the purse
     //                      up to cover the difference (test hook)
@@ -563,6 +567,10 @@ public partial class Main : Node3D
         }
         // Banking test hooks: set honour (credit is a multiple of it), take
         // a loan out, and/or open the bank window over the market.
+        // The purse, set outright: a harbour deal the player cannot quite
+        // afford is otherwise hard to stage (a loan needs the honour to
+        // borrow against, and leaves a debt behind that moves the numbers).
+        if (args.TryGetValue("money", out var money)) player.Money = int.Parse(money);
         if (args.TryGetValue("honour", out var honour)) player.Honour = int.Parse(honour);
         // Strike a harbour deal without a mouse: the same path the Buy button
         // takes, so the hull, the hold and the guns all move. The purse is

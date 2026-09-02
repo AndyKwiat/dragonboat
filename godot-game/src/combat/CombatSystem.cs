@@ -29,11 +29,13 @@ public partial class CombatSystem : Node3D
     private MeshInstance3D reticle = null!;
     private StandardMaterial3D reticleMaterial = null!;
 
-    public void Init(Terrain terrain)
+    // `rng` seeds the shot scatter: pass one derived from the world seed and
+    // a --seed run repeats down to which way each ball strayed.
+    public void Init(Terrain terrain, System.Random? rng = null)
     {
         this.terrain = terrain;
         Name = "Combat";
-        Projectiles.Init(terrain, Effects);
+        Projectiles.Init(terrain, Effects, rng);
         AddChild(Effects);
         AddChild(Projectiles);
         reticleMaterial = Effects.UnshadedMaterial(CombatConfig.ReticleReadyColor, transparent: false);
@@ -52,6 +54,8 @@ public partial class CombatSystem : Node3D
     public void AddTarget(ICombatTarget t) => targets.Add(t);
     public void RemoveTarget(ICombatTarget t) => targets.Remove(t);
 
+    // One gun: the loaded one that bears most squarely. This is how an AI
+    // boat shoots — she fires as she comes to bear, not in salvoes.
     public bool Fire(CannonBattery battery, Vector3 target)
     {
         var c = battery.BestCannon(target);
@@ -61,10 +65,28 @@ public partial class CombatSystem : Node3D
         return true;
     }
 
-    // Fire the player's best cannon at a world (x, y) ground point. Used by
-    // the --fire test flag; the mouse path goes through Update.
+    // A broadside: every loaded gun that bears on the point and can reach it
+    // fires together, so a hull lying beam-on to the target empties that side
+    // at once — one on the small boat, three on the medium, six on the large.
+    // Each ball scatters on its own (Projectiles), so the salvo straddles.
+    // Returns how many went off.
+    public int FireBroadside(CannonBattery battery, Vector3 target)
+    {
+        int fired = 0;
+        foreach (var c in battery.CannonsBearing(target))
+        {
+            if (!Projectiles.WithinRange(c.GlobalPosition, target)) continue;
+            Projectiles.Fire(c, target);
+            fired++;
+        }
+        if (fired > 0 && battery == PlayerGuns) PlayerFiredThisFrame = true;
+        return fired;
+    }
+
+    // Fire the player's broadside at a world (x, y) ground point. Used by the
+    // --fire test flag; the mouse path goes through Update.
     public bool FireAtGround(float x, float y) =>
-        PlayerGuns != null && Fire(PlayerGuns, new Vector3(x, terrain.HeightAt(x, y), y));
+        PlayerGuns != null && FireBroadside(PlayerGuns, new Vector3(x, terrain.HeightAt(x, y), y)) > 0;
 
     public void Update(float dt, CameraRig rig, CameraState state, Vector2? cursorPx, bool clicked)
     {
@@ -92,6 +114,6 @@ public partial class CombatSystem : Node3D
             reticleMaterial.AlbedoColor = AimReady ? CombatConfig.ReticleReadyColor : CombatConfig.ReticleBlockedColor;
         }
 
-        if (clicked && AimReady && PlayerGuns != null) Fire(PlayerGuns, AimPoint);
+        if (clicked && AimReady && PlayerGuns != null) FireBroadside(PlayerGuns, AimPoint);
     }
 }

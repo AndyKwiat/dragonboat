@@ -53,8 +53,8 @@ rules change.
   reach into each other.
 - `boats.yml` (every vessel: size, masts, crew, hold, cost, guns and
   handling multipliers over `BoatConfig`) and
-  `game-config.yml` (terrain file, small/medium/large city counts, current
-  density) are both required at launch and have no code defaults; `data/products.json` and `data/city-names.json` are
+  `game-config.yml` (terrain file, small/medium/large city counts, hostile
+  boat count, current density) are both required at launch and have no code defaults; `data/products.json` and `data/city-names.json` are
   canonical. Cities are generated on the coast every run (`CityPlacer`);
   maps are `.terrain` files painted in `../terrain-gen`. One map cell = one
   world unit.

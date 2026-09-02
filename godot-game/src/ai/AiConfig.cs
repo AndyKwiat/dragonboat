@@ -62,8 +62,9 @@ public static class AiConfig
     [Tweak("AI", 0.1f, 10, 0.1f)] public static float AiRepathSec = 1.5f;   // how often a blind chase re-plans
     [Tweak("AI", 0.05f, 2, 0.05f)] public static float AiLosRefreshSec = 0.25f;  // how often line of sight is retested
 
-    // The hostile fleet the world is stocked with, and what one is worth.
-    public const int FleetCount = 20;
+    // What sinking one of the hostile fleet is worth. How many of them there
+    // are is game-config.yml's `hostileBoats` — the fleet is scattered once
+    // at launch, so it is a file key rather than a live [Tweak].
     public const int KillHonour = 50;
     // Nobody is scattered closer to the player's start than this...
     public const float MinSpawnDistance = 400f;

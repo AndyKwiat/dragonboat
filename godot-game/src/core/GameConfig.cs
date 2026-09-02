@@ -3,7 +3,8 @@ using System.Collections.Generic;
 using System.Globalization;
 
 // game-config.yml (repo root): which terrain file to load, how many cities
-// of each size to generate and how thick the currents run. No Godot types — Main reads the file text and hands
+// of each size to generate, how many hostile boats sail and how thick the
+// currents run. No Godot types — Main reads the file text and hands
 // it to Parse. Every key is required: the file, not the code, is where
 // these numbers live. The YAML subset is flat `key: value` lines with `#`
 // comments, which is all the file needs.
@@ -23,6 +24,10 @@ public sealed class GameConfig
     // none of that kind ever spawns.
     public int PriceEvents { get; }
     public int VipEvents { get; }
+    // How many hostile AI boats the world is stocked with (AiBoats.Scatter).
+    // Read once at launch — the fleet is scattered there and then, which is
+    // why this is a file key and not a live [Tweak]. 0 empties the sea.
+    public int HostileBoats { get; }
     // Currents per map area: 100 is the baseline (CurrentsAtBaseDensity
     // arrows on an 8192² map), 200 twice as many, 10 a tenth, 0 none.
     public double CurrentDensity { get; }
@@ -38,11 +43,12 @@ public sealed class GameConfig
     public const long BaseMapCells = 8192L * 8192L;
 
     public GameConfig(string terrainFile, int smallCities, int mediumCities, int largeCities, double currentDensity,
-        int priceEvents, int vipEvents)
+        int priceEvents, int vipEvents, int hostileBoats)
     {
         if (string.IsNullOrWhiteSpace(terrainFile)) throw new ArgumentException("terrainFile is empty");
         foreach (var (name, n) in new[] { ("smallCities", smallCities), ("mediumCities", mediumCities), ("largeCities", largeCities),
-                                          ("priceEvents", priceEvents), ("vipEvents", vipEvents) })
+                                          ("priceEvents", priceEvents), ("vipEvents", vipEvents),
+                                          ("hostileBoats", hostileBoats) })
             if (n < 0) throw new ArgumentException($"{name} cannot be negative, got {n}");
         if (smallCities + mediumCities + largeCities < 1)
             throw new ArgumentException("at least one city is needed (smallCities + mediumCities + largeCities)");
@@ -50,7 +56,7 @@ public sealed class GameConfig
             throw new ArgumentException($"currentDensity must be 0 or more, got {currentDensity}");
         TerrainFile = terrainFile; CurrentDensity = currentDensity;
         SmallCities = smallCities; MediumCities = mediumCities; LargeCities = largeCities;
-        PriceEvents = priceEvents; VipEvents = vipEvents;
+        PriceEvents = priceEvents; VipEvents = vipEvents; HostileBoats = hostileBoats;
     }
 
     // How many current arrows a map of this many cells gets: linear in both
@@ -80,7 +86,9 @@ public sealed class GameConfig
         // The event counts used to be code constants quoted per 100 cities
         // and scaled; now they are the file's, as plain counts.
         int priceEvents = Count("priceEvents"), vipEvents = Count("vipEvents");
-        return new GameConfig(terrain, small, medium, large, currents, priceEvents, vipEvents);
+        // The fleet size used to be AiConfig.FleetCount, a code constant.
+        int hostileBoats = Count("hostileBoats");
+        return new GameConfig(terrain, small, medium, large, currents, priceEvents, vipEvents, hostileBoats);
     }
 
     public static Dictionary<string, string> ParseFlatYaml(string text)
